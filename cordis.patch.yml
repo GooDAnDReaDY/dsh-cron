@@ -1,0 +1,4 @@
+- insert:
+    - id: dsh-cron
+      name: '@goodandready/dsh-cron'
+      config: {}
