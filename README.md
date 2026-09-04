@@ -116,6 +116,15 @@ Direct integration with the Telegram Bot API delivers execution reports and erro
 * **Markdown Formatting**: Messages are formatted with status badges (✅ / ❌), execution duration in milliseconds, schedule descriptions, and monospace code blocks.
 * **Test Dispatch Button**: Verify Telegram connectivity on the spot before scheduling critical production jobs.
 
+### 7. Overlap Policies & Execution Timeout Control (Issues #11, #17)
+Prevent rogue processes from consuming server resources or stacking concurrent duplicate executions:
+
+* **Execution Timeout (`timeoutSeconds`)**: Automatically cancels agent sessions or kills shell subprocesses when the configured run time limit is reached (default: 1800s / 30m). Prevents hung tasks and records a descriptive timeout failure in run logs.
+* **Overlap Policy (`overlapPolicy`)**: Controls scheduler behavior when a scheduled tick fires while the previous execution is still running:
+  * **`skip`** (default): Drops the overlapping run and records a `skipped` status entry in the run history without spamming.
+  * **`queue`**: Queues the next execution and starts it automatically as soon as the active job completes.
+  * **`replace`**: Aborts the stuck/active run immediately via `AbortController` and launches the fresh execution.
+
 ### 5. Schedule Expression Syntax
 Powered by `croner`, supporting both standard 5-part/6-part cron expressions and user-friendly interval aliases:
 
