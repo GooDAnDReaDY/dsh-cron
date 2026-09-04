@@ -108,6 +108,14 @@ When autonomous agents need to set up delayed or recurring actions, they can inv
 * **`cron_list_tasks`**: Retrieves an overview of active schedules and next scheduled run timestamps.
 * **`cron_toggle_task`**: Enables or disables an existing task by `id`.
 
+### 6. Telegram Notifications & Delivery Routing
+Direct integration with the Telegram Bot API delivers execution reports and error traces straight to your messenger:
+
+* **Auto-Detected or Custom Credentials**: Enter a custom `botToken` and `chatId` in the UI settings dialog, or automatically inherit default credentials from `dsh-messenger-gateway` in `settings.yaml`.
+* **'Only on Failure' Mode (Issue #24)**: Prevent notification spam by enabling `onlyOnFailure` globally or on individual tasks. Clean runs remain silent, while non-zero exit codes or agent exceptions immediately dispatch an alert with stdout/stderr traces.
+* **Markdown Formatting**: Messages are formatted with status badges (✅ / ❌), execution duration in milliseconds, schedule descriptions, and monospace code blocks.
+* **Test Dispatch Button**: Verify Telegram connectivity on the spot before scheduling critical production jobs.
+
 ### 5. Schedule Expression Syntax
 Powered by `croner`, supporting both standard 5-part/6-part cron expressions and user-friendly interval aliases:
 
