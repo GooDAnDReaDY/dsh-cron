@@ -1,6 +1,6 @@
 {
   "name": "@goodandready/dsh-cron",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Scheduled cron tasks, background automation and agent execution for DeepSeek Harness.",
   "type": "module",
   "main": "lib/index.js",
