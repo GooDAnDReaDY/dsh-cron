@@ -9,5 +9,7 @@ test('buildAgentCronPrompt includes user text, silent rule, and model recommenda
   assert.ok(prompt.includes('cron_schedule_task'));
   assert.ok(prompt.includes('Qwen/Qwen3.8-Flash') || prompt.includes('deepseek-v4-flash'));
   assert.ok(prompt.includes('Silent Rule') || prompt.includes('правило тишины'));
+  assert.ok(prompt.includes('NO-LLM') || prompt.includes('без LLM'));
+  assert.ok(prompt.includes('ЗАПРЕЩЕНО'));
   assert.ok(prompt.includes(userText));
 });
