@@ -192,3 +192,8 @@ MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
 - **Automatic Kanban Card Creation**: Automatically creates task/bug cards in `dsh-kanban` on task failure (`on_failure`) or every run (`always`).
 - **Token & Execution Cost Meter**: Tracks token consumption (input, output, cache tokens) for LLM executions and estimates USD expenses using current model pricing.
 - **Aggregated Analytics Bar**: Live dashboard displaying active jobs count, total executions, total token consumption, and aggregate estimated dollar spend.
+
+### One-Shot Delayed Tasks (v0.1.18)
+- **Precise Timing & Relative Delays**: Supports one-time tasks triggered at exact ISO 8601 timestamps (`at: 2026-09-05T12:00:00Z`) or human-friendly relative delays (`in 20m`, `in 2h`, `через 15 минут`).
+- **Auto-Completion Lifecycle**: One-shot jobs transition automatically to `completed` status after their single run, preventing unexpected repeats.
+- **Dedicated Filter**: View historical and pending one-shot executions under the «Completed» (`completed`) tab.
