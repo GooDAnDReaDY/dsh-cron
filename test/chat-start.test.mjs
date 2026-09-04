@@ -14,7 +14,8 @@ test('chatStartHandler creates session and follows up with prompt', async () => 
 
   const mockCtx = {
     agents: {
-      create: async ({ sessionId }) => {
+      create: async ({ sessionId, meta }) => {
+        assert.ok(meta && meta.cwd, "meta.cwd must be provided");
         createdSessionId = sessionId;
         return { agent: mockAgent };
       }
