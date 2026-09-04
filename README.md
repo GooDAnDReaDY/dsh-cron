@@ -187,3 +187,8 @@ npm test
 ## 📄 License
 
 MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
+
+### Kanban & Token Cost Integration (v0.1.17)
+- **Automatic Kanban Card Creation**: Automatically creates task/bug cards in `dsh-kanban` on task failure (`on_failure`) or every run (`always`).
+- **Token & Execution Cost Meter**: Tracks token consumption (input, output, cache tokens) for LLM executions and estimates USD expenses using current model pricing.
+- **Aggregated Analytics Bar**: Live dashboard displaying active jobs count, total executions, total token consumption, and aggregate estimated dollar spend.
