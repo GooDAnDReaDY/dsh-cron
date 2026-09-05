@@ -8,9 +8,10 @@ test('all tools in lib/index.js follow dsh-tools defineTool contract (flat param
   // Verify that defineTool is imported from @deepseek-ai/dsh-tools
   assert.ok(code.includes("import { defineTool } from '@deepseek-ai/dsh-tools';"));
 
-  // Check all 6 tool names
+  // Check all tool names (including cron_schedule_task alias)
   const expectedTools = [
     'cron_create_task',
+    'cron_schedule_task',
     'cron_list_tasks',
     'cron_pause_task',
     'cron_resume_task',
@@ -30,9 +31,9 @@ test('all tools in lib/index.js follow dsh-tools defineTool contract (flat param
   // Verify that all defineTool blocks have output with render function
   const toolBlocks = code.split('defineTool({');
   // First element is before first defineTool
-  assert.equal(toolBlocks.length, 7, 'Expected exactly 6 defineTool blocks');
+  assert.equal(toolBlocks.length, 8, 'Expected exactly 7 defineTool blocks (6 tools + 1 alias)');
 
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 7; i++) {
     const block = toolBlocks[i];
     assert.ok(block.includes('output: {'), `Tool block ${i} must have output: {`);
     assert.ok(block.includes('schema: {'), `Tool block ${i} must have schema: {`);
