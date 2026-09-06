@@ -31,3 +31,12 @@ test('client.js registers with window.__ModuleLoader__ without error', () => {
   assert.equal(loadedId, '@goodandready/dsh-cron');
   assert.equal(typeof loadedFactory, 'function');
 });
+
+test('Issue #80: CronScreen declares setLoading and setRecs correctly in client.js', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  assert.ok(code.includes('const [loading, setLoading] = React.useState(false);'), 'setLoading state declared');
+  assert.ok(code.includes('const [fetchError, setFetchError] = React.useState(null);'), 'fetchError state declared');
+  assert.ok(!code.includes('setRecommendations('), 'no undefined setRecommendations called');
+  assert.ok(code.includes('setRecs('), 'setRecs used for recommendations');
+  assert.ok(code.includes('Ошибка загрузки задач:'), 'fetchError banner present');
+});
