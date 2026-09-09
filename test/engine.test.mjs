@@ -8,17 +8,17 @@ import { parseScheduleExpression, describeCron, TaskScheduler } from '../lib/sch
 test('parseScheduleExpression handles intervals and friendly names', () => {
   const p1 = parseScheduleExpression('every 2m');
   assert.equal(p1.cronPattern, '*/2 * * * *');
-  assert.equal(p1.humanText, 'Каждые 2 минут');
+  assert.equal(p1.humanText, 'Every 2 minutes');
 
   const p2 = parseScheduleExpression('every 3h');
   assert.equal(p2.cronPattern, '0 */3 * * *');
-  assert.equal(p2.humanText, 'Каждые 3 часов');
+  assert.equal(p2.humanText, 'Every 3 hours');
 
   const p3 = parseScheduleExpression('daily');
   assert.equal(p3.cronPattern, '0 9 * * *');
 
   const p4 = parseScheduleExpression('0 8 * * 1-5');
-  assert.equal(p4.humanText, 'В будние дни в 08:00');
+  assert.equal(p4.humanText, 'Weekdays at 08:00');
 });
 
 test('TaskStore CRUD and run recording', () => {

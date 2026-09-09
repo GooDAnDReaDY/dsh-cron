@@ -75,7 +75,7 @@ test('Audit #69 & #76: TaskStore preserves status and supports PATCH schedule re
   });
 
   assert.equal(patched.schedule, '*/15 * * * *');
-  assert.equal(patched.scheduleText, 'Каждые 15 минут');
+  assert.equal(patched.scheduleText, 'Every 15 minutes');
   assert.equal(patched.status, 'paused');
 
   try { fs.unlinkSync(tmpPath); } catch {}
