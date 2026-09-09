@@ -31,11 +31,10 @@ Autonomous AI agents often need to perform recurring duties: generating daily mo
 
 **`@goodandready/dsh-cron`** is a native full-stack scheduling and background automation plugin for DeepSeek Harness. It bridges standard cron expressions and natural interval syntax with autonomous agent execution, providing:
 
-1. **Rich Visual Task Manager**: A dedicated sidebar navigation button and full-featured visual overlay to inspect, filter, pause, trigger, and create recurring tasks.
-2. **Interactive "Create with DSH" Workflow**: Chat directly with your agent to translate high-level requirements into scheduled tasks, complete with custom model selection and prompt synthesis.
-3. **Chat Slash Commands (`/cron`)**: Fast command-line control directly from the chat prompt (`/cron list`, `/cron add`, `/cron pause`, `/cron run`).
-4. **Autonomous AI Tool Calling**: Gives agents native tools (`cron_schedule_task`, `cron_list_tasks`, `cron_toggle_task`) so they can schedule their own follow-up executions during conversations.
-5. **Robust Scheduler & Atomic Storage**: Built on `croner` with timezone support, interval aliases (`every 15m`, `daily`, `weekdays`), atomic file persistence, and run execution histories.
+1. **Rich Visual Task Manager** — a sidebar button and a full-featured panel to inspect, filter, pause, trigger, and create recurring tasks.
+2. **Interactive "Create with DSH" Workflow** — chat with your agent to translate high-level requirements into a well-formed scheduled task.
+3. **Autonomous AI Tool Calling** — native `cron_*` tools let agents schedule their own follow-up executions during conversations.
+4. **Robust Scheduler & Atomic Storage** — built on `croner` with interval aliases, one-shot delays, atomic file persistence, run histories, and cost tracking.
 
 ---
 
@@ -45,30 +44,32 @@ Autonomous AI agents often need to perform recurring duties: generating daily mo
 graph TD
     subgraph Client ["Web Client Surface (DSH UI)"]
         SidebarBtn["Sidebar Clock Action<br/>(DSH Client UI Slot)"]
-        Overlay["Visual Task Manager Modal<br/>(Tabs: All, Active, Paused, History)"]
-        CreateWithDSH["'Create with DSH' Modal<br/>(Model Picker & Task Prompt)"]
-        ManualForm["Manual Task Creation Modal<br/>(Cron Expression, Timezone, Model)"]
-        SlashCmd["Slash Command Parser<br/>(/cron add, list, pause, run)"]
+        Overlay["Visual Task Manager Panel<br/>(Tabs: All, Active, Paused, Completed)"]
+        CreateWithDSH["'Create with DSH' Dialog<br/>(natural language task)"]
+        ManualForm["Manual Task Form<br/>(Cron Expression, Timeout, Overlap, Model)"]
+        SettingsCard["Settings Card<br/>(Telegram / Kanban integration)"]
     end
 
     subgraph Server ["Server Runtime (Cordis & DSH Services)"]
-        HttpRoutes["HTTP REST API Endpoints<br/>(/dsh-cron/tasks, /models, /chat-start)"]
-        AgentTools["AI Tool Calling Gateway<br/>(cron_schedule_task, cron_list_tasks)"]
-        Scheduler["TaskScheduler Engine<br/>(Croner instance management)"]
+        HttpRoutes["HTTP REST API<br/>(/dsh-cron/*)"]
+        AgentTools["AI Tool Calling Gateway<br/>(cron_create_task, cron_list_tasks, ...)"]
+        Scheduler["TaskScheduler Engine<br/>(Croner instances + one-shot timers)"]
         Store["Atomic TaskStore<br/>(tasks.json with atomic write)"]
         AgentRunner["Agent Session Dispatcher<br/>(Executes prompt with chosen model)"]
+        Notify["Delivery<br/>(Telegram Bot API, dsh-kanban cards)"]
     end
 
     SidebarBtn --> Overlay
     Overlay --> CreateWithDSH
     Overlay --> ManualForm
-    CreateWithDSH -->|POST /chat-start| HttpRoutes
+    SettingsCard --> HttpRoutes
+    CreateWithDSH -->|POST /chat/start| HttpRoutes
     ManualForm -->|POST /tasks| HttpRoutes
-    SlashCmd -->|Command dispatch| HttpRoutes
     HttpRoutes --> Scheduler
     AgentTools --> Scheduler
     Scheduler --> Store
-    Scheduler -->|Trigger on interval/cron| AgentRunner
+    Scheduler -->|Trigger on interval/one-shot| AgentRunner
+    Scheduler --> Notify
 ```
 
 ---
@@ -76,63 +77,76 @@ graph TD
 ## ✨ Features & Capabilities
 
 ### 1. Visual Task Manager & Sidebar Action
-Click the clock icon in the DSH sidebar (positioned conveniently next to Kanban and Chat) to open the management overlay:
-* **Status Filter Tabs**: Seamlessly toggle between **All**, **Active**, **Paused**, and **Completed** tasks.
-* **Instant Action Menu**: Trigger manual one-off executions (`Run Now`), pause/resume intervals, or delete obsolete schedules with confirmation safeguards.
-* **1-Click Preset Templates**: Quickly scaffold common workflows like *Daily Development Digest*, *Weekly Repo Review*, and *Health Heartbeat*.
-* **Execution History**: Expand any task card to review previous execution timestamps, elapsed durations, exit statuses, and generated outputs.
+Click the clock icon in the DSH sidebar (positioned next to the new-session button) to open the management panel:
+* **Status Filter Tabs**: toggle between **All**, **Active**, **Paused**, and **Completed** tasks.
+* **Instant Action Menu**: trigger manual one-off executions (**Run Now**), pause/resume schedules, or delete obsolete tasks with a confirmation step.
+* **1-Click Preset Templates**: scaffold common workflows like *Daily digest*, *Weekly review*, and *Follow-up monitor*.
+* **Execution History**: open any task card to review previous runs — timestamps, durations, statuses (success / failed / timeout / skipped / missed), outputs, and errors.
+* **Aggregated Stats Bar**: live dashboard with active task count, total runs, total token consumption, and the estimated dollar spend.
 
-### 2. "Create with DSH" AI Chat Modal
-Transform natural language into scheduled jobs without manually guessing cron expressions:
+### 2. "Create with DSH" Dialog
+Transform natural language into a scheduled job without guessing cron syntax:
 1. Click **Create ⌄** ➔ **Create with DSH**.
-2. Select your target AI provider and model from the live model dropdown.
-3. Describe what you want the agent to automate (e.g. *"Check open PRs every weekday at 9:00 AM and draft review comments"*).
-4. The plugin automatically spawns a dedicated agent session pre-injected with scheduler system instructions to formulate the task and register it into `TaskStore`.
+2. Describe what you want to automate (e.g. *"Check open PRs every weekday at 9:00 and draft review comments"*).
+3. The plugin spawns a dedicated agent session pre-injected with scheduler instructions. The agent clarifies the details with you — LLM vs no-LLM shell task, the exact cron expression, an economical model from those available in your DSH installation, and whether a "silent rule" (alert only on new events or failures) should apply — and registers the task through the `cron_create_task` tool only after your confirmation.
 
-### 3. Chat Slash Command (`/cron`)
-For keyboard-first workflows, manage tasks directly inside the chat window:
+### 3. Agent Tools (Tool Calling)
+Autonomous agents can manage schedules directly:
 
-| Command | Syntax | Description |
-|:---|:---|:---|
-| `/cron list` | `/cron list` | Lists all registered tasks with IDs, schedules, and active statuses |
-| `/cron add` | `/cron add "<schedule>" <prompt>` | Creates a task. Example: `/cron add "every 2h" Run git fetch and summarize changes` |
-| `/cron pause` | `/cron pause <id>` | Pauses a running schedule without deleting its configuration |
-| `/cron resume` | `/cron resume <id>` | Resumes a previously paused task schedule |
-| `/cron run` | `/cron run <id>` | Triggers immediate out-of-band execution of the task |
-| `/cron delete` | `/cron delete <id>` | Permanently removes the task from the schedule |
+| Tool | Description |
+|:---|:---|
+| `cron_create_task` | Creates a scheduled task: `title`, `schedule`, `prompt`, optional `type` (`llm`/`script`), `delivery`, `provider`, `model`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
+| `cron_schedule_task` | Alias of `cron_create_task` kept for compatibility with existing agent prompts |
+| `cron_list_tasks` | Lists tasks with statuses, next run timestamps, token totals, and cost estimates |
+| `cron_pause_task` | Pauses a schedule without deleting its configuration |
+| `cron_resume_task` | Resumes a paused schedule |
+| `cron_delete_task` | Permanently removes a task and its history |
+| `cron_run_task` | Triggers an immediate out-of-band run |
 
-### 4. Agent Tools (Tool Calling)
-When autonomous agents need to set up delayed or recurring actions, they can invoke these tools:
+Example invocation the model can make during a conversation:
 
-* **`cron_schedule_task`**: Schedules a recurring or interval-based task with `name`, `schedule`, `prompt`, and optional `model` override.
-* **`cron_list_tasks`**: Retrieves an overview of active schedules and next scheduled run timestamps.
-* **`cron_toggle_task`**: Enables or disables an existing task by `id`.
+```
+cron_create_task({
+  "title": "Morning digest",
+  "schedule": "0 8 * * 1-5",
+  "prompt": "Prepare a brief morning digest of active tasks and open tickets.",
+  "type": "llm",
+  "delivery": "isolated"
+})
+```
 
-### 6. Telegram Notifications & Delivery Routing
+### 4. Schedule Expression Syntax
+Powered by `croner`, supporting standard 5-field cron expressions plus user-friendly aliases:
+
+* `0 9 * * 1-5` — weekdays at 09:00
+* `*/15 * * * *` — every 15 minutes
+* `0 0 * * 0` — every Sunday at midnight
+* `every 10m` / `every 2h` / `every 30s` — natural duration intervals
+* `daily` / `hourly` / `weekdays` shortcuts
+* **One-shot tasks**: `at: 2026-09-05T15:00:00Z` (exact ISO timestamp) or relative delays `in 20m` / `in 2h` (Russian aliases such as `через 15 минут` are accepted too). One-shot tasks flip to `completed` automatically after their single run and are listed under the **Completed** tab.
+
+### 5. Telegram Notifications & Delivery Routing
 Direct integration with the Telegram Bot API delivers execution reports and error traces straight to your messenger:
 
-* **Auto-Detected or Custom Credentials**: Enter a custom `botToken` and `chatId` in the UI settings dialog, or automatically inherit default credentials from `dsh-messenger-gateway` in `settings.yaml`.
-* **'Only on Failure' Mode (Issue #24)**: Prevent notification spam by enabling `onlyOnFailure` globally or on individual tasks. Clean runs remain silent, while non-zero exit codes or agent exceptions immediately dispatch an alert with stdout/stderr traces.
-* **Markdown Formatting**: Messages are formatted with status badges (✅ / ❌), execution duration in milliseconds, schedule descriptions, and monospace code blocks.
-* **Test Dispatch Button**: Verify Telegram connectivity on the spot before scheduling critical production jobs.
+* **Auto-detected or custom credentials** — enter a custom `botToken` and `chatId` in the settings dialog, or let the plugin inherit defaults from the `dsh-messenger-gateway` section of your DSH `settings.yaml` (best-effort fallback).
+* **Only-on-failure mode** — enable `onlyOnFailure` globally or per task. Clean runs stay silent; failures (`error` or `timeout` statuses) dispatch an alert with the error trace.
+* **Markdown formatting** — messages carry status badges (✅ / ❌), duration, schedule description, and monospace output blocks; dynamic values are escaped so odd titles cannot break the message.
+* **Test dispatch button** — verify Telegram connectivity on the spot before scheduling critical jobs.
 
-### 7. Overlap Policies & Execution Timeout Control (Issues #11, #17)
-Prevent rogue processes from consuming server resources or stacking concurrent duplicate executions:
+### 6. Kanban Integration & Cost Meter
+* **Automatic Kanban cards** — with `kanbanMode` set to `on_failure` or `always`, the plugin creates cards in `dsh-kanban` (`on_failure` → *Backlog* on `error`/`timeout`; `always` → *Done*/*Backlog* on completion).
+* **Token & execution cost meter** — token consumption (input, output, cache reads) is tracked per run and per task, with USD estimates from a built-in pricing table and an aggregated analytics bar.
 
-* **Execution Timeout (`timeoutSeconds`)**: Automatically cancels agent sessions or kills shell subprocesses when the configured run time limit is reached (default: 1800s / 30m). Prevents hung tasks and records a descriptive timeout failure in run logs.
-* **Overlap Policy (`overlapPolicy`)**: Controls scheduler behavior when a scheduled tick fires while the previous execution is still running:
-  * **`skip`** (default): Drops the overlapping run and records a `skipped` status entry in the run history without spamming.
-  * **`queue`**: Queues the next execution and starts it automatically as soon as the active job completes.
-  * **`replace`**: Aborts the stuck/active run immediately via `AbortController` and launches the fresh execution.
+### 7. Overlap Policies & Execution Timeout
+Prevent rogue processes from stacking concurrent duplicate executions:
 
-### 5. Schedule Expression Syntax
-Powered by `croner`, supporting both standard 5-part/6-part cron expressions and user-friendly interval aliases:
+* **Execution timeout (`timeoutSeconds`)** — when the limit is reached, shell subprocesses are killed immediately via the abort signal and agent sessions are disposed so they stop consuming tokens. Default: `1800` (30 minutes).
+* **Overlap policy (`overlapPolicy`)** — controls what happens when a tick fires while the previous run is still active:
+  * **`skip`** (default): drops the overlapping run and records a `skipped` entry in the run history.
+  * **`queue`**: queues the next execution and starts it as soon as the active job completes.
+  * **`replace`**: aborts the active run via `AbortController` and launches a fresh execution.
 
-* `0 9 * * 1-5` — Every weekday at 09:00 AM
-* `*/15 * * * *` — Every 15 minutes
-* `0 0 * * 0` — Every Sunday at midnight
-* `every 10m` / `every 2h` / `every 30s` — Natural duration intervals
-* `daily` / `hourly` / `weekly` — Standard predefined shortcuts
+If the daemon was offline at a scheduled time, the run is recorded as `missed` on startup, so gaps in the history stay visible.
 
 ---
 
@@ -150,33 +164,64 @@ Restart your DeepSeek Harness instance and refresh the browser.
 
 ## ⚙️ Configuration (`settings.yaml`)
 
-Configuration can be applied in `settings.yaml` or managed interactively via the DSH Settings UI:
+Configuration can be applied in `settings.yaml` or managed interactively via the plugin settings card in DSH:
 
 ```yaml
 # settings.yaml
 dsh-cron:
-  storagePath: "data/cron-tasks.json"
-  maxHistoryEntries: 50
-  defaultTimezone: "UTC"
-  defaultModel: ""
-  notifyOnFailure: true
+  botToken: ""                 # Telegram Bot API token (kept secret; see notes)
+  chatId: ""                   # Telegram chat ID that receives reports
+  notifyTelegram: false        # deliver reports for every task globally
+  onlyOnFailure: false         # deliver reports only for failed runs
+  kanbanBaseUrl: "http://127.0.0.1:3000"  # dsh-kanban HTTP API base URL
 ```
 
 ### Configuration Parameters
 
 | Parameter | Type | Default | Description |
 |:---|:---|:---|:---|
-| `storagePath` | `string` | `"data/cron-tasks.json"` | Relative or absolute path where scheduled tasks and run histories are persisted atomically |
-| `maxHistoryEntries` | `number` | `50` | Maximum number of run history records preserved per task card |
-| `defaultTimezone` | `string` | `"UTC"` | Default IANA timezone used for cron calculations (e.g., `"Europe/Berlin"`, `"America/New_York"`) |
-| `defaultModel` | `string` | `""` | Fallback model identifier for tasks created without an explicit model selection |
-| `notifyOnFailure` | `boolean` | `true` | Emits a notification badge in the UI if a scheduled background task encounters a failure |
+| `botToken` | `string` | `""` | Telegram Bot API token. If left empty, the plugin tries to inherit the bot configured for `dsh-messenger-gateway` in the DSH settings as a best-effort fallback. Stored as a secret field; the UI only ever displays a masked value |
+| `chatId` | `string` | `""` | Telegram chat ID that receives the reports. Empty value falls back to the first allowed chat of `dsh-messenger-gateway` |
+| `notifyTelegram` | `boolean` | `false` | Global switch: deliver run reports to Telegram |
+| `onlyOnFailure` | `boolean` | `false` | Global switch: deliver reports only for `error`/`timeout` runs |
+| `kanbanBaseUrl` | `string` | `"http://127.0.0.1:3000"` | Base URL of the `dsh-kanban` HTTP API used for automatic card creation |
+
+Notes:
+
+* Run history is capped at **50 entries per task** (fixed); each entry keeps up to 4000 characters of output.
+* Tasks run in the **server's local timezone**; cron expressions are evaluated by `croner` on the host clock.
+* Tasks persist in the DSH data directory (`cron/tasks.json`) and survive restarts; missed one-shots are detected on startup.
+
+---
+
+## 🔌 HTTP API Reference
+
+All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoints are open to the local UI; **mutating endpoints reject cross-origin requests** and accept bodies up to 1 MB. Creating `script`-type tasks over HTTP additionally requires the `x-dsh-cron-confirm: script` header, which forged cross-site posts cannot attach.
+
+| Method | Path | Description |
+|:---|:---|:---|
+| `GET` | `/dsh-cron/tasks` | List tasks; query params `status` (`all/active/paused/completed`), `query` (substring search). Returns tasks, recommendation templates and aggregated stats |
+| `POST` | `/dsh-cron/tasks` | Create or update a task (`id` present → update). Requires `title`, `schedule`, `prompt` |
+| `GET` | `/dsh-cron/tasks/:id/history` | Run history, `?limit=20` |
+| `POST` | `/dsh-cron/tasks/:id/run` | Trigger an immediate manual run |
+| `POST` | `/dsh-cron/tasks/:id/pause` | Pause the schedule |
+| `POST` | `/dsh-cron/tasks/:id/resume` | Resume the schedule |
+| `POST` | `/dsh-cron/tasks/:id/toggle` | Toggle active/paused |
+| `PATCH` | `/dsh-cron/tasks/:id` | Partial update (whitelisted fields only: `title`, `schedule`, `prompt`, `type`, `delivery`, `provider`, `model`, notification/timeout/overlap/kanban settings, `status`, `oneShot`) |
+| `DELETE` | `/dsh-cron/tasks/:id` | Delete the task |
+| `GET` | `/dsh-cron/models` | List LLM providers; `?provider=<id>` lists models |
+| `POST` | `/dsh-cron/chat/start` | Start a "Create with DSH" agent session with the task-setup instructions |
+| `GET` | `/dsh-cron/settings` | Client-safe settings (token masked) |
+| `POST` | `/dsh-cron/settings` | Update integration settings |
+| `POST` | `/dsh-cron/telegram/test` | Send a Telegram test message |
+| `POST` | `/dsh-cron/kanban/test` | Create a Kanban connectivity-test card |
+| `*` | `/dsh-cron/action/:id/:action` | Legacy alias for the task action routes (`run`, `toggle`, `delete`, `history`) |
 
 ---
 
 ## 🧪 Testing
 
-Run the automated test suite covering schedulers, atomic storage, and HTTP handlers:
+Run the automated test suite covering schedule parsing, the scheduler engine, atomic storage, HTTP helpers, notifications and tool contracts:
 
 ```bash
 npm test
@@ -187,13 +232,3 @@ npm test
 ## 📄 License
 
 MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
-
-### Kanban & Token Cost Integration (v0.1.17)
-- **Automatic Kanban Card Creation**: Automatically creates task/bug cards in `dsh-kanban` on task failure (`on_failure`) or every run (`always`).
-- **Token & Execution Cost Meter**: Tracks token consumption (input, output, cache tokens) for LLM executions and estimates USD expenses using current model pricing.
-- **Aggregated Analytics Bar**: Live dashboard displaying active jobs count, total executions, total token consumption, and aggregate estimated dollar spend.
-
-### One-Shot Delayed Tasks (v0.1.18)
-- **Precise Timing & Relative Delays**: Supports one-time tasks triggered at exact ISO 8601 timestamps (`at: 2026-09-05T12:00:00Z`) or human-friendly relative delays (`in 20m`, `in 2h`, `через 15 минут`).
-- **Auto-Completion Lifecycle**: One-shot jobs transition automatically to `completed` status after their single run, preventing unexpected repeats.
-- **Dedicated Filter**: View historical and pending one-shot executions under the «Completed» (`completed`) tab.
