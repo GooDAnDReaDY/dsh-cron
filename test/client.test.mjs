@@ -32,11 +32,34 @@ test('client.js registers with window.__ModuleLoader__ without error', () => {
   assert.equal(typeof loadedFactory, 'function');
 });
 
-test('Issue #80: CronScreen declares setLoading and setRecs correctly in client.js', () => {
+test('Issue #85/#87/#91: slot key matches settings namespace, locale registered, styles marked', () => {
   const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+
+  // The settings.plugin.item slot key must equal the server-side settings
+  // namespace (register('dsh-cron', ...) in lib/index.js) (#85). Mount
+  // points are populated via ctx.slots.inject — a direct register never
+  // appears in the settings surface.
+  assert.ok(code.includes("const NS = 'dsh-cron';"), 'NS must be dsh-cron');
+  assert.ok(code.includes("key: NS"), 'settings.plugin.item slot must use the namespace key');
+  assert.ok(code.includes("registerIntoMount(ctx, 'settings.plugin.item'"), 'card registered through the mount inject contract');
+
+  // English canonical strings live in a locale dictionary that is registered
+  // with the DSH locale service (#87)
+  assert.ok(code.includes('const STRINGS = {'), 'locale dictionary present');
+  assert.ok(code.includes('en: {'), 'English source strings present');
+  assert.ok(code.includes('ctx.locale.register(NS, STRINGS)'), 'locale registered with the locale service');
+
+  // Dynamic style tags carry the stable plugin marker (#91)
+  assert.ok(code.includes("dataset.dshPlugin = 'dsh-cron'"), 'style tag marked with data-dsh-plugin');
+
+  // Issue #80 regression guards
   assert.ok(code.includes('const [loading, setLoading] = React.useState(false);'), 'setLoading state declared');
   assert.ok(code.includes('const [fetchError, setFetchError] = React.useState(null);'), 'fetchError state declared');
   assert.ok(!code.includes('setRecommendations('), 'no undefined setRecommendations called');
   assert.ok(code.includes('setRecs('), 'setRecs used for recommendations');
-  assert.ok(code.includes('Ошибка загрузки задач:'), 'fetchError banner present');
+
+  // Background polling regression guard (#82)
+  assert.ok(code.includes('setInterval('), 'polling interval present');
+  assert.ok(code.includes('clearInterval('), 'cleanup timer on unmount present');
+  assert.ok(code.includes("lastStatus: 'running'"), 'instant running status in handleRunNow');
 });

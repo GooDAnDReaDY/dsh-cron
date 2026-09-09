@@ -95,7 +95,7 @@ test('Robustness #4: Scheduler marks missed runs if nextRunAt was during daemon 
   const history = store.getHistory(task.id);
   assert.equal(history.length, 1);
   assert.equal(history[0].status, 'missed');
-  assert.ok(history[0].output.includes('Запуск пропущен: сервис был выключен'));
+  assert.ok(history[0].output.includes('Skipped: the service was offline'));
 
   scheduler.stopAll();
   try { fs.unlinkSync(tmpPath); } catch {}

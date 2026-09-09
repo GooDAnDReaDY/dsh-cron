@@ -6,13 +6,13 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-cron"><img src="https://img.shields.io/npm/v/@goodandready/dsh-cron.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/GooDAnDReaDY/dsh-cron.svg?style=for-the-badge&color=10b981&labelColor=064e3b" alt="license"></a>
+  <a href="../LICENSE"><img src="https://img.shields.io/github/license/GooDAnDReaDY/dsh-cron.svg?style=for-the-badge&color=10b981&labelColor=064e3b" alt="license"></a>
   <a href="https://github.com/topics/dsh-plugin"><img src="https://img.shields.io/badge/DSH-Plugin-8b5cf6.svg?style=for-the-badge&labelColor=2e1065" alt="DSH Plugin"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node-20%2B-f59e0b.svg?style=for-the-badge&labelColor=451a03" alt="Node version"></a>
 </p>
 
 <p align="center">
-  <a href="https://goodandready.app/"><img src="https://img.shields.io/badge/作者全部项目-goodandready.app-ff4500.svg?style=for-the-badge&logo=rocket&logoColor=white&labelColor=1a1a2e" alt="作者全部项目"></a>
+  <a href="https://goodandready.app/"><img src="https://img.shields.io/badge/所有项目-goodandready.app-ff4500.svg?style=for-the-badge&logo=rocket&logoColor=white&labelColor=1a1a2e" alt="所有项目"></a>
 </p>
 
 <p align="center">
@@ -25,148 +25,206 @@
 
 ---
 
-## ⚡ 核心定位与解决痛点
+## ⚡ 概述与问题
 
-在自主 AI 智能体日常研发与运维工作中，经常需要承担周期性的例行事务：每日早晨生成代码变更简报、定期巡检待处理 PR、监测外部 API 运行健康度，或者定时执行分支清理与自动化测试。在缺乏内置调度器的情况下，开发者通常只能借助外部系统 crontab 脚本、复杂的 Webhook 链路，或者每日人工手动输入指令。
+自主 AI 智能体经常需要执行周期性任务：生成每日晨报、整理缺陷跟踪、检查 API 健康状态、同步数据库或定期执行 Git 清理。如果 Harness 内没有专用调度器，用户只能依赖外部 crontab 封装、复杂的 webhook 方案或手动干预。
 
-**`@goodandready/dsh-cron`** 是专为 DeepSeek Harness 打造的原生全栈定时调度与后台任务自动化插件。它无缝融合了标准 Cron 表达式、自然语言时间间隔与智能体自主会话执行：
+**`@goodandready/dsh-cron`** 是 DeepSeek Harness 的原生全栈调度与后台自动化插件。它将标准 cron 表达式、自然语言间隔语法与自主智能体执行连接起来：
 
-1. **可视化任务管理中心**：集成在 DSH 侧边导航栏的时钟按钮（紧邻看板与聊天），提供全功能任务列表抽屉、状态标签过滤、执行历史与快速动作。
-2. **“与 DSH 交互创建”模式**：直接与智能体自然对话，由模型自动梳理需求、配置执行模型并转化为精准的定时任务。
-3. **聊天斜杠指令（`/cron`）**：在对话输入框中即可实现全键盘调度管理（`/cron list`, `/cron add`, `/cron pause`, `/cron run`）。
-4. **智能体原生工具调用（AI Tool Calling）**：赋予智能体 `cron_schedule_task`、`cron_list_tasks` 等工具，支持模型在对话中自主为后续任务安排执行时间表。
-5. **高可靠调度引擎与原子持久化**：基于 `croner` 引擎构建，支持时区配置、友好间隔语法（`every 15m`, `daily`, `weekdays`）、原子写入式 JSON 存储及完整运行审计。
+1. **完善的可视化任务管理器** —— 侧边栏按钮与功能齐全的面板：查看、筛选、暂停、立即运行和创建任务。
+2. **交互式“由 DSH 创建”流程** —— 与智能体对话，把高层需求转化为规范的定时任务。
+3. **自主工具调用** —— 原生 `cron_*` 工具让智能体在会话中自行安排后续执行。
+4. **健壮的调度器与原子存储** —— 基于 `croner`：间隔别名、一次性延时任务、原子写入、运行历史与成本追踪。
 
 ---
 
-## 🏗️ 架构设计
+## 🏗️ 架构
 
 ```mermaid
 graph TD
-    subgraph Client ["前端交互界面 (DSH Web UI)"]
-        SidebarBtn["侧边栏时钟按钮<br/>(DSH 客户端界面插槽)"]
-        Overlay["可视化任务管理抽屉<br/>(标签页: 全部, 运行中, 已暂停, 已完成)"]
-        CreateWithDSH["'与 DSH 交互创建' 弹窗<br/>(模型选择与任务自然语言描述)"]
-        ManualForm["手动配置任务弹窗<br/>(Cron 表达式, 时区, 执行模型)"]
-        SlashCmd["斜杠指令解析器<br/>(/cron add, list, pause, run)"]
+    subgraph Client ["Web 客户端 (DSH UI)"]
+        SidebarBtn["侧边栏时钟按钮<br/>(DSH 客户端插槽)"]
+        Overlay["任务管理面板<br/>(标签: 全部 / 活跃 / 暂停 / 已完成)"]
+        CreateWithDSH["“由 DSH 创建”对话框<br/>(自然语言任务)"]
+        ManualForm["手动任务表单<br/>(cron 表达式、超时、重叠策略、模型)"]
+        SettingsCard["设置卡片<br/>(Telegram / Kanban 集成)"]
     end
 
-    subgraph Server ["服务端运行时 (Cordis 插件与服务)"]
-        HttpRoutes["HTTP REST API 端点<br/>(/dsh-cron/tasks, /models, /chat-start)"]
-        AgentTools["AI 工具网关<br/>(cron_schedule_task, cron_list_tasks)"]
-        Scheduler["TaskScheduler 调度引擎<br/>(Croner 实例生命周期管理)"]
-        Store["原子存储 TaskStore<br/>(安全重写 tasks.json)"]
-        AgentRunner["智能体会话派发器<br/>(在独立上下文执行 Prompt)"]
+    subgraph Server ["服务端 (Cordis 与 DSH 服务)"]
+        HttpRoutes["HTTP REST API<br/>(/dsh-cron/*)"]
+        AgentTools["工具调用网关<br/>(cron_create_task, cron_list_tasks, ...)"]
+        Scheduler["TaskScheduler 引擎<br/>(Croner 实例 + one-shot 定时器)"]
+        Store["原子 TaskStore<br/>(tasks.json 原子写入)"]
+        AgentRunner["智能体会话调度器<br/>(以指定模型执行提示词)"]
+        Notify["通知投递<br/>(Telegram Bot API、dsh-kanban 卡片)"]
     end
 
     SidebarBtn --> Overlay
     Overlay --> CreateWithDSH
     Overlay --> ManualForm
-    CreateWithDSH -->|POST /chat-start| HttpRoutes
+    SettingsCard --> HttpRoutes
+    CreateWithDSH -->|POST /chat/start| HttpRoutes
     ManualForm -->|POST /tasks| HttpRoutes
-    SlashCmd -->|指令分发| HttpRoutes
     HttpRoutes --> Scheduler
     AgentTools --> Scheduler
     Scheduler --> Store
-    Scheduler -->|周期触发| AgentRunner
+    Scheduler -->|按间隔/一次性触发| AgentRunner
+    Scheduler --> Notify
 ```
 
 ---
 
-## ✨ 核心特性深度解析
+## ✨ 功能与能力
 
-### 1. 可视化任务管理中心
-点击 DSH 侧边栏的时钟图标即可唤出定时任务全景抽屉：
-* **状态过滤标签页**：一键在 **全部 (All)**、**运行中 (Active)**、**已暂停 (Paused)** 和 **已完成 (Completed)** 之间快速切换。
-* **快捷操作菜单**：支持即刻手动测试执行（*“立即运行”*）、暂停/恢复调度，以及带有二次确认防误触的安全删除。
-* **一键推荐模板**：内置高频工作流预设（*“每日早晨研发简报”*、*“每周代码仓库复盘”*、*“API 探活心跳检测”*）。
-* **执行历史记录**：展开任意任务卡片即可查阅过往历次运行时间戳、执行耗时（秒）、完成状态以及智能体生成的完整执行日志。
+### 1. 可视化任务管理器
+点击 DSH 侧边栏中的时钟图标（位于“新会话”按钮旁）打开管理面板：
+* **状态过滤标签**：**全部**、**活跃**、**已暂停**、**已完成**。
+* **即时操作**：立即运行（**Run Now**）、暂停/恢复调度、带确认的删除。
+* **一键预设模板**：*每日摘要*、*每周回顾*、*待办监控*。
+* **运行历史**：打开任务卡片查看历史运行 —— 时间、耗时、状态（成功 / 失败 / 超时 / 跳过 / 错过）、输出与错误。
+* **汇总统计栏**：活跃任务数、总运行次数、总 token 消耗与估算美元成本。
 
-### 2. “与 DSH 交互创建” 智能配置模式
-告别晦涩的手动 Cron 表达式换算：
-1. 点击 **新建 ⌄** ➔ **与 DSH 交互创建**。
-2. 在下拉框中直观选取本次自动化任务使用的模型服务商与模型名称。
-3. 输入任务自然语言意图（例如：*“每个工作日上午 9 点自动扫描仓库中未关闭的 Issue 并汇总至看板”*）。
-4. 插件将自动创建专属智能体会话，注入调度器系统指令，协助生成结构化配置并写入持久化存储。
+### 2. “由 DSH 创建”对话框
+无需猜测 cron 语法，用自然语言即可创建任务：
+1. 点击 **Create ⌄** ➔ **Create with DSH**。
+2. 描述要自动化的内容（例如：*“每个工作日早上 9 点检查未处理的 PR 并起草评论”*）。
+3. 插件会创建一个注入了调度器指令的专属智能体会话。智能体会与你确认细节 —— LLM 还是 NO-LLM shell 任务、准确的 cron 表达式、在你的 DSH 安装中可用的经济型模型，以及是否启用“静默规则”（仅在新事件或故障时告警）—— 并在你确认后才通过 `cron_create_task` 工具注册任务。
 
-### 3. 聊天斜杠指令 (`/cron`)
-极客与键盘流的高效快捷通道：
+### 3. 智能体工具（Tool Calling）
 
-| 指令 | 语法 | 功能说明 |
-|:---|:---|:---|
-| `/cron list` | `/cron list` | 列出所有已注册任务的 ID、表达式与当前运行状态 |
-| `/cron add` | `/cron add "<时间表>" <提示词>` | 新建任务。示例：`/cron add "every 2h" 检查最新提交并整理日志` |
-| `/cron pause` | `/cron pause <id>` | 暂停指定任务的自动触发（保留配置） |
-| `/cron resume` | `/cron resume <id>` | 恢复已暂停的任务调度 |
-| `/cron run` | `/cron run <id>` | 脱离计划立即触发一次执行 |
-| `/cron delete` | `/cron delete <id>` | 从存储中永久注销并删除任务 |
+| 工具 | 说明 |
+|:---|:---|
+| `cron_create_task` | 创建任务：`title`、`schedule`、`prompt`，可选 `type`（`llm`/`script`）、`delivery`、`provider`、`model`、`notifyTelegram`、`onlyOnFailure`、`timeoutSeconds`、`overlapPolicy`、`kanbanMode` |
+| `cron_schedule_task` | `cron_create_task` 的别名，保持与既有提示词兼容 |
+| `cron_list_tasks` | 列出任务的状态、下次运行时间、token 总量与成本估算 |
+| `cron_pause_task` | 暂停调度而不删除配置 |
+| `cron_resume_task` | 恢复已暂停的调度 |
+| `cron_delete_task` | 永久删除任务及其历史 |
+| `cron_run_task` | 触发一次立即的带外运行 |
 
-### 4. 智能体原生工具调用 (Tool Calling)
-智能体在处理长期复杂项目时，可自主调用调度器工具：
+会话中模型可进行的调用示例：
 
-* **`cron_schedule_task`**：注册定时任务，支持传入 `name`、`schedule`、`prompt` 及可选 `model` 覆盖。
-* **`cron_list_tasks`**：获取已注册任务列表及下一次预定触发时刻。
-* **`cron_toggle_task`**：通过 `id` 快速切换任务的启用/停用状态。
+```
+cron_create_task({
+  "title": "Morning digest",
+  "schedule": "0 8 * * 1-5",
+  "prompt": "Prepare a brief morning digest of active tasks and open tickets.",
+  "type": "llm",
+  "delivery": "isolated"
+})
+```
 
-### 5. 支持的时间表达式语法
-依托底层 `croner` 引擎，全面兼容标准 5 段/6 段 Cron 语法与易读时间间隔：
+### 4. 调度表达式语法
+基于 `croner`，支持标准 5 段 cron 表达式与友好的别名：
 
-* `0 9 * * 1-5` — 工作日早晨 09:00
-* `*/15 * * * *` — 每隔 15 分钟
-* `0 0 * * 0` — 每周日午夜 00:00
-* `every 10m` / `every 2h` / `every 30s` — 自然语言时间间隔
-* `daily` / `hourly` / `weekly` — 快捷预设别名
+* `0 9 * * 1-5` —— 工作日 09:00
+* `*/15 * * * *` —— 每 15 分钟
+* `0 0 * * 0` —— 每周日午夜
+* `every 10m` / `every 2h` / `every 30s` —— 自然语言间隔
+* `daily` / `hourly` / `weekdays` 快捷方式
+* **一次性任务**：`at: 2026-09-05T15:00:00Z`（精确 ISO 时间戳）或相对延时 `in 20m` / `in 2h`（也接受 `через 15 минут` 之类的俄语输入）。一次性任务在单次运行后自动转为 `completed`，显示在 **已完成** 标签下。
+
+### 5. Telegram 通知与投递路由
+通过与 Telegram Bot API 的直接集成，将执行报告与错误跟踪推送到你的即时通讯工具：
+
+* **自动获取或自定义凭据** —— 在设置对话框中输入自己的 `botToken` 与 `chatId`，或让插件从 DSH `settings.yaml` 的 `dsh-messenger-gateway` 段尽力继承默认值。
+* **仅失败时通知** —— 全局或按任务启用 `onlyOnFailure`。成功运行保持静默；失败（`error` 或 `timeout` 状态）会发送带错误跟踪的告警。
+* **Markdown 排版** —— 消息包含状态徽标（✅ / ❌）、耗时、调度描述与等宽输出块；动态值会被转义，特殊字符不会破坏消息。
+* **测试发送按钮** —— 在安排关键任务前现场验证 Telegram 连通性。
+
+### 6. Kanban 集成与成本统计
+* **自动创建 Kanban 卡片** —— 当 `kanbanMode` 为 `on_failure` 或 `always` 时，插件在 `dsh-kanban` 中创建卡片（`on_failure` → `error`/`timeout` 时进入 *Backlog*；`always` → 完成后进入 *Done*/*Backlog*）。
+* **Token 与执行成本计量** —— 按运行与任务统计 token 消耗（输入、输出、缓存读取），基于内置价格表估算美元成本，并提供汇总分析栏。
+
+### 7. 重叠策略与执行超时
+
+* **执行超时（`timeoutSeconds`）** —— 达到限制后，shell 子进程通过 abort 信号立即终止，智能体会话被释放以停止消耗 token。默认 `1800`（30 分钟）。
+* **重叠策略（`overlapPolicy`）** —— 上一次运行尚未结束时再次触发调度时的行为：
+  * **`skip`**（默认）：丢弃重叠的运行，在历史中记录 `skipped`；
+  * **`queue`**：将下一次运行排队，当前任务完成后自动开始；
+  * **`replace`**：通过 `AbortController` 中止当前运行并启动新的执行。
+
+如果守护进程在计划时刻处于离线状态，启动时该次运行会被记录为 `missed`，历史空档始终可见。
 
 ---
 
-## 📦 快速安装
-
-通过 DeepSeek Harness CLI 安装：
+## 📦 安装
 
 ```bash
 dsh plugin --profile web add @goodandready/dsh-cron
 ```
 
-重启 DSH 并刷新浏览器工作区。
+重启 DeepSeek Harness 实例并刷新浏览器。
 
 ---
 
-## ⚙️ 配置指南 (`settings.yaml`)
+## ⚙️ 配置（`settings.yaml`）
 
-可在 `settings.yaml` 中配置，或在 Web UI 设置面板中调整：
+可以在 `settings.yaml` 中配置，也可以通过 DSH 中的插件设置卡片交互式管理：
 
 ```yaml
 # settings.yaml
 dsh-cron:
-  storagePath: "data/cron-tasks.json"
-  maxHistoryEntries: 50
-  defaultTimezone: "Asia/Shanghai"
-  defaultModel: ""
-  notifyOnFailure: true
+  botToken: ""                 # Telegram Bot API 令牌（保密字段）
+  chatId: ""                   # 接收报告的 Telegram chat ID
+  notifyTelegram: false        # 全局投递所有任务的报告
+  onlyOnFailure: false         # 仅失败时投递报告
+  kanbanBaseUrl: "http://127.0.0.1:3000"  # dsh-kanban HTTP API 基础地址
 ```
 
-### 配置参数参考表
+### 配置参数
 
-| 参数名 | 类型 | 默认值 | 功能说明 |
+| 参数 | 类型 | 默认值 | 说明 |
 |:---|:---|:---|:---|
-| `storagePath` | `string` | `"data/cron-tasks.json"` | 定时任务与运行历史原子持久化文件的存储路径 |
-| `maxHistoryEntries` | `number` | `50` | 每个任务卡片保留的最大历史运行记录条数 |
-| `defaultTimezone` | `string` | `"UTC"` | 计算 Cron 触发时刻所使用的默认 IANA 时区（如 `"Asia/Shanghai"`） |
-| `defaultModel` | `string` | `""` | 未显式指定模型时的全局后备模型标识 |
-| `notifyOnFailure` | `boolean` | `true` | 当后台定时任务执行失败时是否在 Web UI 弹出告警徽标 |
+| `botToken` | `string` | `""` | Telegram Bot API 令牌。留空时插件会尽力继承 DSH 设置中 `dsh-messenger-gateway` 配置的机器人。保密字段：界面只显示掩码值 |
+| `chatId` | `string` | `""` | 接收报告的 Telegram chat ID。留空时回退到 `dsh-messenger-gateway` 的第一个允许会话 |
+| `notifyTelegram` | `boolean` | `false` | 全局开关：向 Telegram 投递运行报告 |
+| `onlyOnFailure` | `boolean` | `false` | 全局开关：仅对 `error`/`timeout` 运行投递报告 |
+| `kanbanBaseUrl` | `string` | `"http://127.0.0.1:3000"` | 用于自动卡片的 `dsh-kanban` HTTP API 基础地址 |
+
+说明：
+
+* 运行历史上限为**每任务 50 条**（固定）；每条记录最多保留 4000 字符输出。
+* 任务在**服务器本地时区**执行；cron 表达式由 `croner` 按主机时钟计算。
+* 任务持久化在 DSH 数据目录（`cron/tasks.json`），重启后保留；启动时会检测错过的一次性任务。
 
 ---
 
-## 🧪 测试与校验
+## 🔌 HTTP API 参考
 
-运行全部自动化单元测试：
+所有端点由 DSH Web 服务器在 `/dsh-cron/` 下提供。读端点对本地 UI 开放；**变更端点拒绝跨域请求**且请求体最大 1 MB。通过 HTTP 创建 `script` 类型任务还需要 `x-dsh-cron-confirm: script` 请求头 —— 伪造的跨站请求无法附加该头。
+
+| 方法 | 路径 | 说明 |
+|:---|:---|:---|
+| `GET` | `/dsh-cron/tasks` | 任务列表；查询参数 `status`（`all/active/paused/completed`）、`query`（子串搜索）。返回任务、推荐模板与汇总统计 |
+| `POST` | `/dsh-cron/tasks` | 创建或更新任务（携带 `id` 时为更新）。需要 `title`、`schedule`、`prompt` |
+| `GET` | `/dsh-cron/tasks/:id/history` | 运行历史，`?limit=20` |
+| `POST` | `/dsh-cron/tasks/:id/run` | 立即手动运行 |
+| `POST` | `/dsh-cron/tasks/:id/pause` | 暂停调度 |
+| `POST` | `/dsh-cron/tasks/:id/resume` | 恢复调度 |
+| `POST` | `/dsh-cron/tasks/:id/toggle` | 切换活跃/暂停 |
+| `PATCH` | `/dsh-cron/tasks/:id` | 部分更新（仅白名单字段：`title`、`schedule`、`prompt`、`type`、`delivery`、`provider`、`model`、通知/超时/重叠/Kanban 设置、`status`、`oneShot`） |
+| `DELETE` | `/dsh-cron/tasks/:id` | 删除任务 |
+| `GET` | `/dsh-cron/models` | 列出 LLM 提供方；`?provider=<id>` 列出模型 |
+| `POST` | `/dsh-cron/chat/start` | 启动带任务配置指令的“由 DSH 创建”智能体会话 |
+| `GET` | `/dsh-cron/settings` | 客户端安全设置（令牌掩码显示） |
+| `POST` | `/dsh-cron/settings` | 更新集成设置 |
+| `POST` | `/dsh-cron/telegram/test` | 发送 Telegram 测试消息 |
+| `POST` | `/dsh-cron/kanban/test` | 创建 Kanban 连通性测试卡片 |
+| `*` | `/dsh-cron/action/:id/:action` | 任务操作路由的兼容别名（`run`、`toggle`、`delete`、`history`） |
+
+---
+
+## 🧪 测试
 
 ```bash
 npm test
 ```
 
+测试覆盖调度表达式解析、调度器引擎、原子存储、HTTP 辅助函数、通知与工具契约。
+
 ---
 
-## 📄 开源许可证
+## 📄 许可证
 
 MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
