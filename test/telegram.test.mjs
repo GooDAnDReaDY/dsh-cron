@@ -38,7 +38,7 @@ test('formatTaskTelegramMessage formats success and error reports in Markdown', 
     error: null,
   });
   assert.ok(successMsg.includes('Tags Watcher'));
-  assert.ok(successMsg.includes('✅ Успешно'));
+  assert.ok(successMsg.includes('✅ Success'));
   assert.ok(successMsg.includes('450 ms'));
   assert.ok(successMsg.includes('Found 3 new releases'));
 
@@ -49,8 +49,16 @@ test('formatTaskTelegramMessage formats success and error reports in Markdown', 
     output: '',
     error: 'Command failed with exit code 1',
   });
-  assert.ok(errorMsg.includes('❌ Ошибка'));
+  assert.ok(errorMsg.includes('❌ Failed'));
   assert.ok(errorMsg.includes('Command failed with exit code 1'));
+
+  // Markdown-special characters in dynamic values must be escaped (#93)
+  const escapedMsg = formatTaskTelegramMessage(
+    { title: 'Tags_Watcher (v1.2)', scheduleText: 'every (5m) #check' },
+    { status: 'success', durationMs: 10, output: 'ok', error: null }
+  );
+  assert.ok(escapedMsg.includes('Tags\\_Watcher \\(v1\\.2\\)'));
+  assert.ok(escapedMsg.includes('every \\(5m\\) \\#check'));
 });
 
 test('shouldNotifyTask handles notifyTelegram and onlyOnFailure mode', () => {
@@ -65,12 +73,15 @@ test('shouldNotifyTask handles notifyTelegram and onlyOnFailure mode', () => {
   const taskFailureOnly = { notifyTelegram: true, onlyOnFailure: true };
   assert.equal(shouldNotifyTask(taskFailureOnly, { status: 'success' }), false);
   assert.equal(shouldNotifyTask(taskFailureOnly, { status: 'error' }), true);
+  // Timeout is a failure and must notify in onlyOnFailure mode (#89)
+  assert.equal(shouldNotifyTask(taskFailureOnly, { status: 'timeout' }), true);
 
   // Fallback to global settings
   const taskInherit = {};
   const globalOnlyFail = { notifyTelegram: true, onlyOnFailure: true };
   assert.equal(shouldNotifyTask(taskInherit, { status: 'success' }, globalOnlyFail), false);
   assert.equal(shouldNotifyTask(taskInherit, { status: 'error' }, globalOnlyFail), true);
+  assert.equal(shouldNotifyTask(taskInherit, { status: 'timeout' }, globalOnlyFail), true);
 });
 
 test('TaskStore settings management and persistence', () => {
