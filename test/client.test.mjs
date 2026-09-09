@@ -36,9 +36,12 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
 
   // The settings.plugin.item slot key must equal the server-side settings
-  // namespace (register('dsh-cron', ...) in lib/index.js) (#85)
+  // namespace (register('dsh-cron', ...) in lib/index.js) (#85). Mount
+  // points are populated via ctx.slots.inject — a direct register never
+  // appears in the settings surface.
   assert.ok(code.includes("const NS = 'dsh-cron';"), 'NS must be dsh-cron');
   assert.ok(code.includes("key: NS"), 'settings.plugin.item slot must use the namespace key');
+  assert.ok(code.includes("registerIntoMount(ctx, 'settings.plugin.item'"), 'card registered through the mount inject contract');
 
   // English canonical strings live in a locale dictionary that is registered
   // with the DSH locale service (#87)
