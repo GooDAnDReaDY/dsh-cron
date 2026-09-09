@@ -28,14 +28,26 @@ test('all tools in lib/index.js follow dsh-tools defineTool contract (flat param
   const badParamPattern = /parameters:\s*\{\s*type:\s*['"]object['"],\s*properties:/g;
   assert.equal(badParamPattern.test(code), false, 'parameters must be a flat property map, not root type: object');
 
-  // Verify that all defineTool blocks have output with render function
+  // Verify that all defineTool blocks declare an output spec.
+  // The create/alias pair shares createTaskOutput via the single
+  // executeCreateTask implementation (#92); the other five keep inline specs.
   const toolBlocks = code.split('defineTool({');
   // First element is before first defineTool
   assert.equal(toolBlocks.length, 8, 'Expected exactly 7 defineTool blocks (6 tools + 1 alias)');
 
   for (let i = 1; i <= 7; i++) {
     const block = toolBlocks[i];
-    assert.ok(block.includes('output: {'), `Tool block ${i} must have output: {`);
+    const shared = block.includes('output: createTaskOutput');
+    assert.ok(shared || block.includes('output: {'), `Tool block ${i} must declare an output spec`);
+  }
+
+  const sharedSpec = code.match(/const createTaskOutput = \{[\s\S]*?\n\};/);
+  assert.ok(sharedSpec, 'shared create-task output spec present');
+  assert.ok(sharedSpec[0].includes('schema: {'), 'shared output spec has schema');
+  assert.ok(sharedSpec[0].includes('render'), 'shared output spec has render function');
+
+  for (let i = 3; i <= 7; i++) {
+    const block = toolBlocks[i];
     assert.ok(block.includes('schema: {'), `Tool block ${i} must have schema: {`);
     assert.ok(block.includes('render(') || block.includes('render:'), `Tool block ${i} must have render: function`);
   }
