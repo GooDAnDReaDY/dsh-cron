@@ -43,6 +43,13 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   assert.ok(code.includes("key: NS"), 'settings.plugin.item slot must use the namespace key');
   assert.ok(code.includes("registerIntoMount(ctx, 'settings.plugin.item'"), 'card registered through the mount inject contract');
 
+  // Issue #100: the settings card follows the canonical collapsible card
+  // contract — collapsed by default, head is the toggle.
+  assert.ok(code.includes("const [cardOpen, setCardOpen] = React.useState(false);"), 'card collapsed by default');
+  assert.ok(code.includes("'aria-expanded': cardOpen ? 'true' : 'false'"), 'head exposes aria-expanded');
+  assert.ok(code.includes('dsh-cron-card-head-btn'), 'head is a toggle button');
+  assert.ok(code.includes('dsh-cron-chev-open'), 'chevron rotates when open');
+
   // English canonical strings live in a locale dictionary that is registered
   // with the DSH locale service (#87)
   assert.ok(code.includes('const STRINGS = {'), 'locale dictionary present');
