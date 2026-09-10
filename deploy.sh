@@ -58,7 +58,13 @@ pack_size_gate() {
     process.stdin.on("data", d => s += d);
     process.stdin.on("end", () => {
       const data = JSON.parse(s);
-      const files = (data[0] && data[0].files) || [];
+      // npm <11 emits an array of pack summaries, npm >=11 an object keyed by package id
+      const entry = Array.isArray(data) ? data[0] : Object.values(data)[0];
+      const files = (entry && entry.files) || [];
+      if (!files.length) {
+        console.error("BLOCKED pack listing is empty — cannot verify the DSH Store size limit");
+        process.exit(1);
+      }
       const warn = files.filter(f => f.size >= 256000 && f.size <= 262144);
       const bad = files.filter(f => f.size > 262144);
       for (const f of warn) console.error(`WARNING ${f.size} bytes ${f.path}`);
