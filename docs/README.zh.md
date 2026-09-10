@@ -121,8 +121,15 @@ cron_create_task({
 * `*/15 * * * *` —— 每 15 分钟
 * `0 0 * * 0` —— 每周日午夜
 * `every 10m` / `every 2h` / `every 30s` —— 自然语言间隔
-* `daily` / `hourly` / `weekdays` 快捷方式
+* `daily` / `hourly` / `weekdays` 快捷方式，以及标准 `@hourly` / `@daily` / `@weekly` / `@monthly` / `@yearly` 与 `@every 30m`
+* **任务级时区** —— 可为任务设置 IANA 时区（如 `Europe/Berlin`）；未设置时按服务器本地时间调度
 * **一次性任务**：`at: 2026-09-05T15:00:00Z`（精确 ISO 时间戳）或相对延时 `in 20m` / `in 2h`（也接受 `через 15 минут` 之类的俄语输入）。一次性任务在单次运行后自动转为 `completed`，显示在 **已完成** 标签下。
+
+### 5. 执行可靠性
+* **自动重试** —— 按任务设置 `maxRetries` 与基础 `retryBackoffMs`：失败（`error`/`timeout`）的运行按指数退避自动重试，成功后计数归零。
+* **Misfire 策略** —— 选择守护进程离线期间错过的运行如何处理：`skip`（默认 —— 记录缺口）、`runOnce`（迟执行一次）或 `catchUpAll`（迟执行并记录缺口）。`skip` 下错过的一次性任务直接转为 `completed`，不再过期触发。
+* **并发上限** —— 插件设置 `maxConcurrent` 限制并行运行数；超出的运行记录为 `skipped` 并附原因。
+* **实时执行指示** —— 任务列表中的脉冲状态图标与运行计时器。
 
 ### 5. Telegram 通知与投递路由
 通过与 Telegram Bot API 的直接集成，将执行报告与错误跟踪推送到你的即时通讯工具：
@@ -145,6 +152,10 @@ cron_create_task({
   * **`replace`**：通过 `AbortController` 中止当前运行并启动新的执行。
 
 如果守护进程在计划时刻处于离线状态，启动时该次运行会被记录为 `missed`，历史空档始终可见。
+
+### 8. 心跳监控（Dead man's switch）
+* 在插件设置中配置 `heartbeatUrl` 与 `heartbeatIntervalSec`，调度器会按间隔 GET 该地址 —— 外部监控可在心跳停止时告警。
+* 内置 `GET /dsh-cron/heartbeat` 端点返回存活状态、活跃任务数与最近运行时间，便于自建看门狗。
 
 ---
 
@@ -170,6 +181,10 @@ dsh-cron:
   notifyTelegram: false        # 全局投递所有任务的报告
   onlyOnFailure: false         # 仅失败时投递报告
   kanbanBaseUrl: "http://127.0.0.1:3000"  # dsh-kanban HTTP API 基础地址
+  defaultTimezone: ""          # 默认 IANA 时区（空 = 服务器本地）
+  maxConcurrent: 0             # 最大并行运行数（0 = 不限）
+  heartbeatUrl: ""             # 心跳上报 URL（dead man's snitch）
+  heartbeatIntervalSec: 0      # 心跳间隔秒数（0 = 关闭）
 ```
 
 ### 配置参数
@@ -181,6 +196,10 @@ dsh-cron:
 | `notifyTelegram` | `boolean` | `false` | 全局开关：向 Telegram 投递运行报告 |
 | `onlyOnFailure` | `boolean` | `false` | 全局开关：仅对 `error`/`timeout` 运行投递报告 |
 | `kanbanBaseUrl` | `string` | `"http://127.0.0.1:3000"` | 用于自动卡片的 `dsh-kanban` HTTP API 基础地址 |
+| `defaultTimezone` | `string` | `""` | 任务调度的默认 IANA 时区；空 = 服务器本地时间 |
+| `maxConcurrent` | `number` | `0` | 并行运行上限；超出的运行记录为 `skipped`（0 = 不限） |
+| `heartbeatUrl` | `string` | `""` | 心跳上报 URL，调度器存活期间按 `heartbeatIntervalSec` 间隔 GET |
+| `heartbeatIntervalSec` | `number` | `0` | 心跳间隔秒数（0 = 关闭） |
 
 说明：
 
@@ -208,7 +227,8 @@ dsh-cron:
 | `GET` | `/dsh-cron/models` | 列出 LLM 提供方；`?provider=<id>` 列出模型 |
 | `POST` | `/dsh-cron/chat/start` | 启动带任务配置指令的“由 DSH 创建”智能体会话 |
 | `GET` | `/dsh-cron/settings` | 客户端安全设置（令牌掩码显示） |
-| `POST` | `/dsh-cron/settings` | 更新集成设置 |
+| `POST` | `/dsh-cron/settings` | 更新集成设置（通过设置服务应用） |
+| `GET` | `/dsh-cron/heartbeat` | 存活探针：活跃任务数与最近运行时间 |
 | `POST` | `/dsh-cron/telegram/test` | 发送 Telegram 测试消息 |
 | `POST` | `/dsh-cron/kanban/test` | 创建 Kanban 连通性测试卡片 |
 | `*` | `/dsh-cron/action/:id/:action` | 任务操作路由的兼容别名（`run`、`toggle`、`delete`、`history`） |

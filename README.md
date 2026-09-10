@@ -122,8 +122,20 @@ Powered by `croner`, supporting standard 5-field cron expressions plus user-frie
 * `*/15 * * * *` — every 15 minutes
 * `0 0 * * 0` — every Sunday at midnight
 * `every 10m` / `every 2h` / `every 30s` — natural duration intervals
-* `daily` / `hourly` / `weekdays` shortcuts
+* `daily` / `hourly` / `weekdays` shortcuts, plus standard `@hourly` / `@daily` / `@weekly` / `@monthly` / `@yearly` and `@every 30m`
+* **Per-task time zones** — set an IANA zone (e.g. `Europe/Berlin`) on a task; without it the schedule follows the server's local time
 * **One-shot tasks**: `at: 2026-09-05T15:00:00Z` (exact ISO timestamp) or relative delays `in 20m` / `in 2h` (Russian aliases such as `через 15 минут` are accepted too). One-shot tasks flip to `completed` automatically after their single run and are listed under the **Completed** tab.
+
+### 5. Execution Reliability
+* **Automatic retries** — set `maxRetries` and a base `retryBackoffMs` per task; failed runs (`error`/`timeout`) are retried with exponential backoff, and the attempt counter resets on success.
+* **Misfire policies** — choose per task what happens when the daemon was offline at a scheduled time: `skip` (default — record the gap), `runOnce` (execute once, late), or `catchUpAll` (run late and record the gap). A missed one-shot under `skip` is retired as `completed` instead of firing stale.
+* **Concurrency limit** — `maxConcurrent` (plugin setting) caps parallel runs; extra runs are recorded as `skipped` with a reason.
+* **Live execution indicator** — the task list shows a pulsing status icon and a running timer for the task in flight.
+
+### 6. Session Integration & Permissions
+* **Per-task permission presets** — `default`, `read-only`, `workspace-write`, or `full` are applied to the task's agent session before the prompt runs.
+* **Session auto-archive** — isolated cron sessions are archived after each run (best-effort) so they do not clutter the chat list.
+* **History → session navigation** — every LLM run records its session; open it straight from the run history entry.
 
 ### 5. Telegram Notifications & Delivery Routing
 Direct integration with the Telegram Bot API delivers execution reports and error traces straight to your messenger:
@@ -147,6 +159,10 @@ Prevent rogue processes from stacking concurrent duplicate executions:
   * **`replace`**: aborts the active run via `AbortController` and launches a fresh execution.
 
 If the daemon was offline at a scheduled time, the run is recorded as `missed` on startup, so gaps in the history stay visible.
+
+### 8. Heartbeat Monitoring (#16-style dead man's switch)
+* Set `heartbeatUrl` and `heartbeatIntervalSec` in the plugin settings and the scheduler pings that URL on schedule — an external monitor alerts when the pings stop.
+* A built-in `GET /dsh-cron/heartbeat` endpoint reports liveness, active task count and the last run time for your own watchdogs.
 
 ---
 
@@ -174,6 +190,10 @@ dsh-cron:
   notifyTelegram: false        # deliver reports for every task globally
   onlyOnFailure: false         # deliver reports only for failed runs
   kanbanBaseUrl: "http://127.0.0.1:3000"  # dsh-kanban HTTP API base URL
+  defaultTimezone: ""          # default IANA time zone for schedules (empty = server local)
+  maxConcurrent: 0             # max parallel task runs (0 = unlimited)
+  heartbeatUrl: ""             # dead man's snitch URL pinged on the heartbeat interval
+  heartbeatIntervalSec: 0      # heartbeat ping interval in seconds (0 = off)
 ```
 
 ### Configuration Parameters
@@ -185,6 +205,10 @@ dsh-cron:
 | `notifyTelegram` | `boolean` | `false` | Global switch: deliver run reports to Telegram |
 | `onlyOnFailure` | `boolean` | `false` | Global switch: deliver reports only for `error`/`timeout` runs |
 | `kanbanBaseUrl` | `string` | `"http://127.0.0.1:3000"` | Base URL of the `dsh-kanban` HTTP API used for automatic card creation |
+| `defaultTimezone` | `string` | `""` | Default IANA time zone for task schedules; empty = server local time |
+| `maxConcurrent` | `number` | `0` | Cap on parallel task runs; extra runs are recorded as `skipped` (0 = unlimited) |
+| `heartbeatUrl` | `string` | `""` | Dead man's snitch URL pinged every `heartbeatIntervalSec` while the scheduler is alive |
+| `heartbeatIntervalSec` | `number` | `0` | Heartbeat ping interval in seconds (0 = disabled) |
 
 Notes:
 
@@ -212,7 +236,8 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoint
 | `GET` | `/dsh-cron/models` | List LLM providers; `?provider=<id>` lists models |
 | `POST` | `/dsh-cron/chat/start` | Start a "Create with DSH" agent session with the task-setup instructions |
 | `GET` | `/dsh-cron/settings` | Client-safe settings (token masked) |
-| `POST` | `/dsh-cron/settings` | Update integration settings |
+| `POST` | `/dsh-cron/settings` | Update integration settings (applied through the settings service) |
+| `GET` | `/dsh-cron/heartbeat` | Liveness probe: active task count, last run time, server time |
 | `POST` | `/dsh-cron/telegram/test` | Send a Telegram test message |
 | `POST` | `/dsh-cron/kanban/test` | Create a Kanban connectivity-test card |
 | `*` | `/dsh-cron/action/:id/:action` | Legacy alias for the task action routes (`run`, `toggle`, `delete`, `history`) |
