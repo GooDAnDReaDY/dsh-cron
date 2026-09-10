@@ -35,7 +35,9 @@ test('lib source strings are English-canonical (Cyrillic only in schedule input 
 
 test('client locale dictionary registers English sources under the dsh-cron namespace', async () => {
   const indexSrc = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf-8');
-  assert.ok(indexSrc.includes("register?.('dsh-cron'"), 'server settings namespace is dsh-cron');
+  assert.ok(indexSrc.includes("register('dsh-cron', Config"), 'server settings namespace is dsh-cron');
+  // Issue #102: REST settings writes must go through the registered scope
+  assert.ok(indexSrc.includes('applySettingsToScope(cronSettingsScope, payload)'), 'settings writes routed through the scope');
 
   const clientSrc = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
   assert.ok(clientSrc.includes("'sidebar.label': 'Scheduled tasks'"), 'canonical English dictionary present');

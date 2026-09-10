@@ -42,6 +42,12 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   assert.ok(code.includes("const NS = 'dsh-cron';"), 'NS must be dsh-cron');
   assert.ok(code.includes("key: NS"), 'settings.plugin.item slot must use the namespace key');
   assert.ok(code.includes("registerIntoMount(ctx, 'settings.plugin.item'"), 'card registered through the mount inject contract');
+  assert.ok(!code.includes('settings.section'), 'no top-level section fallback (#102)');
+
+  // Issue #102: the card checks the settings snapshot status and never
+  // renders phantom inputs before it arrives.
+  assert.ok(code.includes("loadState !== 'ready'"), 'card checks snapshot status before rendering inputs');
+  assert.ok(code.includes("settings.retry"), 'unavailable state offers a retry');
 
   // Issue #100: the settings card follows the canonical collapsible card
   // contract — collapsed by default, head is the toggle.

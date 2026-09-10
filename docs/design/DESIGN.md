@@ -16,7 +16,7 @@
   - Поисковая строка; сводная статистика (активные задачи, запуски, токены, стоимость).
   - Карточки задач: статус-переключатель, название, расписание (человекочитаемое + raw cron), действия (запуск, редактирование, удаление).
   - Блок «Рекомендуемые задачи»: готовые шаблоны (Daily digest, Weekly review, Follow-up monitor) в один клик.
-  - Карточка настроек в слоте settings.plugin.item, key = namespace `dsh-cron`; запасной путь — settings.section.
+  - Карточка настроек в слоте settings.plugin.item, key = namespace `dsh-cron`; отдельный раздел настроек не используется (#102).
 - LLM Tools: cron_create_task (+ alias cron_schedule_task), cron_list_tasks, cron_pause_task, cron_resume_task, cron_delete_task, cron_run_task.
 - API: HTTP эндпоинты /dsh-cron/* (tasks, models, chat/start, settings, telegram/test, kanban/test, tasks/:id/actions, legacy action/:id/:action). Мутирующие эндпоинты отклоняют cross-origin запросы; script-задачи по HTTP требуют заголовок x-dsh-cron-confirm.
 - Chat / Slash Commands: отсутствуют (ранее заявленные /cron-команды не были реализованы и удалены из документации; решение 2026-09-09).
@@ -63,7 +63,8 @@
 ## Locked Design Decisions
 - 2026-09-09 — Пакет надёжности ядра (v0.1.24): буфер shell-задач 10МБ, атомарное сохранение с PID, аудит пропущенных запусков при рестарте (missed), фоновый поллинг UI (8с).
 - 2026-09-03 — Публичный скоуп @goodandready/dsh-cron; оверлей через mountSidebarEntry/mountScreen аналогично dsh-kanban; двойная кнопка «Создать ⌄».
-- 2026-09-09 — Слот карточки настроек: settings.plugin.item с key/namespace `dsh-cron` (совпадение с серверной регистрацией); settings.section — только запасной путь. Причина: контракт слота настроек (#85).
+- 2026-09-09 — Слот карточки настроек: settings.plugin.item с key/namespace `dsh-cron` (совпадение с серверной регистрацией). Причина: контракт слота настроек (#85). Changed 2026-09-10 (#102): settings.section fallback удалён — карточка только во вкладке плагинов.
+- 2026-09-10 — Значения настроек пишутся через зарегистрированный settings-скоуп (`scope.set` → `watch` → store); REST /dsh-cron/settings остаётся транспортом для карточки и headless-сценариев; карточка проверяет статус снапшота и не рисует поля до его получения (#102).
 - 2026-09-09 — Английский — канонический язык строк; словарь STRINGS.en регистрируется в ctx.locale; русский — через translation-плагин. Причина: стандарт DSH-плагинов (#87).
 - 2026-09-09 — Same-origin проверка мутирующих эндпоинтов, лимит тела 1 МБ, confirm-заголовок для script-задач. Причина: закрытие CSRF→RCE поверхности (#86).
 - 2026-09-09 — Стилевая изоляция: динамические <style> с data-dsh-plugin="dsh-cron"; цвета только через токены темы + единый блок plugin-переменных. Причина: защита от очистки стилей соседями и поддержка светлой темы (#91).
