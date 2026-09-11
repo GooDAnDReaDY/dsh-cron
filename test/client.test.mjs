@@ -111,6 +111,33 @@ test('#25/#26: the UI offers every delivery channel and never drifts from the se
   assert.ok(code.includes("type: 'number'"), 'the timeout uses a numeric input');
 });
 
+test('#40/#41/#42: the list offers filters, duplication and transfer controls', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+
+  // #40 — facet filters applied client-side over the loaded list.
+  assert.ok(code.includes('const visibleTasks = React.useMemo('), 'the list renders a derived, filtered view');
+  assert.ok(code.includes("x.type || 'llm') === filterType"), 'type filter compares the normalised type');
+  assert.ok(code.includes("String(x.model || '').split('/').pop() === filterModel"), 'model filter compares the short model name');
+  assert.ok(code.includes('channels.includes(filterChannel)'), 'channel filter understands legacy telegram/kanban flags');
+  assert.ok(code.includes("'filters.reset'") && code.includes("'filters.empty'"), 'reset and empty states exist');
+  assert.ok(code.includes('filters.showing'), 'the filter summary reports shown vs total');
+
+  // #41 — the row carries a duplicate action that calls the server route.
+  assert.ok(code.includes('const handleDuplicate = async (task)'), 'duplicate handler present');
+  assert.ok(code.includes("'/duplicate'"), 'duplicate uses the server route, not a client-side payload replay');
+  assert.ok(code.includes("'actions.duplicate'"), 'duplicate action is labelled');
+  assert.ok(code.includes("'duplicate.oneShotHint'"), 'a duplicated one-shot warns about its stale time');
+
+  // #42 — export downloads a file, import goes through a summary + strategy modal.
+  assert.ok(code.includes('const handleExport = async ()'), 'export handler present');
+  assert.ok(code.includes("'/dsh-cron/tasks/export'"), 'export reads the server document');
+  assert.ok(code.includes('URL.createObjectURL(blob)'), 'export downloads a JSON file');
+  assert.ok(code.includes('const handleImportFile = async (e)'), 'import reads the picked file');
+  assert.ok(code.includes('dryRun: true'), 'import asks the server for a plan before changing anything');
+  assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
+  assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
+});
+
 test('#51: settings UI stores credential names, never secret values', () => {
   const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
   const serverCode = fs.readFileSync(new URL('../lib/store.js', import.meta.url), 'utf-8');
