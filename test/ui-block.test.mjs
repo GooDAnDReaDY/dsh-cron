@@ -18,13 +18,15 @@ function mockReq(chunks) {
 }
 
 /** A POST request whose JSON body arrives as a stream, like a real one. */
-function mockPost(url, body) {
+function mockPost(url, body, headers = {}) {
   const req = mockReq([Buffer.from(JSON.stringify(body), 'utf8')]);
   req.method = 'POST';
   req.url = url;
-  req.headers = {};
+  req.headers = headers;
   return req;
 }
+
+const SCRIPT_CONFIRM = { 'x-dsh-cron-confirm': 'script' };
 
 function mockRes() {
   const res = {
@@ -263,20 +265,20 @@ test('#42: export and import round-trip through the API', async (t) => {
 
   // Dry run reports the plan without touching the store.
   const dryRes = mockRes();
-  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, dryRun: true, strategy: 'skip' }), dryRes);
+  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, dryRun: true, strategy: 'skip' }, SCRIPT_CONFIRM), dryRes);
   assert.equal(dryRes.statusCode, 200);
   assert.deepEqual(dryRes.payload.summary, { add: 0, replace: 0, skip: 1 });
   assert.equal(store.list({ status: 'all' }).length, 1, 'a dry run changes nothing');
 
   // Skip leaves the existing task alone.
   const skipRes = mockRes();
-  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, strategy: 'skip' }), skipRes);
+  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, strategy: 'skip' }, SCRIPT_CONFIRM), skipRes);
   assert.equal(skipRes.payload.imported, 0);
   assert.equal(store.list({ status: 'all' }).length, 1);
 
   // Add creates a second task with a fresh id.
   const addRes = mockRes();
-  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, strategy: 'add' }), addRes);
+  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, strategy: 'add' }, SCRIPT_CONFIRM), addRes);
   assert.equal(addRes.payload.imported, 1);
   const all = store.list({ status: 'all' });
   assert.equal(all.length, 2);
@@ -291,4 +293,111 @@ test('#42: export and import round-trip through the API', async (t) => {
   await handler(mockPost('/dsh-cron/tasks/import', { document: { kind: 'other' }, strategy: 'add' }), badRes);
   assert.equal(badRes.statusCode, 400);
   assert.equal(store.list({ status: 'all' }).length, 2, 'the store is untouched after a rejected import');
+});
+
+// ------------------------------------- #42 hardening (independent review findings)
+
+function exportDoc(tasks) {
+  return { kind: TASK_EXPORT_KIND, version: 1, exportedAt: new Date().toISOString(), tasks };
+}
+
+test('#42: importing code-executing tasks needs the confirm header', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+  const doc = exportDoc([{ title: 'node job', schedule: '0 4 * * *', prompt: 'console.log(1)', type: 'node' }]);
+
+  const denied = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: doc, strategy: 'add' }), denied);
+  assert.equal(denied.statusCode, 403, 'a hand-edited file cannot bypass the code-execution gate');
+  assert.match(denied.payload.error, /x-dsh-cron-confirm/);
+  assert.equal(store.list({ status: 'all' }).length, 0, 'nothing was written');
+
+  const allowed = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: doc, strategy: 'add' }, SCRIPT_CONFIRM), allowed);
+  assert.equal(allowed.statusCode, 200);
+  assert.equal(store.list({ status: 'all' }).length, 1);
+});
+
+test('#42: an imported task is always paused and keeps only whitelisted fields', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+  // A tampered file: it claims to be active and carries run state plus junk keys.
+  const doc = exportDoc([{
+    id: 'cron_tampered',
+    title: 'sneaky',
+    schedule: '0 4 * * *',
+    prompt: 'echo hi',
+    type: 'script',
+    status: 'active',
+    totalTokens: 999999,
+    totalCostUsd: 42,
+    lastStatus: 'success',
+    nextRunAt: Date.now() + 1000,
+    attempts: 7,
+    running: true,
+    unexpectedField: 'x',
+  }]);
+
+  const res = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: doc, strategy: 'add' }, SCRIPT_CONFIRM), res);
+  assert.equal(res.statusCode, 200);
+  const task = store.get('cron_tampered');
+  assert.ok(task, 'the task was imported');
+  assert.equal(task.status, 'paused', 'the file cannot make a task active');
+  assert.equal(task.totalTokens, 0, 'the tampered token counter was not carried over');
+  assert.notEqual(task.totalTokens, 999999);
+  assert.notEqual(task.totalCostUsd, 42, 'the tampered cost was not carried over');
+  assert.notEqual(task.lastStatus, 'success', 'the tampered last status was not carried over');
+  assert.ok(!task.attempts, 'the tampered retry counter was not carried over');
+  assert.equal(task.running, undefined, 'unknown keys are dropped');
+  assert.equal(task.unexpectedField, undefined);
+  assert.equal(scheduler.jobs.has('cron_tampered'), false, 'an imported task is never armed');
+  assert.equal(store.getHistory('cron_tampered').length, 0);
+});
+
+test('#42: reserved ids are refused on import and on create', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+
+  const importRes = mockRes();
+  await handler(
+    mockPost('/dsh-cron/tasks/import', { document: exportDoc([{ id: 'export', title: 't', schedule: '0 4 * * *', prompt: 'x', type: 'script' }]), strategy: 'add' }, SCRIPT_CONFIRM),
+    importRes,
+  );
+  assert.equal(importRes.statusCode, 400);
+  assert.match(importRes.payload.error, /reserved id/);
+
+  const createRes = mockRes();
+  await handler(
+    mockPost('/dsh-cron/tasks', { id: 'import', title: 't', schedule: '0 4 * * *', prompt: 'x', type: 'script' }, SCRIPT_CONFIRM),
+    createRes,
+  );
+  assert.equal(createRes.statusCode, 400, 'a task cannot shadow the collection routes');
+  assert.match(createRes.payload.error, /reserved/);
+  assert.equal(store.list({ status: 'all' }).length, 0);
+});
+
+test('#42: a failed write rolls the import back', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+  const doc = exportDoc([
+    { id: 'cron_one', title: 'one', schedule: '0 4 * * *', prompt: 'x', type: 'script' },
+    { id: 'cron_two', title: 'two', schedule: '0 5 * * *', prompt: 'y', type: 'script' },
+  ]);
+
+  const originalSet = store.set.bind(store);
+  let calls = 0;
+  store.set = (task) => {
+    calls += 1;
+    if (calls === 2) throw new Error('disk full');
+    return originalSet(task);
+  };
+
+  const res = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: doc, strategy: 'add' }, SCRIPT_CONFIRM), res);
+  store.set = originalSet;
+
+  assert.equal(res.statusCode, 500);
+  assert.match(res.payload.error, /rolled back/);
+  assert.equal(store.list({ status: 'all' }).length, 0, 'the first write was undone');
 });
