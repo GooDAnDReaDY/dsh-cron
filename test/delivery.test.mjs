@@ -124,6 +124,9 @@ test('#22: push builders validate their configuration', () => {
   assert.throws(() => buildPushplusRequest({ settings: {}, text: 'x', task }), /pushplus token/);
   const pp = buildPushplusRequest({ settings: {}, text: 'x', task, token: 'pt' });
   assert.equal(JSON.parse(pp.body).token, 'pt');
+  assert.equal(pp.url, 'https://www.pushplus.plus/send');
+  const selfHosted = buildPushplusRequest({ settings: { pushplusUrl: 'http://127.0.0.1:3099/pp' }, text: 'x', task, token: 'pt' });
+  assert.equal(selfHosted.url, 'http://127.0.0.1:3099/pp', 'endpoint is overridable for self-hosted proxies');
 });
 
 test('#28: gitea issue payload marks failures with alert labels', () => {
