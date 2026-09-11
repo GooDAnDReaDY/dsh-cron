@@ -1,6 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createTaskParameters } from '../lib/index.js';
+
+/**
+ * The harness validates tool parameter schemas at load time and REFUSES to
+ * start on an unsupported schema (seen live: `parameters.env.additionalProperties
+ * must be explicitly true or false` took the whole test server down). Walk the
+ * create-task parameter map and require every object type to declare
+ * additionalProperties explicitly.
+ */
+test('every object-typed tool parameter declares additionalProperties explicitly', () => {
+  const walk = (node, path) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'object') {
+      assert.ok(
+        node.additionalProperties === true || node.additionalProperties === false,
+        `${path} must declare additionalProperties explicitly`
+      );
+    }
+    if (node.properties) {
+      for (const [key, value] of Object.entries(node.properties)) {
+        walk(value, `${path}.${key}`);
+      }
+    }
+    if (node.items) walk(node.items, `${path}[]`);
+  };
+  for (const [key, value] of Object.entries(createTaskParameters)) {
+    walk(value, key);
+  }
+});
 
 test('all tools in lib/index.js follow dsh-tools defineTool contract (flat parameters, output.render)', () => {
   const code = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf-8');
