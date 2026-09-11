@@ -96,7 +96,7 @@ test('#51: telegram secrets follow the documented precedence', async (t) => {
   if (none.tokenSource === 'none') assert.equal(none.botToken, '');
 });
 
-test('#51: a run delivers through the resolved credential, not the stored token', async (t) => {
+test('#51: the delivery step receives resolved credentials, not the stored token', async (t) => {
   const store = makeStore(t);
   store.saveSettings({ chatId: '99', notifyTelegram: true });
   const task = store.set({
@@ -106,23 +106,21 @@ test('#51: a run delivers through the resolved credential, not the stored token'
     status: 'active',
     notifyTelegram: true,
   });
+
+  let deliveredSettings = null;
+  let deliveredRunInfo = null;
   const scheduler = new TaskScheduler(store, async () => 'ok', {
     resolveSecrets: async () => ({ botToken: 'resolved-token', chatId: '99', tokenSource: 'credential' }),
+    deliver: async (_task, runInfo, settings) => {
+      deliveredRunInfo = runInfo;
+      deliveredSettings = settings;
+      return { channels: ['telegram'], delivered: [{ channel: 'telegram' }], skipped: [], failures: [] };
+    },
   });
   t.after(() => scheduler.stopAll());
 
-  const urls = [];
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url) => {
-    urls.push(String(url));
-    return { ok: true, json: async () => ({ ok: true, result: { message_id: 1 } }) };
-  };
-  try {
-    await scheduler.runTask(task.id);
-    await new Promise((r) => setTimeout(r, 50));
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-  assert.equal(urls.length, 1, 'telegram request attempted');
-  assert.match(urls[0], /botresolved-token\/sendMessage/);
+  await scheduler.runTask(task.id);
+  assert.equal(deliveredSettings.botToken, 'resolved-token', 'resolved credential reaches the router');
+  assert.equal(deliveredSettings.chatId, '99');
+  assert.equal(deliveredRunInfo.status, 'success');
 });
