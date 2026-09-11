@@ -283,6 +283,7 @@ dsh-cron:
 | `POST` | `/dsh-cron/tasks/:id/resume` | 恢复调度 |
 | `POST` | `/dsh-cron/tasks/:id/toggle` | 切换活跃/暂停 |
 | `POST` | `/dsh-cron/tasks/:id/duplicate` | 创建暂停状态的副本：复制配置，重置运行历史与计数 |
+| `GET` | `/dsh-cron/recipes` | 内置配方目录：按类别分组的现成监控预设，全部为只读操作 |
 | `GET` | `/dsh-cron/tasks/export` | 仅含任务配置的版本化 JSON —— 不含历史与计数。渠道按名称引用凭据，但手动填写在任务中的 `env` 与 HTTP 请求头属于配置，会出现在文件里 |
 | `POST` | `/dsh-cron/tasks/import` | 校验文档并以 `add`、`replace` 或 `skip` 策略导入；支持 `dryRun` 预览。导入的任务始终为**暂停**状态，恢复不会自动触发 |
 | `PATCH` | `/dsh-cron/tasks/:id` | 部分更新（仅白名单字段：`title`、`schedule`、`prompt`、`type`、`delivery`、`provider`、`model`、通知/超时/重叠/Kanban 设置、`status`、`oneShot`） |
