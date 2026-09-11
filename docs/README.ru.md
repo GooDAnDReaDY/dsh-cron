@@ -239,11 +239,132 @@ dsh-cron:
   giteaBaseUrl: ""             # giteaRepo = owner/repo, giteaTokenRef = ИМЯ credential
   giteaRepo: ""
   giteaTokenRef: ""
+  # --- внешний REST API (#54) ---
+  apiToken: ""                 # bearer-токен внешнего префикса /dsh-cron/api/* (маскируется; пусто = 503)
 ```
 
 ### 14. Мониторинг heartbeat (dead man's switch)
 * Задайте `heartbeatUrl` и `heartbeatIntervalSec` в настройках плагина — планировщик будет пинговать этот адрес по расписанию, и внешний монитор сообщит, когда пинги прекратятся.
 * Встроенный эндпоинт `GET /dsh-cron/heartbeat` сообщает живость, число активных задач и время последнего запуска для ваших собственных сторожей.
+
+### 15. Задачи из конфига профиля (#50)
+Долгоживущие эксплуатационные задачи можно объявлять в конфиге профиля, а не пересоздавать руками в интерфейсе. Владелец объявленных задач — файл конфига: при каждом старте плагина они создаются или обновляются, а задача, исчезнувшая из файла, удаляется.
+
+Добавьте список `jobs` в секцию плагина конфига профиля (`cordis.patch.yml`):
+
+```yaml
+dsh-cron:
+  jobs:
+    - id: nightly-backup
+      title: Nightly backup
+      schedule: "0 3 * * *"
+      type: script
+      prompt: "bash /path/to/backup.sh"
+      channels: ["telegram"]
+      timeoutSeconds: 3600
+    - id: morning-digest
+      title: Morning digest
+      schedule: "0 8 * * 1-5"
+      type: llm
+      prompt: "Prepare a brief morning digest of active tasks."
+      provider: my-provider
+      model: provider-id/model-id
+```
+
+* Обязательные поля записи: `id`, `title`, `schedule`; типам, у которых полезная нагрузка — это промпт (`script`, `node`, `python`, `ssh`, `docker`, `llm`, `skill`, `workflow`), нужен ещё непустой `prompt`. `http` — исключение: цель задаётся `httpUrl` (или `prompt`).
+* Остальные поля задачи проходят как есть с той же валидацией, что и в API: `channels`, `model`, `provider`, `fallbackModel`, `silentRule`, `inspectOnFailure`, `timezone`, `timeoutSeconds`, `template`, `env`, `cwd` и рантайм-поля (`nodePath`, `pythonPath`, `httpUrl`, `httpMethod`, `httpHeaders`, `httpBody`, `sshProfileId`, `sshTarget`, `dockerImage`, `workspaceId`, `worktree`, `keepWorktree`, `skillName`, `workflowName`).
+* Объявленные задачи помечаются как **управляемые конфигом**; в панели вместо действий правки и удаления выводится метка источника.
+* Правка, пауза, возобновление, переключение и удаление конфиг-задачи отклоняются с `409` в панели и по API, и создание-обновление через `POST /dsh-cron/tasks` с существующим `id` конфиг-задачи отклоняется так же — источник правды файл конфига. **Запустить сейчас** остаётся доступным.
+* Задача с тем же `id`, созданная через UI, API или инструмент агента, никогда не перезаписывается: запись пропускается, конфликт пишется в лог.
+* Код-исполняющие типы активируются как обычные объявленные задачи, но при старте плагин пишет предупреждение в лог — путь исполнения кода, добавленный правкой конфига, остаётся видимым.
+* Записи валидируются по одной с указанием индекса (`config.jobs[i]: …`); одна плохая запись пропускается и не может остановить остальные задачи или профиль.
+
+### 16. Внешний REST API (`/dsh-cron/api/*`, #54)
+Внешние системы (CI, cron хоста, `curl`) могут управлять планировщиком без открытия панели. Это единственная поверхность за bearer-токеном; маршруты панели остаются локальными и защищёнными от cross-origin.
+
+Токен задаётся настройкой плагина `apiToken` (маскируется, как любой секрет). Аутентификация и ошибки:
+* токен не задан → вся поверхность отвечает `503`;
+* нет заголовка `Authorization: Bearer <token>` или токен неверный → `401`; сравнение постоянное по времени.
+
+| Метод | Путь | Описание |
+|:---|:---|:---|
+| `GET` | `/dsh-cron/api/tasks` | Список задач (фильтры `status` / `query`, как в панели) |
+| `GET` | `/dsh-cron/api/tasks/:id` | Чтение одной задачи |
+| `POST` | `/dsh-cron/api/tasks` | Создание задачи или обновление существующей при наличии `id` |
+| `DELETE` | `/dsh-cron/api/tasks/:id` | Удаление задачи |
+| `POST` | `/dsh-cron/api/tasks/:id/run` | Принудительный немедленный запуск |
+
+Операции переиспользуют обработчики панели, поэтому гейт `x-dsh-cron-confirm: script` для код-исполняющих типов и отказ `409` для конфиг-задач действуют здесь так же, как в UI.
+
+```bash
+BASE="http://127.0.0.1:3080"
+TOKEN="<API_TOKEN>"
+
+# список
+curl -s -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks"
+
+# создание или обновление, если в теле есть id
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"id":"cleanup","title":"Cleanup","schedule":"0 4 * * *","prompt":"Remove stale temporary files."}' \
+  "$BASE/dsh-cron/api/tasks"
+
+# принудительный запуск
+curl -s -X POST -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cleanup/run"
+
+# удаление
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cleanup"
+
+# код-исполняющей задаче нужен ещё заголовок подтверждения
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "x-dsh-cron-confirm: script" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","prompt":"df -h"}' \
+  "$BASE/dsh-cron/api/tasks"
+```
+
+### 17. Метрики Prometheus (#53)
+`GET /dsh-cron/metrics` отдаёт текст в формате Prometheus, поэтому планировщик можно снимать scrape'ом без новых зависимостей:
+
+* `dsh_cron_tasks_total{status}` — число задач по статусам (gauge).
+* `dsh_cron_task_last_duration_seconds{task}` — длительность последнего завершённого запуска задачи в секундах (gauge).
+* `dsh_cron_runs_total{status}` — завершённые запуски с момента старта процесса плагина (counter); статусы `success`, `error`, `timeout`, `skipped`, `missed`.
+* `dsh_cron_run_records` — число записей о запусках, хранимых в памяти (gauge).
+
+В экспозицию попадают только счётчики, статусы и длительности; промпты, вывод запусков и конфигурация задач в неё не входят.
+
+```yaml
+scrape_configs:
+  - job_name: dsh-cron
+    static_configs:
+      - targets: ["127.0.0.1:3080"]
+    metrics_path: /dsh-cron/metrics
+```
+
+### 18. Строгая проверка каналов (#121)
+Создание или обновление задачи с неизвестным идентификатором канала теперь отклоняется с `400`, а виновники перечисляются в ответе:
+
+```json
+{ "ok": false, "error": "Unknown channel ids: email_ping", "unknownChannels": ["email_ping"] }
+```
+
+Changed in v0.2.7: раньше неизвестный идентификатор молча отбрасывался, поэтому клиент с опечаткой получал `ok: true` и задачу, которая никуда не доставляет.
+
+Импорт намеренно остаётся терпимым (файл может быть из старой версии): неизвестные идентификаторы отбрасываются у импортируемой задачи, но перечисляются в ответе (`unknownChannels`) и пишутся в лог планировщика, а не исчезают молча.
+
+### 19. Проверка после установки (#126)
+У `deploy.sh` есть режим только-проверки уже установленного профиля, ничего не устанавливающий:
+
+```bash
+bash deploy.sh verify [exact-version]
+```
+
+Он проверяет, что профиль сообщает нужную версию (по умолчанию — версия из `package.json`), аутентифицируется в web UI, затем скачивает клиентский бандл и убеждается, что имя пакета в нём присутствует.
+
+Зачем это нужно: web-профиль может стоять за плагином аутентификации и отвечать `401` на анонимный запрос, а клиентский бандл плагина отдаётся только по точному combined-URL вида `??` из аутентифицированного индекса — голый `/plugins/<name>/client.js` отвечает `404`. Поэтому проверка сначала строит аутентифицированную сессию.
+
+Переменные окружения проверки: `DSH_WEB_BASE` (по умолчанию `http://127.0.0.1:3080`), `DSH_WEB_TOKEN` (токен; если не задан, скрипт берёт последний из журнала юнита), `DSH_WEB_UNIT` (по умолчанию `dsh-web.service`). Секретов в скрипте нет.
+
+### 20. Внутренняя разбивка: разбор расписания и постановка (#97)
+Только для разработчиков, поведение не меняется. `parseScheduleExpression` разбит на маленькие функции с тем же порядком ветвей — `parseAtExpression`, `parseRelativeOneShot`, `parseIntervalExpression`, `parseAliasExpression`, `parseCronExpression`, — а `scheduleTask` — на `clearScheduled`, `scheduleOneShot` и `scheduleCron`. Прежний набор тестов прошёл без правок, добавлены точечные тесты на приоритет ветвей и ошибки.
 
 ### Параметры
 
@@ -268,6 +389,7 @@ dsh-cron:
 | `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | Endpoint PushPlus (переопределяется для self-hosted прокси) и имя credential токена |
 | `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | Базовый URL плагина `dsh-tts` для голосовых объявлений |
 | `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Канал Gitea: базовый URL, `owner/repo` и имя credential API-токена |
+| `apiToken` | `string` | `""` | Bearer-токен внешней поверхности `/dsh-cron/api/*`. Секретное поле, отдаётся замаскированным; пусто отключает поверхность (503), неверное значение — 401 |
 
 Примечания:
 
@@ -304,6 +426,10 @@ dsh-cron:
 | `POST` | `/dsh-cron/telegram/test` | Тестовое сообщение в Telegram |
 | `POST` | `/dsh-cron/kanban/test` | Тестовая карточка в Kanban |
 | `*` | `/dsh-cron/action/:id/:action` | Legacy-алиас действий над задачей (`run`, `toggle`, `delete`, `history`) |
+| `GET` | `/dsh-cron/metrics` | Текст в формате Prometheus: счётчики задач и запусков — без промптов и вывода (#53) |
+| `GET` / `POST` | `/dsh-cron/api/tasks` | Внешняя поверхность под токеном: список / создание-обновление (#54) |
+| `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | Внешняя поверхность под токеном: чтение / удаление (#54) |
+| `POST` | `/dsh-cron/api/tasks/:id/run` | Внешняя поверхность под токеном: принудительный запуск (#54) |
 
 ---
 

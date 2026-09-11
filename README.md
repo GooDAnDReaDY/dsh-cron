@@ -198,6 +198,125 @@ If the daemon was offline at a scheduled time, the run is recorded as `missed` o
 * Set `heartbeatUrl` and `heartbeatIntervalSec` in the plugin settings and the scheduler pings that URL on schedule — an external monitor alerts when the pings stop.
 * A built-in `GET /dsh-cron/heartbeat` endpoint reports liveness, active task count and the last run time for your own watchdogs.
 
+### 15. Declarative Jobs From the Profile Config (#50)
+Long-lived operational jobs can be declared in the profile configuration instead of being recreated by hand in the UI. The config file owns the jobs it declares: at every plugin start they are created or updated, and a job that disappears from the file is removed.
+
+Add a `jobs` list to the plugin section of your profile config (`cordis.patch.yml`):
+
+```yaml
+dsh-cron:
+  jobs:
+    - id: nightly-backup
+      title: Nightly backup
+      schedule: "0 3 * * *"
+      type: script
+      prompt: "bash /path/to/backup.sh"
+      channels: ["telegram"]
+      timeoutSeconds: 3600
+    - id: morning-digest
+      title: Morning digest
+      schedule: "0 8 * * 1-5"
+      type: llm
+      prompt: "Prepare a brief morning digest of active tasks."
+      provider: my-provider
+      model: provider-id/model-id
+```
+
+* Required per entry: `id`, `title`, `schedule`; the types that carry their payload in the prompt (`script`, `node`, `python`, `ssh`, `docker`, `llm`, `skill`, `workflow`) also need a non-empty `prompt`. `http` is exempt: its target is given by `httpUrl` (or `prompt`).
+* Any other task field is passed through with the same validation as the API: `channels`, `model`, `provider`, `fallbackModel`, `silentRule`, `inspectOnFailure`, `timezone`, `timeoutSeconds`, `template`, `env`, `cwd`, and the runtime fields (`nodePath`, `pythonPath`, `httpUrl`, `httpMethod`, `httpHeaders`, `httpBody`, `sshProfileId`, `sshTarget`, `dockerImage`, `workspaceId`, `worktree`, `keepWorktree`, `skillName`, `workflowName`).
+* Declared jobs are marked **managed by the config**; the panel shows a source label instead of edit and delete actions.
+* Editing, pausing, resuming, toggling or deleting a config-owned task is refused with `409` on the panel and on the API, and a create-or-update `POST /dsh-cron/tasks` that carries the existing `id` of a config-owned task is refused the same way — the config file is the source of truth. **Run Now** stays available.
+* A task with the same `id` created through the UI, the API or an agent tool is never overwritten: the entry is skipped and the conflict is written to the log.
+* Code-executing types are activated like any other declared job, but at startup the plugin writes a warning to the log, so a code path introduced through the config file is visible.
+* Entries are validated one by one with an indexed message (`config.jobs[i]: …`); a broken entry is skipped and cannot stop the remaining jobs or the profile.
+
+### 16. External REST API (`/dsh-cron/api/*`, #54)
+External systems (CI, host cron, `curl`) can drive the scheduler without opening the browser panel. This is the only surface behind a bearer token; the panel routes stay local and cross-origin-protected.
+
+Set the token as the plugin setting `apiToken` (masked like every secret). Auth and errors:
+* no token configured → the whole surface answers `503`;
+* a missing or wrong `Authorization: Bearer <token>` → `401`, compared in constant time.
+
+| Method | Path | Description |
+|:---|:---|:---|
+| `GET` | `/dsh-cron/api/tasks` | List tasks (`status` / `query` filters as the panel) |
+| `GET` | `/dsh-cron/api/tasks/:id` | Read one task |
+| `POST` | `/dsh-cron/api/tasks` | Create a task, or update the existing one when `id` is present |
+| `DELETE` | `/dsh-cron/api/tasks/:id` | Delete a task |
+| `POST` | `/dsh-cron/api/tasks/:id/run` | Force an immediate run |
+
+The operations reuse the panel handlers, so the `x-dsh-cron-confirm: script` gate for code-executing types and the `409` refusals for config-owned tasks behave exactly as in the UI.
+
+```bash
+BASE="http://127.0.0.1:3080"
+TOKEN="<API_TOKEN>"
+
+# list
+curl -s -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks"
+
+# create, or update when the body carries the id
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"id":"cleanup","title":"Cleanup","schedule":"0 4 * * *","prompt":"Remove stale temporary files."}' \
+  "$BASE/dsh-cron/api/tasks"
+
+# force a run
+curl -s -X POST -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cleanup/run"
+
+# delete
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cleanup"
+
+# a code-executing task also needs the confirmation header
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "x-dsh-cron-confirm: script" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","prompt":"df -h"}' \
+  "$BASE/dsh-cron/api/tasks"
+```
+
+### 17. Prometheus Metrics (#53)
+`GET /dsh-cron/metrics` returns Prometheus text exposition, so the scheduler can be scraped without any extra dependency:
+
+* `dsh_cron_tasks_total{status}` — tasks by status (gauge).
+* `dsh_cron_task_last_duration_seconds{task}` — duration of a task's last finished run, in seconds (gauge).
+* `dsh_cron_runs_total{status}` — finished runs since the plugin process started (counter); the statuses are `success`, `error`, `timeout`, `skipped` and `missed`.
+* `dsh_cron_run_records` — run records currently kept in memory (gauge).
+
+Only counts, statuses and durations are exported; prompts, run output and task configuration never appear in the exposition.
+
+```yaml
+scrape_configs:
+  - job_name: dsh-cron
+    static_configs:
+      - targets: ["127.0.0.1:3080"]
+    metrics_path: /dsh-cron/metrics
+```
+
+### 18. Strict Channel Validation (#121)
+Creating or updating a task with an unknown delivery-channel id is now rejected with `400`, and the offending ids are listed:
+
+```json
+{ "ok": false, "error": "Unknown channel ids: email_ping", "unknownChannels": ["email_ping"] }
+```
+
+Changed in v0.2.7: previously an unknown id was silently dropped, so a client with a typo received `ok: true` and ended up with a task that delivered nowhere.
+
+Import deliberately stays tolerant (a file may come from an older build): unknown ids are dropped from the imported task, but they are named in the response (`unknownChannels`) and written to the scheduler log instead of disappearing silently.
+
+### 19. Post-Install Verification (#126)
+`deploy.sh` has a verify-only mode that inspects an already installed profile without installing anything:
+
+```bash
+bash deploy.sh verify [exact-version]
+```
+
+It checks that the profile reports the requested version (default: the `package.json` version), authenticates to the web UI, then downloads the client bundle and confirms the package name is present.
+
+Why it is needed: the web profile can sit behind an authentication plugin and answer `401` to an anonymous request, and a plugin client bundle is served only through the exact combined `??` URL printed in the authenticated index — a bare `/plugins/<name>/client.js` answers `404`. The check therefore builds an authenticated session first.
+
+Environment used by the check: `DSH_WEB_BASE` (default `http://127.0.0.1:3080`), `DSH_WEB_TOKEN` (the token; when unset, the script reads the last one printed to the unit journal), `DSH_WEB_UNIT` (default `dsh-web.service`). No secret is stored in the script.
+
+### 20. Internal Refactor: Schedule Parsing and Arming (#97)
+Developer-facing, no behaviour change. `parseScheduleExpression` was split into small functions that keep the same branch order — `parseAtExpression`, `parseRelativeOneShot`, `parseIntervalExpression`, `parseAliasExpression`, `parseCronExpression` — and `scheduleTask` into `clearScheduled`, `scheduleOneShot` and `scheduleCron`. The existing test suite passed unchanged and targeted tests were added for branch precedence and error messages.
+
 ---
 
 ## 📦 Installation
@@ -246,6 +365,8 @@ dsh-cron:
   giteaBaseUrl: ""             # giteaRepo = owner/repo, giteaTokenRef = credential NAME
   giteaRepo: ""
   giteaTokenRef: ""
+  # --- external REST API (#54) ---
+  apiToken: ""                 # bearer token for the external /dsh-cron/api/* surface (masked; empty = 503)
 ```
 
 ### Configuration Parameters
@@ -271,6 +392,7 @@ dsh-cron:
 | `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus endpoint (override for a self-hosted proxy) and token credential name |
 | `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | Base URL of the `dsh-tts` plugin used for voice announcements |
 | `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea channel: base URL, `owner/repo`, and the credential name of the API token |
+| `apiToken` | `string` | `""` | Bearer token for the external `/dsh-cron/api/*` surface. Stored as a secret field and returned masked; empty disables the surface (503), a wrong value answers 401 |
 
 Notes:
 
@@ -307,6 +429,10 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoint
 | `POST` | `/dsh-cron/telegram/test` | Send a Telegram test message |
 | `POST` | `/dsh-cron/kanban/test` | Create a Kanban connectivity-test card |
 | `*` | `/dsh-cron/action/:id/:action` | Legacy alias for the task action routes (`run`, `toggle`, `delete`, `history`) |
+| `GET` | `/dsh-cron/metrics` | Prometheus text exposition of task and run counters — never prompts or output (#53) |
+| `GET` / `POST` | `/dsh-cron/api/tasks` | External token-guarded surface: list / create-or-update (#54) |
+| `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | External token-guarded surface: read / delete (#54) |
+| `POST` | `/dsh-cron/api/tasks/:id/run` | External token-guarded surface: force a run (#54) |
 
 ---
 
