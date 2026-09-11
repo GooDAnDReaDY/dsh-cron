@@ -145,6 +145,10 @@
 
 ## Block A (0.2.5) — пользовательские поверхности
 
+- Новые маршруты: `POST /dsh-cron/tasks/:id/duplicate`, `GET /dsh-cron/tasks/export`, `POST /dsh-cron/tasks/import` (стратегии `add`/`replace`/`skip`, поддержка `dryRun`).
+- Экспорт/импорт — только JSON: в проекте нет YAML-парсера, вторая форматная ветка без зависимости не поддерживается.
+- Дубликат всегда создаётся на паузе; one-shot копия сохраняет исходную строку расписания и не вооружается до ручного возобновления.
+- `deliveryTimeoutMs` нормализуется на входе `/dsh-cron/settings` и клампится в маршрутизаторе доставки (минимум `MIN_DELIVERY_TIMEOUT_MS = 1000`).
 
 ## Block B (0.2.6) — экономия и меньше шума
 
@@ -153,12 +157,8 @@
 - #43: поле `inspectOnFailure` — сбойный запуск получает диагноз и предложение правки; `inspectorModel` задаёт модель, `{diagnosis}` доступна в шаблонах.
 - #48: каталог `lib/recipes.js` (10 read-only рецептов), `GET /dsh-cron/recipes`, подсказки панели берутся из каталога; тест запрещает деструктивные команды.
 - #49: инструменты `cron_get_task`/`cron_update_task`; переключение в код-исполняющий тип требует `confirmCodeSwitch` (HTTP — заголовок), это проверяется структурно в `lib/task-patch.js`.
-- #97: `lib/api.js` (диспетчер + обработчики), общие HTTP-хелперы в `http-utils.js`, `runTask` → `beginRun`/`executeOnce`/`completeRun`/`applyModelAssists`, `_run` → диспетчер + подготовка/ход/уборка.
+- #97: `lib/api.js` (диспетчер + обработчики), общие HTTP-хелперы в `http-utils.js`, `runTask` → `beginRun`/`executeOnce`/`completeRun`/`applyModelAssists`, `_run` → диспетчер + подготовка/ход/уборка; остаток по размерам функций (`parseScheduleExpression`, `scheduleTask`) — в блок C.
 - Вызовы модели из серверной половины — только через `lib/llm-ask.js` (`ctx.llm.stream`, дедлайн, fail-open); прямой генерации `ctx.llm` не предоставляет.
-- Новые маршруты: `POST /dsh-cron/tasks/:id/duplicate`, `GET /dsh-cron/tasks/export`, `POST /dsh-cron/tasks/import` (стратегии `add`/`replace`/`skip`, поддержка `dryRun`).
-- Экспорт/импорт — только JSON: в проекте нет YAML-парсера, вторая форматная ветка без зависимости не поддерживается.
-- Дубликат всегда создаётся на паузе; one-shot копия сохраняет исходную строку расписания и не вооружается до ручного возобновления.
-- `deliveryTimeoutMs` нормализуется на входе `/dsh-cron/settings` и клампится в маршрутизаторе доставки (минимум `MIN_DELIVERY_TIMEOUT_MS = 1000`).
 
 ## Known Issues And Limitations
 
