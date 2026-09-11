@@ -8,16 +8,12 @@
   python, http, ssh, docker, env и worktree; отчёты о запусках в Telegram,
   dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, dsh-tts и Gitea;
   учёт токенов и стоимости.
-- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.4` — опубликована в npm
-  (`latest`), GitHub Release `v0.2.4`, тег `v0.2.4` в Gitea.
-- **Статус**: active, релиз `0.2.4` выпущен 2026-09-11: рантаймы исполнения
-  (#4–#10, #29, #31, #38) и доставка с секретами (#51, #25, #26, #20, #21,
-  #22, #47, #28) плюс исправление хранилища (#112). Код — PR #114
-  (независимое ревью, PASS на `7216b3a`), релиз — PR #118, merge `e2e5125`.
-  В production web-профиле MiniAI установлена точная версия `0.2.4`
-  (`dsh-web.service` активен, `/dsh-cron/tasks` и `/dsh-cron/settings` → 200,
-  клиентский бандл содержит новый UI, задача и история сохранены).
-  Канал email удалён по решению владельца (#23).
+- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.5` (см. `package.json`).
+- **Статус**: active, релиз `0.2.5` готов к публикации 2026-09-11: блок A
+  пользовательских поверхностей (#34, #39, #40, #41, #42, #115) плюс удаление
+  email-канала (#23). Код — PR #122 (независимое ревью в три раунда, PASS на
+  `0df5c4d`), релизный bump — отдельный коммит в `main`. Предыдущий релиз
+  `0.2.4` опубликован и установлен в production тем же циклом.
 - **DEV**: `/mnt/external/Project/DEV/dhsplugins/dsh-cron` (корень read-only,
   работа в `.worktrees/<branch>`).
 - **OPT / production**: DSH web-профиль MiniAI; CLI
