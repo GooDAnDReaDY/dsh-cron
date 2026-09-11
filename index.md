@@ -9,10 +9,13 @@
   dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email, dsh-tts и Gitea;
   учёт токенов и стоимости.
 - **Пакет**: `@goodandready/dsh-cron`, версия `0.2.3` (см. `package.json`).
-- **Статус**: active, публикация блока «рантаймы + доставка» ещё не выполнена.
-  Ветка `feat/0.2.5-delivery-secrets` проверена на изолированном тест-сервере
-  MiniPC (7 каналов доставки на заглушку, изоляция сбоя канала). В production
-  web-профиле MiniAI пока установлена `0.1.24`.
+- **Статус**: active. Блок «рантаймы + доставка» смёржен в `main`
+  (`59f6f8d`, PR #114, независимое ревью — PASS на `7216b3a`), релиз `0.2.4`
+  ещё не опубликован: bump/tag/npm/установка ждут явного «Публикуем релиз?».
+  Проверено на изолированном тест-сервере MiniPC (7 каналов доставки на
+  заглушку, изоляция сбоя канала, маскирование секретов). В production
+  web-профиле MiniAI установлена `0.2.3` — та же версия, что `npm latest`
+  (проверено `dsh plugin --profile web list` и `npm view @goodandready/dsh-cron version`, 2026-09-11).
 - **DEV**: `/mnt/external/Project/DEV/dhsplugins/dsh-cron` (корень read-only,
   работа в `.worktrees/<branch>`).
 - **OPT / production**: DSH web-профиль MiniAI; CLI
