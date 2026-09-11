@@ -48,7 +48,7 @@
     }
   },
   "dependencies": {
-    "croner": "^9.1.0"
+    "croner": "^10.0.1"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
