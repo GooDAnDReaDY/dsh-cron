@@ -98,13 +98,15 @@ graph TD
 
 | 工具 | 说明 |
 |:---|:---|
-| `cron_create_task` | 创建任务：`title`、`schedule`、`prompt`，可选 `type`（`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`）、`delivery`、`provider`、`model`、`channels`、`template`、`notifyTelegram`、`onlyOnFailure`、`timeoutSeconds`、`overlapPolicy`、`kanbanMode` |
+| `cron_create_task` | 创建任务：`title`、`schedule`、`prompt`、`fallbackModel`（失败时改用更强模型重试一次），可选 `type`（`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`）、`delivery`、`provider`、`model`、`channels`、`template`、`notifyTelegram`、`onlyOnFailure`、`timeoutSeconds`、`overlapPolicy`、`kanbanMode` |
 | `cron_schedule_task` | `cron_create_task` 的别名，保持与既有提示词兼容 |
 | `cron_list_tasks` | 列出任务的状态、下次运行时间、token 总量与成本估算 |
 | `cron_pause_task` | 暂停调度而不删除配置 |
 | `cron_resume_task` | 恢复已暂停的调度 |
 | `cron_delete_task` | 永久删除任务及其历史 |
 | `cron_run_task` | 触发一次立即的带外运行 |
+| `cron_get_task` | 读取单个任务的完整配置，包括列表中看不到的字段 |
+| `cron_update_task` | 就地修改现有任务（白名单字段，校验与 HTTP 路由一致）；提示模型先与用户确认会执行代码的改动 |
 
 会话中模型可进行的调用示例：
 
@@ -146,12 +148,21 @@ cron_create_task({
 * **环境变量** —— 按任务的 `env` 映射（界面中每行 KEY VALUE）应用于外部运行时；请勿在此存放密钥。
 * **工作区与 worktree** —— 将任务绑定到 Harness 工作区（`workspaceId`）；对会修改代码的智能体任务，可在隔离的 git worktree 中运行（`worktree`、`keepWorktree`）。
 
-### 7. 会话集成与权限
+### 7. 成本控制：回退模型
+任务可以默认使用便宜模型，失败时改用更强模型完成：设置 `fallbackModel`（可选 `fallbackProvider`），失败（`error` 或 `timeout`）的运行会在该模型上重试一次，之后才进入常规重试退避。历史记录会标明最终产出结果的模型以及是否使用了回退，两次尝试的用量与成本都会累计，模板变量 `{model}` 渲染完成运行的模型。回退仅适用于智能体类型（`llm`、`skill`、`workflow`）。
+
+### 8. 会话集成与权限
 * **按任务的权限预设** —— `default`、`read-only`、`workspace-write` 或 `full` 在提示词执行前应用于任务会话。
 * **会话自动归档** —— 隔离的 cron 会话在运行后自动归档（尽力而为），不干扰聊天列表。
 * **历史 → 会话** —— 每次 LLM 运行都会记录会话，可直接从历史记录打开对话。
 
-### 8. 通知渠道与消息模板
+### 9. 按规则保持安静
+有输出的任务可以设置用自然语言描述的**静默规则**（例如“当没有分区使用率超过 80% 时保持安静”）。运行成功时，由便宜模型对照该规则判断输出，若结论为保持安静则跳过报告，并在运行历史中记录原因。遵循 fail-open：没有规则、没有模型、调用失败或答案无法解析时都会照常投递报告。插件设置 `silentRuleModel` 指定用于判断的模型。
+
+### 10. 失败诊断
+智能体任务可以请求诊断：设置 `inspectOnFailure` 后，失败（`error` 或 `timeout`）的运行会连同任务提示词与截断输出一起交给模型，运行历史中会保存简短诊断与具体的提示词修改建议。历史记录提供按钮把该建议载入编辑表单 —— 不会自动应用。模型由 `inspectorModel` 指定，消息模板中可使用 `{diagnosis}`。模型不可用或调用失败时，失败的运行保持原样。
+
+### 11. 通知渠道与消息模板
 运行完成后，报告会发送到该任务配置的所有渠道 —— Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、语音（`dsh-tts`）以及 Gitea issue：
 
 * **任务迁移** —— 将全部配置导出为版本化 JSON，并在别处导入（含预览摘要）；导入的任务处于暂停状态。
@@ -168,11 +179,11 @@ cron_create_task({
 * **Gitea** —— 创建包含运行报告的 issue（`giteaBaseUrl`、`giteaRepo`、token 凭据）；失败运行标记为 `cron`、`bug`、`alert`。
 * **测试发送按钮** —— 在安排关键任务前现场验证 Telegram 连通性。
 
-### 9. Kanban 集成与成本统计
+### 12. Kanban 集成与成本统计
 * **自动创建 Kanban 卡片** —— 当 `kanbanMode` 为 `on_failure` 或 `always` 时，插件在 `dsh-kanban` 中创建卡片（`on_failure` → `error`/`timeout` 时进入 *Backlog*；`always` → 完成后进入 *Done*/*Backlog*）。
 * **Token 与执行成本计量** —— 按运行与任务统计 token 消耗（输入、输出、缓存读取），基于内置价格表估算美元成本，并提供汇总分析栏。
 
-### 10. 重叠策略与执行超时
+### 13. 重叠策略与执行超时
 
 * **执行超时（`timeoutSeconds`）** —— 达到限制后，shell 子进程通过 abort 信号立即终止，智能体会话被释放以停止消耗 token。默认 `1800`（30 分钟）。
 * **重叠策略（`overlapPolicy`）** —— 上一次运行尚未结束时再次触发调度时的行为：
@@ -182,7 +193,7 @@ cron_create_task({
 
 如果守护进程在计划时刻处于离线状态，启动时该次运行会被记录为 `missed`，历史空档始终可见。
 
-### 11. 心跳监控（Dead man's switch）
+### 14. 心跳监控（Dead man's switch）
 * 在插件设置中配置 `heartbeatUrl` 与 `heartbeatIntervalSec`，调度器会按间隔 GET 该地址 —— 外部监控可在心跳停止时告警。
 * 内置 `GET /dsh-cron/heartbeat` 端点返回存活状态、活跃任务数与最近运行时间，便于自建看门狗。
 
@@ -280,6 +291,7 @@ dsh-cron:
 | `POST` | `/dsh-cron/tasks/:id/resume` | 恢复调度 |
 | `POST` | `/dsh-cron/tasks/:id/toggle` | 切换活跃/暂停 |
 | `POST` | `/dsh-cron/tasks/:id/duplicate` | 创建暂停状态的副本：复制配置，重置运行历史与计数 |
+| `GET` | `/dsh-cron/recipes` | 内置配方目录：按类别分组的现成监控预设，全部为只读操作 |
 | `GET` | `/dsh-cron/tasks/export` | 仅含任务配置的版本化 JSON —— 不含历史与计数。渠道按名称引用凭据，但手动填写在任务中的 `env` 与 HTTP 请求头属于配置，会出现在文件里 |
 | `POST` | `/dsh-cron/tasks/import` | 校验文档并以 `add`、`replace` 或 `skip` 策略导入；支持 `dryRun` 预览。导入的任务始终为**暂停**状态，恢复不会自动触发 |
 | `PATCH` | `/dsh-cron/tasks/:id` | 部分更新（仅白名单字段：`title`、`schedule`、`prompt`、`type`、`delivery`、`provider`、`model`、通知/超时/重叠/Kanban 设置、`status`、`oneShot`） |

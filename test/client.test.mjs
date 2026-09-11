@@ -137,6 +137,44 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
   assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
 
+  // #48 — a recipe preset fills the runtime, the channels and the rule.
+  assert.ok(code.includes("if (preset.silentRule !== undefined) setFormSilentRule(preset.silentRule || '')"), 'a recipe carries its silent rule into the form');
+  // A recipe must survive the form reset: the reset runs BEFORE the preset.
+  assert.ok(
+    code.indexOf("setFormSilentRule('');") < code.indexOf("if (preset.silentRule !== undefined) setFormSilentRule(preset.silentRule || '')"),
+    'the form resets its rule field before the preset fills it',
+  );
+  assert.ok(code.includes("'recs.hint'"), 'the suggestion block explains that nothing is created until saving');
+
+  // #43 — the failure inspector.
+  assert.ok(code.includes("'form.inspectOnFailureLabel'"), 'inspector checkbox present');
+  assert.ok(code.includes('const [formInspectOnFailure, setFormInspectOnFailure] = React.useState('), 'inspector state present');
+  assert.ok(code.includes('inspectOnFailure: isAgentType ? Boolean(formInspectOnFailure) : false'), 'inspection is limited to agent tasks');
+  assert.ok(code.includes("'settings.inspectorModelLabel'"), 'the inspector model is configurable');
+  assert.ok(code.includes("'history.diagnosis'") && code.includes('run.diagnosis'), 'the history shows the diagnosis');
+  assert.ok(code.includes("'history.applySuggestion'") && code.includes('{ prompt: run.suggestion }'), 'a suggestion can be loaded into the edit form');
+
+  // #44 — the silent rule field and the history marker.
+  assert.ok(code.includes("'form.silentRuleLabel'"), 'silent rule label present');
+  assert.ok(code.includes('const [formSilentRule, setFormSilentRule] = React.useState('), 'silent rule state present');
+  assert.ok(code.includes('silentRule: isAgentType ? undefined : formSilentRule.trim()'), 'the rule is sent only for output-producing types');
+  assert.ok(code.includes('!AGENT_FORM_TYPES.includes(formType) &&') , 'the field is hidden for agent tasks');
+  assert.ok(code.includes("'history.silentSkip'") && code.includes('run.silentReason'), 'a suppressed run shows why in the history');
+  assert.ok(code.includes("'settings.silentRuleModelLabel'"), 'the rule model is configurable');
+
+  // #49 — tuning a task in a dialogue.
+  assert.ok(code.includes("'actions.tuneWithDsh'"), 'tune action is labelled');
+  assert.ok(code.includes('const handleTuneWithDsh = async (task)'), 'tune handler present');
+  assert.ok(code.includes('cron_update_task tool'), 'the dialogue is told which tool applies the change');
+  assert.ok(code.includes('confirm it with me explicitly'), 'code-executing changes require explicit confirmation');
+  assert.ok(code.includes("'/dsh-cron/chat/start'"), 'tuning reuses the existing chat session start');
+
+  // #45 — the fallback model field exists for agent tasks only.
+  assert.ok(code.includes("'form.fallbackModelLabel'"), 'fallback model label present');
+  assert.ok(code.includes('const [formFallbackModel, setFormFallbackModel] = React.useState('), 'fallback model state present');
+  assert.ok(code.includes('fallbackModel: isAgentType ? (formFallbackModel.trim() || undefined) : undefined'), 'fallback is sent only for agent tasks');
+  assert.ok(code.includes("setFormFallbackModel(task.fallbackModel || '')"), 'the field loads the stored value');
+
   // #39 — responsive rules stay layout-only.
   assert.ok(code.includes('@media (max-width: 900px)'), 'tablet breakpoint present');
   assert.ok(code.includes('@media (max-width: 640px)'), 'phone breakpoint present');

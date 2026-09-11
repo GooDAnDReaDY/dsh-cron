@@ -8,12 +8,12 @@
   python, http, ssh, docker, env и worktree; отчёты о запусках в Telegram,
   dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, dsh-tts и Gitea;
   учёт токенов и стоимости.
-- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.5` (см. `package.json`).
-- **Статус**: active, релиз `0.2.5` готов к публикации 2026-09-11: блок A
-  пользовательских поверхностей (#34, #39, #40, #41, #42, #115) плюс удаление
-  email-канала (#23). Код — PR #122 (независимое ревью в три раунда, PASS на
-  `0df5c4d`), релизный bump — отдельный коммит в `main`. Предыдущий релиз
-  `0.2.4` опубликован и установлен в production тем же циклом.
+- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.5` (см. `package.json`); ветка `feat/0.2.6-economy-block` готовит 0.2.6.
+- **Статус**: active. Опубликован `0.2.5` (блок A + удаление email-канала);
+  в ветке `feat/0.2.6-economy-block` готов блок B: каталог рецептов (#48),
+  инструменты `cron_get_task`/`cron_update_task` (#49), каскад моделей (#45),
+  правило тишины (#44), диагностика сбоев (#43) и разбивка обработчиков (#97).
+  Публикация 0.2.6 — только после явного «Публикуем релиз?».
 - **DEV**: `/mnt/external/Project/DEV/dhsplugins/dsh-cron` (корень read-only,
   работа в `.worktrees/<branch>`).
 - **OPT / production**: DSH web-профиль MiniAI; CLI
@@ -42,6 +42,12 @@
   маршрутизатор `deliverRun` (собирает сбои каналов, не роняет запуск).
 - `@lib/store.js` — атомарное JSON-хранилище; каталог данных берётся из
   `DSH_DATA_DIR` → `DSH_HOME/data` → `~/.dsh/data`.
+- `@lib/api.js` — REST-слой: диспетчер + обработчики по областям (#97).
+- `@lib/task-patch.js` — правка задачи одним кодом для HTTP-PATCH и инструмента (#49).
+- `@lib/recipes.js` — каталог готовых рецептов с защитой от деструктивных команд (#48).
+- `@lib/llm-ask.js` — вызов модели через `ctx.llm.stream` с дедлайном и fail-open (#44, #43).
+- `@lib/silent-rule.js` — правило тишины: вердикт `{notify, reason}` (#44).
+- `@lib/failure-inspector.js` — диагностика сбоя и предложение правки промпта (#43).
 - `@lib/client.js` — UI (single-file: требование DSH-загрузчика).
 - `@lib/http-utils.js` — same-origin, лимит тела, whitelist PATCH.
 - `@docs/design/DESIGN.md` — дизайн-контракт UI.

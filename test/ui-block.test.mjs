@@ -430,3 +430,47 @@ test('#42: replacing an armed task through import pauses it in the scheduler too
   // otherwise a task shown as paused would keep firing on schedule.
   assert.equal(scheduler.jobs.has('cron_live'), false, 'the imported replacement is disarmed');
 });
+
+// --------------------------------------------------- API surface after #97
+
+test('#97: the item routes keep their contracts after the handler split', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+  store.set({ id: 'cron_a', title: 'A', schedule: '0 4 * * *', prompt: 'echo a', type: 'script', status: 'paused' });
+
+  // GET list
+  const listRes = mockRes();
+  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: {} }, listRes);
+  assert.equal(listRes.statusCode, 200);
+  assert.equal(listRes.payload.tasks.length, 1);
+  assert.equal(listRes.payload.tasks[0].running, false);
+
+  // GET history
+  const histRes = mockRes();
+  await handler({ method: 'GET', url: '/dsh-cron/tasks/cron_a/history', headers: {} }, histRes);
+  assert.equal(histRes.statusCode, 200);
+  assert.deepEqual(histRes.payload.history, []);
+
+  // PATCH keeps the whitelist (stats stay server-owned) and re-schedules
+  const patchRes = mockRes();
+  const patchReq = mockPost('/dsh-cron/tasks/cron_a', { title: 'A renamed', status: 'active', totalTokens: 999 });
+  patchReq.method = 'PATCH';
+  await handler(patchReq, patchRes);
+  assert.equal(patchRes.statusCode, 200);
+  assert.equal(patchRes.payload.task.title, 'A renamed');
+  assert.notEqual(patchRes.payload.task.totalTokens, 999, 'stats stay server-owned');
+  assert.equal(scheduler.jobs.has('cron_a'), true, 'an active patch arms the task');
+
+  // DELETE removes it and disarms
+  const delRes = mockRes();
+  await handler({ method: 'DELETE', url: '/dsh-cron/tasks/cron_a', headers: {} }, delRes);
+  assert.equal(delRes.statusCode, 200);
+  assert.equal(store.get('cron_a'), undefined);
+  assert.equal(scheduler.jobs.has('cron_a'), false);
+
+  // Unknown action falls through to 405
+  const unknownRes = mockRes();
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_x/nonsense', headers: {} }, unknownRes);
+  assert.equal(unknownRes.statusCode, 405);
+  assert.equal(unknownRes.payload.error, 'Method not allowed');
+});

@@ -8,6 +8,7 @@ import { SessionRunner } from '../lib/runner.js';
 import { TaskStore, getDefaultStorePath } from '../lib/store.js';
 import { TaskScheduler, describeCron } from '../lib/scheduler.js';
 import { parseJsonBody } from '../lib/http-utils.js';
+import { resolveTemplateText, TEMPLATE_VARIABLES } from '../lib/templates.js';
 import {
   createCronApiHandler,
   executeCreateTask,
@@ -211,4 +212,105 @@ test('store path honours DSH_DATA_DIR and DSH_HOME before the user home', () => 
     if (env.DSH_DATA_DIR === undefined) delete process.env.DSH_DATA_DIR;
     if (env.DSH_HOME === undefined) delete process.env.DSH_HOME;
   }
+});
+
+// ------------------------------------------------------------------ #45
+
+test('#45: a failed run retries once on the fallback model', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const calls = [];
+  scheduler.executeFn = async (task) => {
+    calls.push(task.model);
+    if (task.model === 'cheap-model') throw new Error('model overloaded');
+    return { output: 'done on the strong model', usage: { inputTokens: 10, outputTokens: 20, cacheReadTokens: 0 }, costUsd: 0.02, sessionId: 's1' };
+  };
+
+  const task = store.set({
+    id: 'cron_fb',
+    title: 'Fallback task',
+    schedule: '0 4 * * *',
+    prompt: 'do it',
+    type: 'llm',
+    status: 'paused',
+    provider: 'p1',
+    model: 'cheap-model',
+    fallbackProvider: 'p2',
+    fallbackModel: 'strong-model',
+  });
+
+  await scheduler.runTask(task.id);
+
+  assert.deepEqual(calls, ['cheap-model', 'strong-model'], 'exactly one fallback attempt');
+  const run = store.getHistory(task.id).at(-1);
+  assert.equal(run.status, 'success', 'the fallback attempt decided the outcome');
+  assert.equal(run.model, 'strong-model', 'history records the model that produced the result');
+  assert.equal(run.fallback, true, 'history marks the fallback');
+  assert.equal(run.usage.inputTokens, 10);
+  assert.equal(run.usage.outputTokens, 20);
+  assert.equal(run.costUsd, 0.02);
+});
+
+test('#45: without a fallback model nothing changes', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const calls = [];
+  scheduler.executeFn = async (task) => {
+    calls.push(task.model);
+    throw new Error('boom');
+  };
+  const task = store.set({ id: 'cron_nofb', title: 'No fallback', schedule: '0 4 * * *', prompt: 'x', type: 'llm', status: 'paused', model: 'only-model' });
+  await scheduler.runTask(task.id);
+  assert.deepEqual(calls, ['only-model'], 'one attempt only');
+  const run = store.getHistory(task.id).at(-1);
+  assert.equal(run.status, 'error');
+  assert.equal(run.fallback, false);
+  assert.equal(run.model, 'only-model');
+});
+
+test('#45: external runtimes never use a fallback model', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const calls = [];
+  scheduler.executeFn = async (task) => {
+    calls.push(task.model);
+    throw new Error('boom');
+  };
+  const task = store.set({
+    id: 'cron_script_fb',
+    title: 'Script with a fallback set by mistake',
+    schedule: '0 4 * * *',
+    prompt: 'df -h',
+    type: 'script',
+    status: 'paused',
+    fallbackModel: 'strong-model',
+  });
+  await scheduler.runTask(task.id);
+  assert.equal(calls.length, 1, 'a script task has no model to fall back from');
+});
+
+test('#45: both attempts failing keeps the error status and reports the last error', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  scheduler.executeFn = async (task) => {
+    if (task.model === 'strong-model') return Promise.reject(new Error('still broken'));
+    return Promise.reject(new Error('broken'));
+  };
+  const task = store.set({
+    id: 'cron_fb_fail',
+    title: 'Both fail',
+    schedule: '0 4 * * *',
+    prompt: 'x',
+    type: 'llm',
+    status: 'paused',
+    model: 'cheap-model',
+    fallbackModel: 'strong-model',
+  });
+  await scheduler.runTask(task.id);
+  const run = store.getHistory(task.id).at(-1);
+  assert.equal(run.status, 'error');
+  assert.equal(run.fallback, true, 'the run did reach the fallback attempt');
+  assert.match(run.error, /still broken/, 'the last error is reported');
+});
+
+test('#45: the {model} template variable renders the model that produced the run', () => {
+  const text = resolveTemplateText({ template: 'model={model}', task: { title: 'T' }, runInfo: { status: 'success', model: 'strong-model' } });
+  assert.equal(text, 'model=strong-model');
+  assert.ok(TEMPLATE_VARIABLES.includes('model'));
 });
