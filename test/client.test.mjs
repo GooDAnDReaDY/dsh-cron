@@ -137,6 +137,13 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
   assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
 
+  // #49 — tuning a task in a dialogue.
+  assert.ok(code.includes("'actions.tuneWithDsh'"), 'tune action is labelled');
+  assert.ok(code.includes('const handleTuneWithDsh = async (task)'), 'tune handler present');
+  assert.ok(code.includes('cron_update_task tool'), 'the dialogue is told which tool applies the change');
+  assert.ok(code.includes('confirm it with me explicitly'), 'code-executing changes require explicit confirmation');
+  assert.ok(code.includes("'/dsh-cron/chat/start'"), 'tuning reuses the existing chat session start');
+
   // #45 — the fallback model field exists for agent tasks only.
   assert.ok(code.includes("'form.fallbackModelLabel'"), 'fallback model label present');
   assert.ok(code.includes('const [formFallbackModel, setFormFallbackModel] = React.useState('), 'fallback model state present');

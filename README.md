@@ -106,6 +106,8 @@ Autonomous agents can manage schedules directly:
 | `cron_resume_task` | Resumes a paused schedule |
 | `cron_delete_task` | Permanently removes a task and its history |
 | `cron_run_task` | Triggers an immediate out-of-band run |
+| `cron_get_task` | Reads the full configuration of one task, including fields the list does not show |
+| `cron_update_task` | Changes an existing task in place (whitelisted fields, same validation as the HTTP route); the model is told to confirm code-executing changes with the user first |
 
 Example invocation the model can make during a conversation:
 

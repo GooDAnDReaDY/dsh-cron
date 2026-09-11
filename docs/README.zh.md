@@ -105,6 +105,8 @@ graph TD
 | `cron_resume_task` | 恢复已暂停的调度 |
 | `cron_delete_task` | 永久删除任务及其历史 |
 | `cron_run_task` | 触发一次立即的带外运行 |
+| `cron_get_task` | 读取单个任务的完整配置，包括列表中看不到的字段 |
+| `cron_update_task` | 就地修改现有任务（白名单字段，校验与 HTTP 路由一致）；提示模型先与用户确认会执行代码的改动 |
 
 会话中模型可进行的调用示例：
 

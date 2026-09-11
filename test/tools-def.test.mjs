@@ -46,6 +46,8 @@ test('all tools in lib/index.js follow dsh-tools defineTool contract (flat param
     'cron_resume_task',
     'cron_delete_task',
     'cron_run_task',
+    'cron_get_task',
+    'cron_update_task',
   ];
 
   for (const name of expectedTools) {
@@ -61,10 +63,14 @@ test('all tools in lib/index.js follow dsh-tools defineTool contract (flat param
   // The create/alias pair shares createTaskOutput via the single
   // executeCreateTask implementation (#92); the other five keep inline specs.
   const toolBlocks = code.split('defineTool({');
-  // First element is before first defineTool
-  assert.equal(toolBlocks.length, 8, 'Expected exactly 7 defineTool blocks (6 tools + 1 alias)');
+  // Every named tool plus the cron_schedule_task alias, which shares the
+  // create implementation (#92). Derived from the name list so adding a tool
+  // does not silently skip the contract checks below.
+  // The name list already includes the alias, so it matches the block count.
+  const expectedBlocks = expectedTools.length;
+  assert.equal(toolBlocks.length, expectedBlocks + 1, `Expected ${expectedBlocks} defineTool blocks`);
 
-  for (let i = 1; i <= 7; i++) {
+  for (let i = 1; i <= expectedBlocks; i++) {
     const block = toolBlocks[i];
     const shared = block.includes('output: createTaskOutput');
     assert.ok(shared || block.includes('output: {'), `Tool block ${i} must declare an output spec`);
@@ -75,7 +81,7 @@ test('all tools in lib/index.js follow dsh-tools defineTool contract (flat param
   assert.ok(sharedSpec[0].includes('schema: {'), 'shared output spec has schema');
   assert.ok(sharedSpec[0].includes('render'), 'shared output spec has render function');
 
-  for (let i = 3; i <= 7; i++) {
+  for (let i = 3; i <= expectedBlocks; i++) {
     const block = toolBlocks[i];
     assert.ok(block.includes('schema: {'), `Tool block ${i} must have schema: {`);
     assert.ok(block.includes('render(') || block.includes('render:'), `Tool block ${i} must have render: function`);
