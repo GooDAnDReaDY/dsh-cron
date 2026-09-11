@@ -31,7 +31,7 @@
 
 **`@goodandready/dsh-cron`** 是 DeepSeek Harness 的原生全栈调度与后台自动化插件。它将标准 cron 表达式、自然语言间隔语法与自主智能体执行连接起来：
 
-1. **完善的可视化任务管理器** —— 侧边栏按钮与功能齐全的面板：查看、筛选、暂停、立即运行和创建任务。
+1. **完善的可视化任务管理器** —— 侧边栏按钮带可折叠的活跃任务列表（下次运行时间或实时状态，行数有上限且状态可记忆），以及功能齐全的面板：按类型、模型、渠道筛选，暂停、立即运行、复制、导出/导入与创建任务。
 2. **交互式“由 DSH 创建”流程** —— 与智能体对话，把高层需求转化为规范的定时任务。
 3. **自主工具调用** —— 原生 `cron_*` 工具让智能体在会话中自行安排后续执行。
 4. **健壮的调度器与原子存储** —— 基于 `croner`：间隔别名、一次性延时任务、原子写入、运行历史与成本追踪。
@@ -278,6 +278,9 @@ dsh-cron:
 | `POST` | `/dsh-cron/tasks/:id/pause` | 暂停调度 |
 | `POST` | `/dsh-cron/tasks/:id/resume` | 恢复调度 |
 | `POST` | `/dsh-cron/tasks/:id/toggle` | 切换活跃/暂停 |
+| `POST` | `/dsh-cron/tasks/:id/duplicate` | 创建暂停状态的副本：复制配置，重置运行历史与计数 |
+| `GET` | `/dsh-cron/tasks/export` | 仅含任务配置的版本化 JSON —— 不含历史、计数与密钥 |
+| `POST` | `/dsh-cron/tasks/import` | 校验文档并以 `add`、`replace` 或 `skip` 策略导入；支持 `dryRun` 预览 |
 | `PATCH` | `/dsh-cron/tasks/:id` | 部分更新（仅白名单字段：`title`、`schedule`、`prompt`、`type`、`delivery`、`provider`、`model`、通知/超时/重叠/Kanban 设置、`status`、`oneShot`） |
 | `DELETE` | `/dsh-cron/tasks/:id` | 删除任务 |
 | `GET` | `/dsh-cron/models` | 列出 LLM 提供方；`?provider=<id>` 列出模型 |
