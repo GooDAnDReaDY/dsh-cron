@@ -284,7 +284,7 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoint
 | `POST` | `/dsh-cron/tasks/:id/toggle` | Toggle active/paused |
 | `POST` | `/dsh-cron/tasks/:id/duplicate` | Creates a paused copy of a task: configuration copied, run state (history, counters, last run) reset |
 | `GET` | `/dsh-cron/tasks/export` | Versioned JSON document with task configuration only — no history, counters or secrets |
-| `POST` | `/dsh-cron/tasks/import` | Validates a document and applies it with `add`, `replace` or `skip`; supports a `dryRun` summary |
+| `POST` | `/dsh-cron/tasks/import` | Validates a document and applies it with `add`, `replace` or `skip`; supports a `dryRun` summary. Imported tasks always start **paused**, so a restore never fires until reviewed |
 | `PATCH` | `/dsh-cron/tasks/:id` | Partial update (whitelisted fields only: `title`, `schedule`, `prompt`, `type`, `delivery`, `provider`, `model`, runtime settings, `channels`, `template`, notification/timeout/overlap/kanban settings, `status`, `oneShot`) |
 | `DELETE` | `/dsh-cron/tasks/:id` | Delete the task |
 | `GET` | `/dsh-cron/models` | List LLM providers; `?provider=<id>` lists models |
