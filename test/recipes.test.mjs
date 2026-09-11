@@ -42,8 +42,21 @@ test('#48: recipe copies are detached from the catalog', () => {
 });
 
 test('#48: the destructive-command guard actually detects something', () => {
-  assert.ok(findDestructiveRecipe([{ id: 'bad', prompt: 'rm -rf /var/log/*' }]));
-  assert.ok(findDestructiveRecipe([{ id: 'bad', prompt: 'systemctl restart nginx' }]));
-  assert.ok(findDestructiveRecipe([{ id: 'bad', prompt: 'docker system prune -f' }]));
-  assert.equal(findDestructiveRecipe([{ id: 'ok', prompt: 'df -h' }]), null);
+  // Every probe here defeated the first version of the guard during review.
+  const destructive = [
+    'rm -rf /var/log/*', 'rm -i /etc/hosts', 'find /var/log -type f -delete', 'shred -u secret',
+    'mv /etc/nginx/nginx.conf /tmp/', 'apt-get purge nginx', 'apt-get install nginx', 'userdel -r bob',
+    'crontab -r', 'iptables -F', 'dd of=/dev/sda bs=1M', 'echo hacked > /var/log/syslog',
+    'sed -i s/a/b/ /etc/hosts', 'systemctl restart nginx', 'docker system prune -f', 'docker compose down',
+    'truncate -s 0 /var/log/syslog', 'chmod -R 777 /etc',
+  ];
+  for (const prompt of destructive) {
+    assert.ok(findDestructiveRecipe([{ id: 'bad', prompt }]), `must be blocked: ${prompt}`);
+  }
+
+  // The recipes that ship must still pass their own gate.
+  const readOnly = ['df -h', 'free -m', 'uptime', 'systemctl --failed --no-pager --no-legend', 'du -sh /var/log', 'ls -lt /var/backups | head -n 5', 'docker ps --format "{{.Names}}"'];
+  for (const prompt of readOnly) {
+    assert.equal(findDestructiveRecipe([{ id: 'ok', prompt }]), null, `must stay allowed: ${prompt}`);
+  }
 });

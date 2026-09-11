@@ -69,3 +69,30 @@ test('#49: a patch summary names the changed fields', () => {
   assert.equal(describeTaskPatch({}, { title: 'B', schedule: '0 5 * * *', scheduleText: 'ignored' }), 'title="B", schedule="0 5 * * *"');
   assert.equal(describeTaskPatch({}, {}), 'no changes');
 });
+
+test('#49: a code-type switch needs an explicit confirmation, on every surface', (t) => {
+  const { store, scheduler } = makeEnv(t);
+  store.set({ id: 'cron_c', title: 'C', schedule: '0 4 * * *', prompt: 'summarise', type: 'llm', status: 'paused' });
+
+  const refused = applyTaskPatch({ store, scheduler, id: 'cron_c', body: { type: 'script' } });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.needsConfirmation, true, 'the refusal is structural, not a description');
+  assert.equal(store.get('cron_c').type, 'llm', 'nothing changed');
+
+  const allowed = applyTaskPatch({ store, scheduler, id: 'cron_c', body: { type: 'script', prompt: 'df -h' }, allowCodeSwitch: true });
+  assert.equal(allowed.ok, true);
+  assert.equal(store.get('cron_c').type, 'script');
+
+  // A switch that does not introduce code execution needs no confirmation.
+  const back = applyTaskPatch({ store, scheduler, id: 'cron_c', body: { type: 'llm', prompt: 'summarise' } });
+  assert.equal(back.ok, true);
+});
+
+test('#49: an empty schedule is refused instead of disarming the task silently', (t) => {
+  const { store, scheduler } = makeEnv(t);
+  store.set({ id: 'cron_e', title: 'E', schedule: '0 4 * * *', prompt: 'x', type: 'script', status: 'paused' });
+  const result = applyTaskPatch({ store, scheduler, id: 'cron_e', body: { schedule: '   ' } });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /cannot be empty/);
+  assert.equal(store.get('cron_e').schedule, '0 4 * * *');
+});

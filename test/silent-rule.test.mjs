@@ -140,3 +140,14 @@ test('#44: the ask target prefers the task provider/model', () => {
   assert.deepEqual(resolveAskTarget(ctx, {}), { provider: 'default-p', model: 'default-m' });
   assert.deepEqual(resolveAskTarget(ctx, {}, 'rule-model'), { provider: 'default-p', model: 'rule-model' });
 });
+
+test('#44: the rule is judged on the task model, not on an unrelated default', async () => {
+  let seen = null;
+  await applySilentRule({
+    task: { ...scriptTask, model: 'task-model', provider: 'task-provider' },
+    runInfo: { status: 'success', output: 'ok' },
+    ask: async (options) => { seen = options; return { ok: true, text: '{"notify": true}' }; },
+  });
+  assert.equal(seen.task.model, 'task-model', 'the task reaches the ask helper');
+  assert.equal(seen.task.provider, 'task-provider');
+});
