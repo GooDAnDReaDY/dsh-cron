@@ -137,6 +137,10 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
   assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
 
+  // #48 — a recipe preset fills the runtime, the channels and the rule.
+  assert.ok(code.includes("if (preset.silentRule !== undefined) setFormSilentRule(preset.silentRule || '')"), 'a recipe carries its silent rule into the form');
+  assert.ok(code.includes("'recs.hint'"), 'the suggestion block explains that nothing is created until saving');
+
   // #43 — the failure inspector.
   assert.ok(code.includes("'form.inspectOnFailureLabel'"), 'inspector checkbox present');
   assert.ok(code.includes('const [formInspectOnFailure, setFormInspectOnFailure] = React.useState('), 'inspector state present');
