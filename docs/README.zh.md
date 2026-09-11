@@ -209,7 +209,7 @@ dsh-cron:
       title: Nightly backup
       schedule: "0 3 * * *"
       type: script
-      script: "bash /path/to/backup.sh"
+      prompt: "bash /path/to/backup.sh"
       channels: ["telegram"]
       timeoutSeconds: 3600
     - id: morning-digest
@@ -221,8 +221,8 @@ dsh-cron:
       model: provider-id/model-id
 ```
 
-* 每条必填：`id`、`title`、`schedule`；智能体类型（`llm`、`skill`、`workflow`）还需 `prompt`。
-* 其余任务字段按原样透传，校验与 API 一致：`channels`、`model`、`provider`、`fallbackModel`、`silentRule`、`inspectOnFailure`、`timezone`、`timeoutSeconds`、`template`、`env`、`cwd`，以及运行时字段（`script`、`nodePath`、`pythonPath`、`httpUrl`、`httpMethod`、`httpHeaders`、`httpBody`、`sshProfileId`、`sshTarget`、`dockerImage`、`workspaceId`、`worktree`、`keepWorktree`、`skillName`、`workflowName`）。
+* 每条必填：`id`、`title`、`schedule`；以提示词承载有效载荷的类型（`script`、`node`、`python`、`ssh`、`docker`、`llm`、`skill`、`workflow`）还需非空 `prompt`。`http` 例外：目标由 `httpUrl`（或 `prompt`）给出。
+* 其余任务字段按原样透传，校验与 API 一致：`channels`、`model`、`provider`、`fallbackModel`、`silentRule`、`inspectOnFailure`、`timezone`、`timeoutSeconds`、`template`、`env`、`cwd`，以及运行时字段（`nodePath`、`pythonPath`、`httpUrl`、`httpMethod`、`httpHeaders`、`httpBody`、`sshProfileId`、`sshTarget`、`dockerImage`、`workspaceId`、`worktree`、`keepWorktree`、`skillName`、`workflowName`）。
 * 声明式任务标记为**由配置管理**；面板中显示来源标签而不是编辑/删除按钮。
 * 对配置任务的编辑、暂停、恢复、切换与删除在面板和 API 上返回 `409`，携带配置任务现有 `id` 的创建或更新请求 `POST /dsh-cron/tasks` 同样被拒绝 —— 配置文件的来源为唯一真值。**立即运行**仍然可用。
 * 通过 UI、API 或智能体工具创建的、`id` 相同的任务绝不会被覆盖：该条目会被跳过，冲突写入日志。
@@ -267,7 +267,7 @@ curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cl
 # 会执行代码的任务还需确认头
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "x-dsh-cron-confirm: script" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","script":"df -h"}' \
+  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","prompt":"df -h"}' \
   "$BASE/dsh-cron/api/tasks"
 ```
 

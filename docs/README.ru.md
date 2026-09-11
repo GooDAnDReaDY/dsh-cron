@@ -259,7 +259,7 @@ dsh-cron:
       title: Nightly backup
       schedule: "0 3 * * *"
       type: script
-      script: "bash /path/to/backup.sh"
+      prompt: "bash /path/to/backup.sh"
       channels: ["telegram"]
       timeoutSeconds: 3600
     - id: morning-digest
@@ -271,8 +271,8 @@ dsh-cron:
       model: provider-id/model-id
 ```
 
-* Обязательные поля записи: `id`, `title`, `schedule`; агентским типам (`llm`, `skill`, `workflow`) нужен ещё `prompt`.
-* Остальные поля задачи проходят как есть с той же валидацией, что и в API: `channels`, `model`, `provider`, `fallbackModel`, `silentRule`, `inspectOnFailure`, `timezone`, `timeoutSeconds`, `template`, `env`, `cwd` и рантайм-поля (`script`, `nodePath`, `pythonPath`, `httpUrl`, `httpMethod`, `httpHeaders`, `httpBody`, `sshProfileId`, `sshTarget`, `dockerImage`, `workspaceId`, `worktree`, `keepWorktree`, `skillName`, `workflowName`).
+* Обязательные поля записи: `id`, `title`, `schedule`; типам, у которых полезная нагрузка — это промпт (`script`, `node`, `python`, `ssh`, `docker`, `llm`, `skill`, `workflow`), нужен ещё непустой `prompt`. `http` — исключение: цель задаётся `httpUrl` (или `prompt`).
+* Остальные поля задачи проходят как есть с той же валидацией, что и в API: `channels`, `model`, `provider`, `fallbackModel`, `silentRule`, `inspectOnFailure`, `timezone`, `timeoutSeconds`, `template`, `env`, `cwd` и рантайм-поля (`nodePath`, `pythonPath`, `httpUrl`, `httpMethod`, `httpHeaders`, `httpBody`, `sshProfileId`, `sshTarget`, `dockerImage`, `workspaceId`, `worktree`, `keepWorktree`, `skillName`, `workflowName`).
 * Объявленные задачи помечаются как **управляемые конфигом**; в панели вместо действий правки и удаления выводится метка источника.
 * Правка, пауза, возобновление, переключение и удаление конфиг-задачи отклоняются с `409` в панели и по API, и создание-обновление через `POST /dsh-cron/tasks` с существующим `id` конфиг-задачи отклоняется так же — источник правды файл конфига. **Запустить сейчас** остаётся доступным.
 * Задача с тем же `id`, созданная через UI, API или инструмент агента, никогда не перезаписывается: запись пропускается, конфликт пишется в лог.
@@ -317,7 +317,7 @@ curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cl
 # код-исполняющей задаче нужен ещё заголовок подтверждения
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "x-dsh-cron-confirm: script" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","script":"df -h"}' \
+  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","prompt":"df -h"}' \
   "$BASE/dsh-cron/api/tasks"
 ```
 

@@ -210,7 +210,7 @@ dsh-cron:
       title: Nightly backup
       schedule: "0 3 * * *"
       type: script
-      script: "bash /path/to/backup.sh"
+      prompt: "bash /path/to/backup.sh"
       channels: ["telegram"]
       timeoutSeconds: 3600
     - id: morning-digest
@@ -222,8 +222,8 @@ dsh-cron:
       model: provider-id/model-id
 ```
 
-* Required per entry: `id`, `title`, `schedule`; agent types (`llm`, `skill`, `workflow`) also need `prompt`.
-* Any other task field is passed through with the same validation as the API: `channels`, `model`, `provider`, `fallbackModel`, `silentRule`, `inspectOnFailure`, `timezone`, `timeoutSeconds`, `template`, `env`, `cwd`, and the runtime fields (`script`, `nodePath`, `pythonPath`, `httpUrl`, `httpMethod`, `httpHeaders`, `httpBody`, `sshProfileId`, `sshTarget`, `dockerImage`, `workspaceId`, `worktree`, `keepWorktree`, `skillName`, `workflowName`).
+* Required per entry: `id`, `title`, `schedule`; the types that carry their payload in the prompt (`script`, `node`, `python`, `ssh`, `docker`, `llm`, `skill`, `workflow`) also need a non-empty `prompt`. `http` is exempt: its target is given by `httpUrl` (or `prompt`).
+* Any other task field is passed through with the same validation as the API: `channels`, `model`, `provider`, `fallbackModel`, `silentRule`, `inspectOnFailure`, `timezone`, `timeoutSeconds`, `template`, `env`, `cwd`, and the runtime fields (`nodePath`, `pythonPath`, `httpUrl`, `httpMethod`, `httpHeaders`, `httpBody`, `sshProfileId`, `sshTarget`, `dockerImage`, `workspaceId`, `worktree`, `keepWorktree`, `skillName`, `workflowName`).
 * Declared jobs are marked **managed by the config**; the panel shows a source label instead of edit and delete actions.
 * Editing, pausing, resuming, toggling or deleting a config-owned task is refused with `409` on the panel and on the API, and a create-or-update `POST /dsh-cron/tasks` that carries the existing `id` of a config-owned task is refused the same way — the config file is the source of truth. **Run Now** stays available.
 * A task with the same `id` created through the UI, the API or an agent tool is never overwritten: the entry is skipped and the conflict is written to the log.
@@ -268,7 +268,7 @@ curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cl
 # a code-executing task also needs the confirmation header
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "x-dsh-cron-confirm: script" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","script":"df -h"}' \
+  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","prompt":"df -h"}' \
   "$BASE/dsh-cron/api/tasks"
 ```
 
