@@ -87,3 +87,43 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   assert.ok(code.includes('clearInterval('), 'cleanup timer on unmount present');
   assert.ok(code.includes("lastStatus: 'running'"), 'instant running status in handleRunNow');
 });
+
+test('#25/#26: the UI offers every delivery channel and never drifts from the server list', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  const serverCode = fs.readFileSync(new URL('../lib/channels.js', import.meta.url), 'utf-8');
+
+  const serverIds = JSON.parse(/CHANNEL_IDS = (\[[^\]]*\])/.exec(serverCode)[1].replace(/'/g, '"'));
+  const clientIds = JSON.parse(/DELIVERY_CHANNELS = (\[[^\]]*\])/.exec(code)[1].replace(/'/g, '"'));
+  assert.deepEqual(clientIds, serverIds, 'client channel list must match the server router');
+
+  for (const id of serverIds) {
+    assert.ok(code.includes(`${id}: 'form.channel`), `channel label mapping missing for ${id}`);
+  }
+  assert.ok(code.includes('const [formChannels, setFormChannels] = React.useState([]);'), 'per-task channel state');
+  assert.ok(code.includes('const [formTemplate, setFormTemplate] = React.useState('), 'per-task template state');
+  assert.ok(code.includes('channels: formChannels'), 'channels sent with the task payload');
+  assert.ok(code.includes('template: formTemplate.trim()'), 'template sent with the task payload');
+  assert.ok(code.includes('dsh-cron-channel-grid'), 'channel checkbox grid rendered');
+});
+
+test('#51: settings UI stores credential names, never secret values', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  const serverCode = fs.readFileSync(new URL('../lib/store.js', import.meta.url), 'utf-8');
+
+  // Every secret-bearing setting must be a *Ref field in the UI.
+  for (const key of ['botTokenRef', 'ntfyTokenRef', 'pushplusTokenRef', 'smtpPasswordRef', 'giteaTokenRef']) {
+    assert.ok(code.includes(`key: '${key}'`), `credential reference field missing: ${key}`);
+  }
+  // The UI must not offer raw secret inputs for these channels.
+  for (const raw of ['discordToken', 'slackToken', 'ntfyToken:', 'pushplusToken:']) {
+    assert.ok(!code.includes(`key: '${raw}`), `settings UI must not expose raw secret ${raw}`);
+  }
+  assert.ok(code.includes("'settings.secretsHint'"), 'UI states that credentials are referenced by name');
+  assert.ok(serverCode.includes('FORBIDDEN_SETTING_KEYS'), 'server refuses raw secret keys');
+
+  // The shared form is rendered by both the panel modal and the plugin card.
+  const usages = code.split('renderDeliverySettings({').length - 1;
+  assert.equal(usages, 3, 'one definition plus two call sites (modal and card)');
+  assert.equal(code.split('function renderDeliverySettings(').length - 1, 1, 'one shared definition');
+  assert.ok(code.includes("'aria-expanded': open ? 'true' : 'false'"), 'collapsible section head exposes aria-expanded');
+});
