@@ -158,7 +158,8 @@ cron_create_task({
 * **故障隔离** —— 某个渠道不可用会记录在调度器日志中，其余渠道仍会收到报告；失效的 webhook 不会吞掉整份报告。
 * **消息模板** —— 支持全局模板、按渠道覆盖或按任务模板，变量为 `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`。未知占位符保持原样，失败运行默认使用失败模板。
 * **`onlyOnFailure`** —— 全局或按任务生效：成功运行静默，仅发送 `error`/`timeout`。
-* **凭据按名称引用** —— webhook token、SMTP 密码与 Telegram bot token 填写 DSH 凭据的名称（`botTokenRef`、`ntfyTokenRef`、`pushplusTokenRef`、`smtpPasswordRef`、`giteaTokenRef`），发送时通过 DSH credentials 服务解析，并可回退到环境变量。设置文件不保存密钥本身。
+* **凭据按名称引用** —— webhook token、SMTP 密码与 Telegram bot token 填写 DSH 凭据的名称（`botTokenRef`、`ntfyTokenRef`、`pushplusTokenRef`、`smtpPasswordRef`、`giteaTokenRef`），发送时通过 DSH credentials 服务解析，并可回退到环境变量，且绝不会经过插件设置。webhook URL 与 Bark 设备键本身内嵌密钥，因此保存在插件设置文件中，但返回浏览器时始终为掩码，界面回传的掩码值也不会覆盖已保存的值。
+* **投递超时** —— 每个渠道请求都有上限（`deliveryTimeoutMs`，默认 15000 毫秒），且各渠道并发发送：无响应的端点只记录为失败，不会拖慢其他渠道或下一次调度。
 * **Telegram** —— 带状态徽标（✅ / ❌）、耗时、调度描述与等宽输出块的 Markdown 报告；动态值会被转义。凭据可直接填写，或从 DSH `settings.yaml` 的 `dsh-messenger-gateway` 段继承（尽力而为）。
 * **Discord / Slack** —— 通过 webhook 投递：Discord 使用按运行状态着色的 embed，Slack 使用纯文本正文。
 * **ntfy / Bark / PushPlus** —— 移动推送，支持主题/设备键与可选 bearer token；Bark 的标题与正文放在请求路径中，PushPlus 端点可指向自建代理。
@@ -217,6 +218,7 @@ dsh-cron:
   botTokenRef: ""              # Telegram bot token 的凭据名称
   template: ""                 # 全局消息模板，例如 "⏰ {title} — {status}"
   channelTemplates: {}         # 按渠道覆盖模板
+  deliveryTimeoutMs: 15000     # 每个渠道的投递超时；慢端点记为失败，不影响其他渠道
   discordWebhookUrl: ""        # Discord webhook
   slackWebhookUrl: ""          # Slack incoming webhook
   ntfyUrl: "https://ntfy.sh"   # ntfy 服务器；ntfyTopic / ntfyTokenRef
@@ -255,6 +257,7 @@ dsh-cron:
 | `botTokenRef` | `string` | `""` | 保存 Telegram bot token 的 DSH 凭据名称；发送时解析（回退顺序：`botToken` → messenger-gateway 设置 → 环境变量 `CRON_TELEGRAM_BOT_TOKEN`） |
 | `template` | `string` | `""` | 带 `{title}`/`{status}`/`{duration}` 等占位符的全局消息模板；留空使用内置文本 |
 | `channelTemplates` | `object` | `{}` | 按渠道 ID 覆盖模板（`telegram`、`discord` 等） |
+| `deliveryTimeoutMs` | `number` | `15000` | 每个渠道的投递超时；超时的端点记为失败，不拖慢其他渠道或下一次调度 |
 | `discordWebhookUrl` / `slackWebhookUrl` | `string` | `""` | Discord 与 Slack 渠道的 webhook 地址 |
 | `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | ntfy 服务器、主题与可选的 token 凭据名称（以 `Authorization: Bearer …` 发送） |
 | `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Bark 服务器与设备键（键、标题和正文位于请求路径中） |

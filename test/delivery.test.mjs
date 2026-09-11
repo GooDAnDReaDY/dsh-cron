@@ -21,6 +21,7 @@ import {
   buildEmailMessage,
   sendToChannel,
   deliverRun,
+  DEFAULT_DELIVERY_TIMEOUT_MS,
 } from '../lib/channels.js';
 
 const task = { id: 'cron_1', title: 'Nightly', scheduleText: 'Every day at 03:00', schedule: '0 3 * * *' };
@@ -92,8 +93,105 @@ test('#26: channel filtering honours only-on-failure and kanban modes', () => {
   assert.equal(shouldSendToChannel('kanban', { kanbanMode: 'on_failure' }, okRun, {}), false);
 });
 
-test('#26: every advertised channel id has a handler', () => {
+test('#26: every advertised channel id has a handler', async () => {
   assert.deepEqual(CHANNEL_IDS, ['telegram', 'kanban', 'discord', 'slack', 'ntfy', 'bark', 'pushplus', 'email', 'tts', 'gitea']);
+  assert.equal(DEFAULT_DELIVERY_TIMEOUT_MS, 15000, 'channels get a bounded delivery window by default');
+  // A missing case would fall through to "unknown channel", so drive each id
+  // through the dispatcher with a fully configured, stubbed environment.
+  const http = async () => ({ ok: true, status: 200, json: async () => ({ ok: true, provider: 'p', number: 1 }) });
+  const settings = {
+    chatId: '42', kanbanBaseUrl: 'http://127.0.0.1:3000',
+    discordWebhookUrl: 'http://d.test/h', slackWebhookUrl: 'http://s.test/h',
+    ntfyTopic: 't', ntfyTokenRef: 'N', barkKey: 'k', pushplusTokenRef: 'P',
+    smtpTo: 'a@b.test', smtpHost: 'smtp.test', giteaBaseUrl: 'http://g.test', giteaRepo: 'o/r', giteaTokenRef: 'G',
+    ttsBaseUrl: 'http://t.test',
+  };
+  const deps = { createTransport: () => ({ sendMail: async () => ({ messageId: '1' }) }) };
+  for (const channelId of CHANNEL_IDS) {
+    const detail = await sendToChannel({
+      channelId,
+      task,
+      runInfo: okRun,
+      settings,
+      secrets: { botToken: 'tok', resolveSecret: async () => 'secret' },
+      fetchFn: http,
+      deps,
+    });
+    assert.ok(detail && typeof detail === 'object', `${channelId} returned a detail object`);
+  }
+  await assert.rejects(
+    () => sendToChannel({ channelId: 'nope', task, runInfo: okRun, settings, fetchFn: http }),
+    /unknown channel/,
+  );
+});
+
+test('#26: a hanging channel times out instead of blocking the rest of the report', async () => {
+  const seen = [];
+  // The discord endpoint never settles; every other channel must still deliver.
+  // A real hung socket keeps the event loop alive by itself — the stub has to
+  // do the same, otherwise the process drains and the test is cancelled.
+  const http = (url, options = {}) => {
+    seen.push(String(url));
+    if (String(url).includes('hang.test')) {
+      return new Promise((resolve, reject) => {
+        const keepAlive = setInterval(() => {}, 25);
+        const fallback = setTimeout(() => {
+          clearInterval(keepAlive);
+          resolve({ ok: true, status: 200, json: async () => ({}) });
+        }, 3000);
+        const finish = (fn) => {
+          clearInterval(keepAlive);
+          clearTimeout(fallback);
+          fn();
+        };
+        if (options.signal) {
+          options.signal.addEventListener('abort', () => {
+            const err = new Error('aborted');
+            err.name = 'AbortError';
+            finish(() => reject(err));
+          });
+        }
+      });
+    }
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+  };
+  const started = Date.now();
+  const result = await deliverRun({
+    task: { ...task, channels: ['discord', 'slack'] },
+    runInfo: okRun,
+    settings: { discordWebhookUrl: 'http://hang.test/hook', slackWebhookUrl: 'http://ok.test/hook', deliveryTimeoutMs: 120 },
+    fetchFn: http,
+  });
+  const elapsed = Date.now() - started;
+  assert.deepEqual(result.delivered.map((d) => d.channel), ['slack'], 'the healthy channel still delivered');
+  assert.equal(result.failures.length, 1);
+  assert.match(result.failures[0].error, /timed out after 120 ms/);
+  assert.ok(elapsed < 2000, `delivery returned promptly (took ${elapsed} ms)`);
+  assert.ok(seen.length >= 2, 'channels were dispatched despite the hang');
+});
+
+test('#26: channels are dispatched concurrently, not one after another', async () => {
+  const order = [];
+  const http = (url) => new Promise((resolve) => {
+    const name = String(url).includes('slow') ? 'slow' : 'fast';
+    order.push('start:' + name);
+    setTimeout(() => {
+      order.push('end:' + name);
+      resolve({ ok: true, status: 200, json: async () => ({}) });
+    }, name === 'slow' ? 300 : 10);
+  });
+  const started = Date.now();
+  const result = await deliverRun({
+    task: { ...task, channels: ['discord', 'slack'] },
+    runInfo: okRun,
+    settings: { discordWebhookUrl: 'http://slow.test/hook', slackWebhookUrl: 'http://fast.test/hook' },
+    fetchFn: http,
+  });
+  const elapsed = Date.now() - started;
+  assert.equal(result.failures.length, 0);
+  assert.equal(order[0], 'start:slow', 'the slow channel starts first');
+  assert.ok(order.indexOf('start:fast') < order.indexOf('end:slow'), 'the fast channel does not wait for the slow one');
+  assert.ok(elapsed < 500, `parallel dispatch (~300 ms) instead of sequential (~310 ms+), took ${elapsed} ms`);
 });
 
 // ------------------------------------------------------- payload builders

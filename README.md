@@ -159,7 +159,8 @@ A finished run is delivered to every channel configured for the task — Telegra
 * **Failure isolation** — one unreachable channel is reported in the scheduler log with the other channels still delivered; a broken webhook never swallows the rest of the report.
 * **Message templates** — a global template, per-channel overrides, or a per-task template rendered from `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`. Unknown placeholders are left intact, failed runs default to a failure template.
 * **`onlyOnFailure`** — globally or per task, clean runs stay silent and only `error`/`timeout` runs are dispatched.
-* **Credentials by reference** — webhook tokens, SMTP passwords and the Telegram bot token are entered as the NAME of a DSH credential (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `smtpPasswordRef`, `giteaTokenRef`); the value is resolved at send time through the DSH credentials service with an environment-variable fallback. The settings file never stores the secret itself.
+* **Credentials by reference** — webhook tokens, SMTP passwords and the Telegram bot token are entered as the NAME of a DSH credential (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `smtpPasswordRef`, `giteaTokenRef`); the value is resolved at send time through the DSH credentials service with an environment-variable fallback, and never travels through plugin settings. Webhook URLs and the Bark device key do embed a secret, so they are stored in the plugin settings file but are always returned masked to the browser and a masked value echoed back by the UI never overwrites the stored one.
+* **Delivery timeout** — every channel request is bounded (`deliveryTimeoutMs`, default 15000 ms) and channels are dispatched concurrently, so one unresponsive endpoint is recorded as a failure and cannot delay the other channels or the next scheduled tick.
 * **Telegram** — Markdown report with status badges (✅ / ❌), duration, schedule description and monospace output; dynamic values are escaped so odd titles cannot break the message. Credentials may be entered directly, or inherited from the `dsh-messenger-gateway` section of your DSH `settings.yaml` (best-effort fallback).
 * **Discord / Slack** — webhook delivery; Discord carries an embed coloured by run status, Slack a plain text body.
 * **ntfy / Bark / PushPlus** — mobile push with a topic/device key and an optional bearer token; the Bark title and text travel in the request path.
@@ -221,6 +222,7 @@ dsh-cron:
   botTokenRef: ""              # credential NAME for the Telegram bot token
   template: ""                 # global message template, e.g. "⏰ {title} — {status}"
   channelTemplates: {}         # per-channel template overrides keyed by channel id
+  deliveryTimeoutMs: 15000     # per-channel delivery timeout; slow channel = failure, others unaffected
   discordWebhookUrl: ""        # Discord webhook
   slackWebhookUrl: ""          # Slack incoming webhook
   ntfyUrl: "https://ntfy.sh"   # ntfy server; ntfyTopic / ntfyTokenRef
@@ -259,6 +261,7 @@ dsh-cron:
 | `botTokenRef` | `string` | `""` | Name of the DSH credential holding the Telegram bot token; resolved at send time (falls back to `botToken`, then the messenger-gateway settings, then the `CRON_TELEGRAM_BOT_TOKEN` environment variable) |
 | `template` | `string` | `""` | Global message template with `{title}`/`{status}`/`{duration}`/… placeholders; empty = built-in text |
 | `channelTemplates` | `object` | `{}` | Per-channel template overrides keyed by channel id (`telegram`, `discord`, …) |
+| `deliveryTimeoutMs` | `number` | `15000` | Per-channel delivery timeout; a slower endpoint is recorded as a delivery failure and does not delay the other channels or the next tick |
 | `discordWebhookUrl` / `slackWebhookUrl` | `string` | `""` | Webhook URLs for the Discord and Slack channels |
 | `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | ntfy server, topic and an optional token credential name (sent as `Authorization: Bearer …`) |
 | `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Bark server and device key (key, title and text travel in the request path) |

@@ -158,7 +158,8 @@ cron_create_task({
 * **Изоляция сбоев** — недоступный канал фиксируется в логе планировщика, остальные каналы получают отчёт; сломанный webhook не поглощает доставку целиком.
 * **Шаблоны сообщений** — глобальный шаблон, переопределения по каналам или шаблон на задачу с переменными `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`. Неизвестные плейсхолдеры остаются как есть, для сбойных запусков по умолчанию используется шаблон ошибки.
 * **`onlyOnFailure`** — глобально или на задачу: успешные запуски молчат, уходят только `error`/`timeout`.
-* **Креденшелы по ссылке** — токены webhook'ов, пароль SMTP и токен Telegram вводятся как ИМЯ credential в DSH (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `smtpPasswordRef`, `giteaTokenRef`); значение резолвится в момент отправки через credentials-сервис DSH с фолбэком на переменную окружения. Секрет не хранится в файле настроек.
+* **Креденшелы по ссылке** — токены webhook'ов, пароль SMTP и токен Telegram вводятся как ИМЯ credential в DSH (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `smtpPasswordRef`, `giteaTokenRef`); значение резолвится в момент отправки через credentials-сервис DSH с фолбэком на переменную окружения и никогда не проходит через настройки плагина. Webhook-URL и ключ устройства Bark содержат секрет внутри, поэтому хранятся в настройках плагина, но всегда отдаются в браузер замаскированными, а замаскированное значение из UI никогда не перезаписывает сохранённое.
+* **Таймаут доставки** — каждый запрос канала ограничен (`deliveryTimeoutMs`, по умолчанию 15000 мс), каналы отправляются параллельно: недоступный endpoint фиксируется как сбой и не задерживает остальные каналы и следующий тик расписания.
 * **Telegram** — Markdown-отчёт со статусными значками (✅ / ❌), длительностью, описанием расписания и monospace-блоком вывода; динамические значения экранируются. Креденшелы можно ввести напрямую или унаследовать из секции `dsh-messenger-gateway` вашего DSH `settings.yaml` (best-effort).
 * **Discord / Slack** — доставка через webhook: Discord получает embed с цветом по статусу запуска, Slack — обычный текст.
 * **ntfy / Bark / PushPlus** — мобильные пуши: тема/ключ устройства и опциональный bearer-токен; у Bark заголовок и текст идут в пути запроса, у PushPlus endpoint настраивается (self-hosted прокси).
@@ -213,6 +214,7 @@ dsh-cron:
   botTokenRef: ""              # ИМЯ credential для токена Telegram-бота
   template: ""                 # глобальный шаблон сообщения, напр. "⏰ {title} — {status}"
   channelTemplates: {}         # переопределения шаблонов по каналам
+  deliveryTimeoutMs: 15000     # таймаут доставки на канал; медленный канал = сбой, остальные не ждут
   discordWebhookUrl: ""        # webhook Discord
   slackWebhookUrl: ""          # incoming webhook Slack
   ntfyUrl: "https://ntfy.sh"   # сервер ntfy; ntfyTopic / ntfyTokenRef
@@ -251,6 +253,7 @@ dsh-cron:
 | `botTokenRef` | `string` | `""` | Имя credential DSH с токеном Telegram-бота; резолвится при отправке (фолбэк: `botToken` → настройки messenger-gateway → переменная окружения `CRON_TELEGRAM_BOT_TOKEN`) |
 | `template` | `string` | `""` | Глобальный шаблон сообщения с плейсхолдерами `{title}`/`{status}`/`{duration}`/…; пусто = встроенный текст |
 | `channelTemplates` | `object` | `{}` | Переопределения шаблонов по каналам (`telegram`, `discord`, …) |
+| `deliveryTimeoutMs` | `number` | `15000` | Таймаут доставки на канал; более медленный endpoint фиксируется как сбой и не задерживает остальные каналы и следующий тик |
 | `discordWebhookUrl` / `slackWebhookUrl` | `string` | `""` | Webhook-URL каналов Discord и Slack |
 | `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | Сервер ntfy, тема и опциональное имя credential токена (`Authorization: Bearer …`) |
 | `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Сервер Bark и ключ устройства (ключ, заголовок и текст идут в пути запроса) |

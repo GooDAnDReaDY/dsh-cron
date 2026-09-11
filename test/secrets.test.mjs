@@ -10,8 +10,10 @@ import {
   resolveCredentialValue,
   resolveTelegramSecrets,
 } from '../lib/secrets.js';
+import { getDshSettingsPath } from '../lib/telegram.js';
 import { TaskStore } from '../lib/store.js';
 import { TaskScheduler } from '../lib/scheduler.js';
+import { sanitizeSettingsPayload } from '../lib/index.js';
 
 function makeStore(t) {
   const filePath = path.join(os.tmpdir(), `dsh-cron-secrets-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
@@ -123,4 +125,63 @@ test('#51: the delivery step receives resolved credentials, not the stored token
   assert.equal(deliveredSettings.botToken, 'resolved-token', 'resolved credential reaches the router');
   assert.equal(deliveredSettings.chatId, '99');
   assert.equal(deliveredRunInfo.status, 'success');
+});
+
+test('#51: secret-bearing settings are masked on read and never overwritten by the mask', (t) => {
+  const store = makeStore(t);
+  store.saveSettings({
+    discordWebhookUrl: 'https://discord.com/api/webhooks/123456/abcdefghijklmnop',
+    slackWebhookUrl: 'https://hooks.slack.com/services/T000/B000/secretpart',
+    barkKey: 'device-key-abcdefghijkl',
+  });
+
+  const client = store.getClientSettings();
+  for (const key of ['discordWebhookUrl', 'slackWebhookUrl', 'barkKey']) {
+    assert.ok(client[key].includes('••'), `${key} is masked for the browser`);
+    assert.ok(!client[key].includes('secretpart'), `${key} does not leak the secret`);
+  }
+
+  // The UI echoes the mask back on save; the stored value must survive.
+  store.saveSettings({ ...client, chatId: '42' });
+  const after = store.getSettings();
+  assert.equal(after.discordWebhookUrl, 'https://discord.com/api/webhooks/123456/abcdefghijklmnop');
+  assert.equal(after.barkKey, 'device-key-abcdefghijkl');
+  assert.equal(after.chatId, '42');
+
+  // A real new value still replaces it.
+  store.saveSettings({ discordWebhookUrl: 'https://discord.com/api/webhooks/999/newsecret' });
+  assert.equal(store.getSettings().discordWebhookUrl, 'https://discord.com/api/webhooks/999/newsecret');
+});
+
+test('#51: the settings route rejects raw secrets and masked echoes before the scope write', () => {
+  const payload = sanitizeSettingsPayload({
+    botToken: '1234••••••••xyz',
+    botTokenRef: 'CRON_TELEGRAM_BOT_TOKEN',
+    smtpPassword: 'raw-password',
+    giteaToken: 'raw-token',
+    barkKey: 'devi••••••••key',
+    discordWebhookUrl: 'https://discord.com/api/webhooks/1/real',
+    template: '{title}',
+  });
+  assert.equal(payload.botToken, undefined, 'masked bot token dropped');
+  assert.equal(payload.smtpPassword, undefined, 'raw SMTP password refused');
+  assert.equal(payload.giteaToken, undefined, 'raw Gitea token refused');
+  assert.equal(payload.barkKey, undefined, 'masked Bark key dropped');
+  assert.equal(payload.botTokenRef, 'CRON_TELEGRAM_BOT_TOKEN', 'credential reference kept');
+  assert.equal(payload.discordWebhookUrl, 'https://discord.com/api/webhooks/1/real', 'a real new value is kept');
+  assert.equal(payload.template, '{title}');
+});
+
+test('#51: the messenger-gateway fallback reads the profile home, not another one', () => {
+  const env = { ...process.env };
+  try {
+    process.env.DSH_HOME = path.join(os.tmpdir(), 'dsh-home-test');
+    assert.equal(getDshSettingsPath(), path.join(os.tmpdir(), 'dsh-home-test', 'settings.yaml'));
+    delete process.env.DSH_HOME;
+    process.env.HOME = path.join(os.tmpdir(), 'plain-home-test');
+    assert.equal(getDshSettingsPath(), path.join(os.tmpdir(), 'plain-home-test', '.dsh', 'settings.yaml'));
+  } finally {
+    if (env.DSH_HOME === undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME = env.DSH_HOME;
+    process.env.HOME = env.HOME;
+  }
 });
