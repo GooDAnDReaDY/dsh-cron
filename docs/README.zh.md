@@ -36,7 +36,7 @@
 3. **自主工具调用** —— 原生 `cron_*` 工具让智能体在会话中自行安排后续执行。
 4. **健壮的调度器与原子存储** —— 基于 `croner`：间隔别名、一次性延时任务、原子写入、运行历史与成本追踪。
 5. **六种执行运行时** —— shell、Node.js、Python、HTTP/webhook、远程 SSH 与 Docker，并支持按任务的环境变量、工作区绑定以及面向代码修改任务的隔离 git worktree。
-6. **多渠道路由与模板** —— 一次运行可投递到 Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、邮件、语音（`dsh-tts`）与 Gitea，支持 `{变量}` 消息模板与按 DSH 凭据名称引用的密钥。
+6. **多渠道路由与模板** —— 一次运行可投递到 Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、语音（`dsh-tts`）与 Gitea，支持 `{变量}` 消息模板与按 DSH 凭据名称引用的密钥。
 
 ---
 
@@ -59,7 +59,7 @@ graph TD
         Store["原子 TaskStore<br/>(tasks.json 原子写入)"]
         AgentRunner["智能体会话调度器<br/>(以指定模型执行提示词)"]
         Runtimes["执行运行时<br/>(shell、node、python、http、ssh、docker)"]
-        Notify["投递路由<br/>(模板 + 10 个渠道)"]
+        Notify["投递路由<br/>(模板 + 9 个渠道)"]
         Secrets["凭据引用<br/>(DSH credentials / ENV)"]
     end
 
@@ -152,18 +152,17 @@ cron_create_task({
 * **历史 → 会话** —— 每次 LLM 运行都会记录会话，可直接从历史记录打开对话。
 
 ### 8. 通知渠道与消息模板
-运行完成后，报告会发送到该任务配置的所有渠道 —— Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、邮件（SMTP）、语音（`dsh-tts`）以及 Gitea issue：
+运行完成后，报告会发送到该任务配置的所有渠道 —— Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、语音（`dsh-tts`）以及 Gitea issue：
 
 * **按任务选择渠道** —— 在任务表单中勾选渠道；显式选择会覆盖旧版 `notifyTelegram`/`kanbanMode` 开关，留空则回退到它们。
 * **故障隔离** —— 某个渠道不可用会记录在调度器日志中，其余渠道仍会收到报告；失效的 webhook 不会吞掉整份报告。
 * **消息模板** —— 支持全局模板、按渠道覆盖或按任务模板，变量为 `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`。未知占位符保持原样，失败运行默认使用失败模板。
 * **`onlyOnFailure`** —— 全局或按任务生效：成功运行静默，仅发送 `error`/`timeout`。
-* **凭据按名称引用** —— webhook token、SMTP 密码与 Telegram bot token 填写 DSH 凭据的名称（`botTokenRef`、`ntfyTokenRef`、`pushplusTokenRef`、`smtpPasswordRef`、`giteaTokenRef`），发送时通过 DSH credentials 服务解析，并可回退到环境变量，且绝不会经过插件设置。webhook URL 与 Bark 设备键本身内嵌密钥，因此保存在插件设置文件中，但返回浏览器时始终为掩码，界面回传的掩码值也不会覆盖已保存的值。
-* **投递超时** —— 每个渠道请求都有上限（`deliveryTimeoutMs`，默认 15000 毫秒，可在设置面板或 `settings.yaml` 中调整），且各渠道并发发送：无响应的端点只记录为失败，不会拖慢其他渠道或下一次调度。限制作用于整个渠道处理过程，也覆盖凭据解析与 SMTP 传输（`connectionTimeout`/`greetingTimeout`/`socketTimeout`）——这些都不支持 abort 信号。
+* **凭据按名称引用** —— webhook token 与 Telegram bot token 填写 DSH 凭据的名称（`botTokenRef`、`ntfyTokenRef`、`pushplusTokenRef`、`giteaTokenRef`），发送时通过 DSH credentials 服务解析，并可回退到环境变量，且绝不会经过插件设置。webhook URL 与 Bark 设备键本身内嵌密钥，因此保存在插件设置文件中，但返回浏览器时始终为掩码，界面回传的掩码值也不会覆盖已保存的值。
+* **投递超时** —— 每个渠道请求都有上限（`deliveryTimeoutMs`，默认 15000 毫秒，可在设置面板或 `settings.yaml` 中调整），且各渠道并发发送：无响应的端点只记录为失败，不会拖慢其他渠道或下一次调度。限制作用于整个渠道处理过程，也覆盖凭据解析——它不支持 abort 信号。
 * **Telegram** —— 带状态徽标（✅ / ❌）、耗时、调度描述与等宽输出块的 Markdown 报告；动态值会被转义。凭据可直接填写，或从 DSH `settings.yaml` 的 `dsh-messenger-gateway` 段继承（尽力而为）。
 * **Discord / Slack** —— 通过 webhook 投递：Discord 使用按运行状态着色的 embed，Slack 使用纯文本正文。
 * **ntfy / Bark / PushPlus** —— 移动推送，支持主题/设备键与可选 bearer token；Bark 的标题与正文放在请求路径中，PushPlus 端点可指向自建代理。
-* **邮件** —— SMTP（host、port、TLS、user、`smtpFrom` 与逗号分隔的收件人）；需要 Harness 运行时安装 `nodemailer`，缺少时会给出明确错误。传输会继承投递截止时间，因此无响应的 SMTP 服务器不会拖住运行。
 * **语音** —— `dsh-tts` 通过其 HTTP 路由朗读报告（`ttsBaseUrl`，默认 `http://127.0.0.1:3080`）。
 * **Gitea** —— 创建包含运行报告的 issue（`giteaBaseUrl`、`giteaRepo`、token 凭据）；失败运行标记为 `cron`、`bug`、`alert`。
 * **测试发送按钮** —— 在安排关键任务前现场验证 Telegram 连通性。
@@ -228,13 +227,6 @@ dsh-cron:
   barkKey: ""
   pushplusUrl: "https://www.pushplus.plus/send"  # pushplusTokenRef
   pushplusTokenRef: ""
-  smtpHost: ""                 # smtpPort / smtpSecure / smtpUser / smtpFrom / smtpTo
-  smtpPort: 587
-  smtpSecure: false
-  smtpUser: ""
-  smtpPasswordRef: ""          # SMTP 密码的凭据名称
-  smtpFrom: ""
-  smtpTo: ""
   ttsBaseUrl: "http://127.0.0.1:3080"   # dsh-tts 基础地址
   giteaBaseUrl: ""             # giteaRepo = owner/repo，giteaTokenRef = 凭据名称
   giteaRepo: ""
@@ -262,7 +254,6 @@ dsh-cron:
 | `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | ntfy 服务器、主题与可选的 token 凭据名称（以 `Authorization: Bearer …` 发送） |
 | `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Bark 服务器与设备键（键、标题和正文位于请求路径中） |
 | `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus 端点（可指向自建代理）与 token 凭据名称 |
-| `smtpHost` / `smtpPort` / `smtpSecure` / `smtpUser` / `smtpPasswordRef` / `smtpFrom` / `smtpTo` | `string`/`number`/`boolean` | `""` / `587` / `false` / `""` / `""` / `""` / `""` | 邮件渠道；密码以凭据名称引用，发送需要 Harness 运行时安装 `nodemailer` |
 | `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | 用于语音播报的 `dsh-tts` 基础地址 |
 | `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea 渠道：基础地址、`owner/repo` 与 API token 的凭据名称 |
 

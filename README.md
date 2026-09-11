@@ -36,7 +36,7 @@ Autonomous AI agents often need to perform recurring duties: generating daily mo
 3. **Autonomous AI Tool Calling** — native `cron_*` tools let agents schedule their own follow-up executions during conversations.
 4. **Robust Scheduler & Atomic Storage** — built on `croner` with interval aliases, one-shot delays, atomic file persistence, run histories, and cost tracking.
 5. **Six Execution Runtimes** — shell, Node.js, Python, HTTP/webhook, remote SSH and Docker, plus per-task environment variables, workspace binding and isolated git worktrees for code-modifying agent tasks.
-6. **Multi-Channel Delivery With Templates** — one run fans out to Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email, voice (`dsh-tts`) and Gitea, with `{variable}` message templates and secrets referenced by DSH credential name.
+6. **Multi-Channel Delivery With Templates** — one run fans out to Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, voice (`dsh-tts`) and Gitea, with `{variable}` message templates and secrets referenced by DSH credential name.
 
 ---
 
@@ -59,7 +59,7 @@ graph TD
         Store["Atomic TaskStore<br/>(tasks.json with atomic write)"]
         AgentRunner["Agent Session Dispatcher<br/>(Executes prompt with chosen model)"]
         Runtimes["Execution Runtimes<br/>(shell, node, python, http, ssh, docker)"]
-        Notify["Delivery Router<br/>(templates + 10 channels)"]
+        Notify["Delivery Router<br/>(templates + 9 channels)"]
         Secrets["Credential References<br/>(DSH credentials / ENV)"]
     end
 
@@ -153,18 +153,17 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 * **History → session navigation** — every LLM run records its session; open it straight from the run history entry.
 
 ### 8. Notification Channels & Message Templates
-A finished run is delivered to every channel configured for the task — Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email (SMTP), voice via `dsh-tts`, and Gitea issues:
+A finished run is delivered to every channel configured for the task — Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, voice via `dsh-tts`, and Gitea issues:
 
 * **Per-task channels** — tick the channels in the task form; an explicit selection overrides the legacy `notifyTelegram` / `kanbanMode` switches, and an empty selection falls back to them.
 * **Failure isolation** — one unreachable channel is reported in the scheduler log with the other channels still delivered; a broken webhook never swallows the rest of the report.
 * **Message templates** — a global template, per-channel overrides, or a per-task template rendered from `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`. Unknown placeholders are left intact, failed runs default to a failure template.
 * **`onlyOnFailure`** — globally or per task, clean runs stay silent and only `error`/`timeout` runs are dispatched.
-* **Credentials by reference** — webhook tokens, SMTP passwords and the Telegram bot token are entered as the NAME of a DSH credential (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `smtpPasswordRef`, `giteaTokenRef`); the value is resolved at send time through the DSH credentials service with an environment-variable fallback, and never travels through plugin settings. Webhook URLs and the Bark device key do embed a secret, so they are stored in the plugin settings file but are always returned masked to the browser and a masked value echoed back by the UI never overwrites the stored one.
-* **Delivery timeout** — every channel request is bounded (`deliveryTimeoutMs`, default 15000 ms, editable in the settings panel or `settings.yaml`) and channels are dispatched concurrently, so one unresponsive endpoint is recorded as a failure and cannot delay the other channels or the next scheduled tick. The bound is enforced around the whole channel handler, which also covers credential resolution and the SMTP transport (`connectionTimeout`/`greetingTimeout`/`socketTimeout`), none of which support abort signals.
+* **Credentials by reference** — webhook tokens and the Telegram bot token are entered as the NAME of a DSH credential (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `giteaTokenRef`); the value is resolved at send time through the DSH credentials service with an environment-variable fallback, and never travels through plugin settings. Webhook URLs and the Bark device key do embed a secret, so they are stored in the plugin settings file but are always returned masked to the browser and a masked value echoed back by the UI never overwrites the stored one.
+* **Delivery timeout** — every channel request is bounded (`deliveryTimeoutMs`, default 15000 ms, editable in the settings panel or `settings.yaml`) and channels are dispatched concurrently, so one unresponsive endpoint is recorded as a failure and cannot delay the other channels or the next scheduled tick. The bound is enforced around the whole channel handler, which also covers credential resolution, which does not support abort signals.
 * **Telegram** — Markdown report with status badges (✅ / ❌), duration, schedule description and monospace output; dynamic values are escaped so odd titles cannot break the message. Credentials may be entered directly, or inherited from the `dsh-messenger-gateway` section of your DSH `settings.yaml` (best-effort fallback).
 * **Discord / Slack** — webhook delivery; Discord carries an embed coloured by run status, Slack a plain text body.
 * **ntfy / Bark / PushPlus** — mobile push with a topic/device key and an optional bearer token; the Bark title and text travel in the request path.
-* **Email** — SMTP with host, port, TLS, user, `smtpFrom` and a comma-separated recipient list; requires `nodemailer` in the harness runtime and reports a clear error when it is missing. The transport inherits the delivery deadline, so a stalled SMTP server cannot hold the run.
 * **Voice** — `dsh-tts` speaks the report through its HTTP route (`ttsBaseUrl`, default `http://127.0.0.1:3080`).
 * **Gitea** — opens an issue with the run report (`giteaBaseUrl`, `giteaRepo`, token credential); failures are labelled `cron`, `bug`, `alert`.
 * **Test dispatch button** — verify Telegram connectivity on the spot before scheduling critical jobs.
@@ -232,13 +231,6 @@ dsh-cron:
   barkKey: ""
   pushplusUrl: "https://www.pushplus.plus/send"  # pushplusTokenRef
   pushplusTokenRef: ""
-  smtpHost: ""                 # smtpPort / smtpSecure / smtpUser / smtpFrom / smtpTo
-  smtpPort: 587
-  smtpSecure: false
-  smtpUser: ""
-  smtpPasswordRef: ""          # credential NAME for the SMTP password
-  smtpFrom: ""
-  smtpTo: ""
   ttsBaseUrl: "http://127.0.0.1:3080"   # dsh-tts base URL
   giteaBaseUrl: ""             # giteaRepo = owner/repo, giteaTokenRef = credential NAME
   giteaRepo: ""
@@ -266,7 +258,6 @@ dsh-cron:
 | `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | ntfy server, topic and an optional token credential name (sent as `Authorization: Bearer …`) |
 | `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Bark server and device key (key, title and text travel in the request path) |
 | `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus endpoint (override for a self-hosted proxy) and token credential name |
-| `smtpHost` / `smtpPort` / `smtpSecure` / `smtpUser` / `smtpPasswordRef` / `smtpFrom` / `smtpTo` | `string`/`number`/`boolean` | `""` / `587` / `false` / `""` / `""` / `""` / `""` | Email channel; the password is referenced by credential name and email requires `nodemailer` in the harness runtime |
 | `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | Base URL of the `dsh-tts` plugin used for voice announcements |
 | `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea channel: base URL, `owner/repo`, and the credential name of the API token |
 

@@ -116,9 +116,13 @@ test('#51: settings UI stores credential names, never secret values', () => {
   const serverCode = fs.readFileSync(new URL('../lib/store.js', import.meta.url), 'utf-8');
 
   // Every secret-bearing setting must be a *Ref field in the UI.
-  for (const key of ['botTokenRef', 'ntfyTokenRef', 'pushplusTokenRef', 'smtpPasswordRef', 'giteaTokenRef']) {
+  for (const key of ['botTokenRef', 'ntfyTokenRef', 'pushplusTokenRef', 'giteaTokenRef']) {
     assert.ok(code.includes(`key: '${key}'`), `credential reference field missing: ${key}`);
   }
+  // The email channel was removed by owner decision (#23) — no SMTP surface left.
+  assert.ok(!code.includes("'settings.smtpHostLabel'"), 'no SMTP settings in the UI');
+  assert.ok(!code.includes("'form.channelEmail'"), 'no email channel option in the UI');
+  assert.ok(!code.includes('smtpPasswordRef'), 'no SMTP credential reference left');
   // The UI must not offer raw secret inputs for these channels.
   for (const raw of ['discordToken', 'slackToken', 'ntfyToken:', 'pushplusToken:']) {
     assert.ok(!code.includes(`key: '${raw}`), `settings UI must not expose raw secret ${raw}`);

@@ -18,7 +18,6 @@ import {
   buildBarkRequest,
   buildPushplusRequest,
   buildGiteaIssuePayload,
-  buildEmailMessage,
   sendToChannel,
   deliverRun,
   DEFAULT_DELIVERY_TIMEOUT_MS,
@@ -94,7 +93,7 @@ test('#26: channel filtering honours only-on-failure and kanban modes', () => {
 });
 
 test('#26: every advertised channel id has a handler', async () => {
-  assert.deepEqual(CHANNEL_IDS, ['telegram', 'kanban', 'discord', 'slack', 'ntfy', 'bark', 'pushplus', 'email', 'tts', 'gitea']);
+  assert.deepEqual(CHANNEL_IDS, ['telegram', 'kanban', 'discord', 'slack', 'ntfy', 'bark', 'pushplus', 'tts', 'gitea']);
   assert.equal(DEFAULT_DELIVERY_TIMEOUT_MS, 15000, 'channels get a bounded delivery window by default');
   // A missing case would fall through to "unknown channel", so drive each id
   // through the dispatcher with a fully configured, stubbed environment.
@@ -103,10 +102,9 @@ test('#26: every advertised channel id has a handler', async () => {
     chatId: '42', kanbanBaseUrl: 'http://127.0.0.1:3000',
     discordWebhookUrl: 'http://d.test/h', slackWebhookUrl: 'http://s.test/h',
     ntfyTopic: 't', ntfyTokenRef: 'N', barkKey: 'k', pushplusTokenRef: 'P',
-    smtpTo: 'a@b.test', smtpHost: 'smtp.test', giteaBaseUrl: 'http://g.test', giteaRepo: 'o/r', giteaTokenRef: 'G',
+    giteaBaseUrl: 'http://g.test', giteaRepo: 'o/r', giteaTokenRef: 'G',
     ttsBaseUrl: 'http://t.test',
   };
-  const deps = { createTransport: () => ({ sendMail: async () => ({ messageId: '1' }) }) };
   for (const channelId of CHANNEL_IDS) {
     const detail = await sendToChannel({
       channelId,
@@ -115,12 +113,16 @@ test('#26: every advertised channel id has a handler', async () => {
       settings,
       secrets: { botToken: 'tok', resolveSecret: async () => 'secret' },
       fetchFn: http,
-      deps,
     });
     assert.ok(detail && typeof detail === 'object', `${channelId} returned a detail object`);
   }
   await assert.rejects(
     () => sendToChannel({ channelId: 'nope', task, runInfo: okRun, settings, fetchFn: http }),
+    /unknown channel/,
+  );
+  // The email channel was removed (#23): its id must not be routable any more.
+  await assert.rejects(
+    () => sendToChannel({ channelId: 'email', task, runInfo: okRun, settings, fetchFn: http }),
     /unknown channel/,
   );
 });
@@ -193,35 +195,21 @@ test('#26: channels are dispatched concurrently, not one after another', async (
   assert.ok(order.indexOf('start:fast') < order.indexOf('end:slow'), 'the fast channel does not wait for the slow one');
 });
 
-test('#23: a transport that never settles is bounded by the delivery deadline', async () => {
-  // Nodemailer ignores AbortSignal and its own defaults are minutes long, so
-  // the channel must be bounded by the router deadline instead.
-  const deps = {
-    createTransport: (transport) => {
-      assert.equal(transport.connectionTimeout, 120, 'SMTP transport carries the delivery deadline');
-      assert.equal(transport.greetingTimeout, 120);
-      assert.equal(transport.socketTimeout, 120);
-      return { sendMail: () => new Promise(() => {}) };
-    },
-  };
-  const started = Date.now();
+test('#23: the removed email channel is no longer routable', async () => {
+  // The channel was cut after the owner decision: SMTP needs a mailbox, an app
+  // password and provider-specific TLS handling, which is not worth the surface
+  // for this plugin. Its settings are gone too, so a task that still lists the
+  // id must fail loudly instead of silently doing nothing.
   const result = await deliverRun({
     task: { ...task, channels: ['email', 'slack'] },
     runInfo: okRun,
-    settings: {
-      smtpTo: 'ops@example.test',
-      smtpHost: 'smtp.test',
-      slackWebhookUrl: 'http://ok.test/hook',
-      deliveryTimeoutMs: 120,
-    },
+    settings: { slackWebhookUrl: 'http://ok.test/hook' },
     fetchFn: async () => ({ ok: true, status: 200, json: async () => ({}) }),
-    deps,
   });
-  const elapsed = Date.now() - started;
   assert.deepEqual(result.delivered.map((d) => d.channel), ['slack'], 'the healthy channel still delivered');
   assert.equal(result.failures.length, 1);
-  assert.match(result.failures[0].error, /timed out after 120 ms/);
-  assert.ok(elapsed < 2000, `deadline released the run (took ${elapsed} ms)`);
+  assert.equal(result.failures[0].channel, 'email');
+  assert.match(result.failures[0].error, /unknown channel: email/);
 });
 
 test('#51: a credential resolver that never settles cannot hold the run', async () => {
@@ -276,22 +264,6 @@ test('#28: gitea issue payload marks failures with alert labels', () => {
   const ok = buildGiteaIssuePayload({ task, runInfo: okRun });
   assert.match(ok.title, /^\[Cron run\]/);
   assert.deepEqual(ok.labels, ['cron', 'auto']);
-});
-
-test('#23: email message needs recipients and maps transport settings', () => {
-  assert.throws(() => buildEmailMessage({ settings: {}, text: 'x', task, runInfo: okRun }), /smtpTo/);
-  const msg = buildEmailMessage({
-    settings: { smtpTo: 'ops@example.test', smtpFrom: 'cron@example.test', smtpHost: 'smtp.test', smtpPort: 465, smtpSecure: true, smtpUser: 'u' },
-    text: 'body',
-    task,
-    runInfo: failRun,
-    password: 'pw',
-  });
-  assert.equal(msg.to, 'ops@example.test');
-  assert.match(msg.subject, /❌/);
-  assert.equal(msg.transport.host, 'smtp.test');
-  assert.equal(msg.transport.secure, true);
-  assert.deepEqual(msg.transport.auth, { user: 'u', pass: 'pw' });
 });
 
 // ---------------------------------------------------------------- senders
@@ -352,26 +324,6 @@ test('#26: kanban creates a card through the kanban API', async () => {
   assert.equal(result.column, 'backlog');
   assert.match(calls[0].url, /\/dsh-kanban\/task$/);
   assert.deepEqual(JSON.parse(calls[0].body).labels, ['cron', 'bug', 'alert']);
-});
-
-test('#23: email sends through an injected transport factory', async () => {
-  const sent = [];
-  const deps = {
-    createTransport: (transport) => ({
-      transport,
-      sendMail: async (message) => { sent.push(message); return { messageId: '1' }; },
-    }),
-  };
-  const result = await sendToChannel({
-    channelId: 'email',
-    task,
-    runInfo: okRun,
-    settings: { smtpTo: 'ops@example.test', smtpHost: 'smtp.test' },
-    deps,
-  });
-  assert.equal(result.to, 'ops@example.test');
-  assert.equal(sent.length, 1);
-  assert.match(sent[0].subject, /Nightly/);
 });
 
 test('#47: tts announces through the dsh-tts speak route', async () => {

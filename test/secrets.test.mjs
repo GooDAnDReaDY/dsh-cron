@@ -157,14 +157,12 @@ test('#51: the settings route rejects raw secrets and masked echoes before the s
   const payload = sanitizeSettingsPayload({
     botToken: '1234••••••••xyz',
     botTokenRef: 'CRON_TELEGRAM_BOT_TOKEN',
-    smtpPassword: 'raw-password',
     giteaToken: 'raw-token',
     barkKey: 'devi••••••••key',
     discordWebhookUrl: 'https://discord.com/api/webhooks/1/real',
     template: '{title}',
   });
   assert.equal(payload.botToken, undefined, 'masked bot token dropped');
-  assert.equal(payload.smtpPassword, undefined, 'raw SMTP password refused');
   assert.equal(payload.giteaToken, undefined, 'raw Gitea token refused');
   assert.equal(payload.barkKey, undefined, 'masked Bark key dropped');
   assert.equal(payload.botTokenRef, 'CRON_TELEGRAM_BOT_TOKEN', 'credential reference kept');
