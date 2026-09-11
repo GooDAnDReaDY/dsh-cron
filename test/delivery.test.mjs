@@ -180,18 +180,60 @@ test('#26: channels are dispatched concurrently, not one after another', async (
       resolve({ ok: true, status: 200, json: async () => ({}) });
     }, name === 'slow' ? 300 : 10);
   });
-  const started = Date.now();
   const result = await deliverRun({
     task: { ...task, channels: ['discord', 'slack'] },
     runInfo: okRun,
     settings: { discordWebhookUrl: 'http://slow.test/hook', slackWebhookUrl: 'http://fast.test/hook' },
     fetchFn: http,
   });
-  const elapsed = Date.now() - started;
   assert.equal(result.failures.length, 0);
+  // The dispatch order proves concurrency: the fast channel starts before the
+  // slow one finishes, which sequential delivery could not produce.
   assert.equal(order[0], 'start:slow', 'the slow channel starts first');
   assert.ok(order.indexOf('start:fast') < order.indexOf('end:slow'), 'the fast channel does not wait for the slow one');
-  assert.ok(elapsed < 500, `parallel dispatch (~300 ms) instead of sequential (~310 ms+), took ${elapsed} ms`);
+});
+
+test('#23: a transport that never settles is bounded by the delivery deadline', async () => {
+  // Nodemailer ignores AbortSignal and its own defaults are minutes long, so
+  // the channel must be bounded by the router deadline instead.
+  const deps = {
+    createTransport: (transport) => {
+      assert.equal(transport.connectionTimeout, 120, 'SMTP transport carries the delivery deadline');
+      assert.equal(transport.greetingTimeout, 120);
+      assert.equal(transport.socketTimeout, 120);
+      return { sendMail: () => new Promise(() => {}) };
+    },
+  };
+  const started = Date.now();
+  const result = await deliverRun({
+    task: { ...task, channels: ['email', 'slack'] },
+    runInfo: okRun,
+    settings: {
+      smtpTo: 'ops@example.test',
+      smtpHost: 'smtp.test',
+      slackWebhookUrl: 'http://ok.test/hook',
+      deliveryTimeoutMs: 120,
+    },
+    fetchFn: async () => ({ ok: true, status: 200, json: async () => ({}) }),
+    deps,
+  });
+  const elapsed = Date.now() - started;
+  assert.deepEqual(result.delivered.map((d) => d.channel), ['slack'], 'the healthy channel still delivered');
+  assert.equal(result.failures.length, 1);
+  assert.match(result.failures[0].error, /timed out after 120 ms/);
+  assert.ok(elapsed < 2000, `deadline released the run (took ${elapsed} ms)`);
+});
+
+test('#51: a credential resolver that never settles cannot hold the run', async () => {
+  const result = await deliverRun({
+    task: { ...task, channels: ['ntfy'] },
+    runInfo: okRun,
+    settings: { ntfyTopic: 'topic', ntfyTokenRef: 'SLOW', deliveryTimeoutMs: 120 },
+    secrets: { resolveSecret: () => new Promise(() => {}) },
+    fetchFn: async () => ({ ok: true, status: 200, json: async () => ({}) }),
+  });
+  assert.equal(result.failures.length, 1);
+  assert.match(result.failures[0].error, /timed out after 120 ms/);
 });
 
 // ------------------------------------------------------- payload builders

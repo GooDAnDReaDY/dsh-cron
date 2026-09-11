@@ -104,6 +104,11 @@ test('#25/#26: the UI offers every delivery channel and never drifts from the se
   assert.ok(code.includes('channels: formChannels'), 'channels sent with the task payload');
   assert.ok(code.includes('template: formTemplate.trim()'), 'template sent with the task payload');
   assert.ok(code.includes('dsh-cron-channel-grid'), 'channel checkbox grid rendered');
+
+  // The delivery deadline is user-tunable, so it needs a control, not just a
+  // Config default (review finding on PR #114).
+  assert.ok(code.includes("key: 'deliveryTimeoutMs'") && code.includes('settings.deliveryTimeoutMsLabel'), 'delivery timeout has a settings control');
+  assert.ok(code.includes("type: 'number'"), 'the timeout uses a numeric input');
 });
 
 test('#51: settings UI stores credential names, never secret values', () => {
