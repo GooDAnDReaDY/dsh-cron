@@ -57,7 +57,7 @@ install_test_deps() {
   # Минимальный набор для node --test без харнесса; ничего не пишет в манифесты.
   if [ ! -d node_modules/croner ] || [ ! -d node_modules/@deepseek-ai/dsh-tools ]; then
     npm install --no-save --no-audit --no-fund --loglevel=error \
-      croner@9.1.0 @deepseek-ai/dsh-tools@0.1.2-rc.1 @deepseek-ai/schemastery@3.18.1
+      croner@10.0.1 @deepseek-ai/dsh-tools@0.1.2-rc.1 @deepseek-ai/schemastery@3.18.1
   fi
 }
 
