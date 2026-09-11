@@ -156,7 +156,10 @@ cron_create_task({
 * **会话自动归档** —— 隔离的 cron 会话在运行后自动归档（尽力而为），不干扰聊天列表。
 * **历史 → 会话** —— 每次 LLM 运行都会记录会话，可直接从历史记录打开对话。
 
-### 9. 通知渠道与消息模板
+### 9. 按规则保持安静
+有输出的任务可以设置用自然语言描述的**静默规则**（例如“当没有分区使用率超过 80% 时保持安静”）。运行成功时，由便宜模型对照该规则判断输出，若结论为保持安静则跳过报告，并在运行历史中记录原因。遵循 fail-open：没有规则、没有模型、调用失败或答案无法解析时都会照常投递报告。插件设置 `silentRuleModel` 指定用于判断的模型。
+
+### 10. 通知渠道与消息模板
 运行完成后，报告会发送到该任务配置的所有渠道 —— Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、语音（`dsh-tts`）以及 Gitea issue：
 
 * **任务迁移** —— 将全部配置导出为版本化 JSON，并在别处导入（含预览摘要）；导入的任务处于暂停状态。
@@ -173,11 +176,11 @@ cron_create_task({
 * **Gitea** —— 创建包含运行报告的 issue（`giteaBaseUrl`、`giteaRepo`、token 凭据）；失败运行标记为 `cron`、`bug`、`alert`。
 * **测试发送按钮** —— 在安排关键任务前现场验证 Telegram 连通性。
 
-### 10. Kanban 集成与成本统计
+### 11. Kanban 集成与成本统计
 * **自动创建 Kanban 卡片** —— 当 `kanbanMode` 为 `on_failure` 或 `always` 时，插件在 `dsh-kanban` 中创建卡片（`on_failure` → `error`/`timeout` 时进入 *Backlog*；`always` → 完成后进入 *Done*/*Backlog*）。
 * **Token 与执行成本计量** —— 按运行与任务统计 token 消耗（输入、输出、缓存读取），基于内置价格表估算美元成本，并提供汇总分析栏。
 
-### 11. 重叠策略与执行超时
+### 12. 重叠策略与执行超时
 
 * **执行超时（`timeoutSeconds`）** —— 达到限制后，shell 子进程通过 abort 信号立即终止，智能体会话被释放以停止消耗 token。默认 `1800`（30 分钟）。
 * **重叠策略（`overlapPolicy`）** —— 上一次运行尚未结束时再次触发调度时的行为：
@@ -187,7 +190,7 @@ cron_create_task({
 
 如果守护进程在计划时刻处于离线状态，启动时该次运行会被记录为 `missed`，历史空档始终可见。
 
-### 12. 心跳监控（Dead man's switch）
+### 13. 心跳监控（Dead man's switch）
 * 在插件设置中配置 `heartbeatUrl` 与 `heartbeatIntervalSec`，调度器会按间隔 GET 该地址 —— 外部监控可在心跳停止时告警。
 * 内置 `GET /dsh-cron/heartbeat` 端点返回存活状态、活跃任务数与最近运行时间，便于自建看门狗。
 

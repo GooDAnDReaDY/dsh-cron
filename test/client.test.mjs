@@ -137,6 +137,14 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
   assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
 
+  // #44 — the silent rule field and the history marker.
+  assert.ok(code.includes("'form.silentRuleLabel'"), 'silent rule label present');
+  assert.ok(code.includes('const [formSilentRule, setFormSilentRule] = React.useState('), 'silent rule state present');
+  assert.ok(code.includes('silentRule: isAgentType ? undefined : formSilentRule.trim()'), 'the rule is sent only for output-producing types');
+  assert.ok(code.includes('!AGENT_FORM_TYPES.includes(formType) &&') , 'the field is hidden for agent tasks');
+  assert.ok(code.includes("'history.silentSkip'") && code.includes('run.silentReason'), 'a suppressed run shows why in the history');
+  assert.ok(code.includes("'settings.silentRuleModelLabel'"), 'the rule model is configurable');
+
   // #49 — tuning a task in a dialogue.
   assert.ok(code.includes("'actions.tuneWithDsh'"), 'tune action is labelled');
   assert.ok(code.includes('const handleTuneWithDsh = async (task)'), 'tune handler present');
