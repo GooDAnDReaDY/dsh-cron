@@ -8,12 +8,13 @@
   python, http, ssh, docker, env и worktree; отчёты о запусках в Telegram,
   dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, dsh-tts и Gitea;
   учёт токенов и стоимости.
-- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.5` (см. `package.json`); ветка `feat/0.2.6-economy-block` готовит 0.2.6.
-- **Статус**: active. Опубликован `0.2.5` (блок A + удаление email-канала);
-  в ветке `feat/0.2.6-economy-block` готов блок B: каталог рецептов (#48),
-  инструменты `cron_get_task`/`cron_update_task` (#49), каскад моделей (#45),
-  правило тишины (#44), диагностика сбоев (#43) и разбивка обработчиков (#97).
-  Публикация 0.2.6 — только после явного «Публикуем релиз?».
+- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.6` (см. `package.json`).
+- **Статус**: active, релиз `0.2.6` выпускается 2026-09-11: блок B — каскад
+  моделей (#45), правило тишины (#44), диагностика сбоев (#43), каталог
+  рецептов (#48), инструменты `cron_get_task`/`cron_update_task` (#49) — и
+  разбивка обработчиков (#97). Код — PR #124 (`9d5e25b`), независимое ревью в
+  два раунда (FAIL с исправлением гейта подтверждения, PASS на `45fb85c`).
+  Предыдущий релиз `0.2.5` опубликован и стоит в production.
 - **DEV**: `/mnt/external/Project/DEV/dhsplugins/dsh-cron` (корень read-only,
   работа в `.worktrees/<branch>`).
 - **OPT / production**: DSH web-профиль MiniAI; CLI
