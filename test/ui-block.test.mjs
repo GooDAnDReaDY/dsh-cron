@@ -6,7 +6,25 @@ import os from 'node:os';
 import path from 'node:path';
 import { TaskStore } from '../lib/store.js';
 import { TaskScheduler } from '../lib/scheduler.js';
-import { createCronApiHandler, buildDuplicateTask } from '../lib/index.js';
+import { createCronApiHandler, buildDuplicateTask, buildTaskExport, validateImportDocument, planImport, TASK_EXPORT_KIND } from '../lib/index.js';
+
+function mockReq(chunks) {
+  const req = new EventEmitter();
+  process.nextTick(() => {
+    for (const chunk of chunks) req.emit('data', chunk);
+    req.emit('end');
+  });
+  return req;
+}
+
+/** A POST request whose JSON body arrives as a stream, like a real one. */
+function mockPost(url, body) {
+  const req = mockReq([Buffer.from(JSON.stringify(body), 'utf8')]);
+  req.method = 'POST';
+  req.url = url;
+  req.headers = {};
+  return req;
+}
 
 function mockRes() {
   const res = {
@@ -141,4 +159,136 @@ test('#41: duplicating a missing task answers 404', async (t) => {
   await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_nope/duplicate', headers: {} }, res);
   assert.equal(res.statusCode, 404);
   assert.equal(res.payload.error, 'Task not found');
+});
+
+// ------------------------------------------------------------------ #42
+
+const EXPORTABLE_SOURCE = {
+  id: 'cron_a',
+  title: 'Watch disk',
+  schedule: '0 4 * * *',
+  scheduleText: 'Every day at 04:00',
+  prompt: 'df -h',
+  type: 'script',
+  status: 'active',
+  channels: ['discord', 'slack'],
+  template: 'DISK {title}',
+  timeoutSeconds: 600,
+  totalTokens: 999,
+  totalCostUsd: 0.5,
+  lastRunAt: 1700000000000,
+  lastStatus: 'success',
+  nextRunAt: 1800000000000,
+};
+
+test('#42: an export carries configuration only, never run state or status', () => {
+  const doc = buildTaskExport([EXPORTABLE_SOURCE]);
+  assert.equal(doc.kind, TASK_EXPORT_KIND);
+  assert.equal(doc.version, 1);
+  assert.ok(doc.exportedAt, 'export is timestamped');
+  assert.equal(doc.tasks.length, 1);
+  const task = doc.tasks[0];
+  assert.equal(task.id, 'cron_a', 'identity is kept for replace-by-id');
+  assert.equal(task.title, 'Watch disk');
+  assert.equal(task.schedule, '0 4 * * *');
+  assert.equal(task.type, 'script');
+  assert.equal(task.timeoutSeconds, 600);
+  assert.deepEqual(task.channels, ['discord', 'slack']);
+  assert.equal(task.status, undefined, 'status is not part of the export');
+  assert.equal(task.totalTokens, undefined, 'token totals are not exported');
+  assert.equal(task.totalCostUsd, undefined);
+  assert.equal(task.lastRunAt, undefined);
+  assert.equal(task.lastStatus, undefined);
+  assert.equal(task.nextRunAt, undefined);
+});
+
+test('#42: a malformed import document is rejected as a whole', () => {
+  assert.equal(validateImportDocument(null).ok, false);
+  assert.match(validateImportDocument({}).error, /kind marker/);
+  assert.match(validateImportDocument({ kind: TASK_EXPORT_KIND, version: 99, tasks: [] }).error, /newer than this plugin/);
+  assert.match(validateImportDocument({ kind: TASK_EXPORT_KIND, version: 1 }).error, /no tasks array/);
+  assert.match(validateImportDocument({ kind: TASK_EXPORT_KIND, version: 1, tasks: [{}] }).error, /no title/);
+  assert.match(validateImportDocument({ kind: TASK_EXPORT_KIND, version: 1, tasks: [{ title: 'a' }] }).error, /no schedule/);
+  assert.match(validateImportDocument({ kind: TASK_EXPORT_KIND, version: 1, tasks: [{ title: 'a', schedule: '0 4 * * *' }] }).error, /no prompt/);
+  const badType = validateImportDocument({ kind: TASK_EXPORT_KIND, version: 1, tasks: [{ title: 'a', schedule: '0 4 * * *', prompt: 'x', type: 'http', httpUrl: 'not a url' }] });
+  assert.equal(badType.ok, false);
+  assert.match(badType.error, /Invalid HTTP URL/);
+});
+
+test('#42: a valid document is accepted and unknown channels are dropped', () => {
+  const checked = validateImportDocument({
+    kind: TASK_EXPORT_KIND,
+    version: 1,
+    tasks: [{ title: 'a', schedule: '0 4 * * *', prompt: 'x', type: 'script', channels: ['discord', 'email'] }],
+  });
+  assert.equal(checked.ok, true);
+  assert.deepEqual(checked.tasks[0].channels, ['discord'], 'a channel that no longer exists is dropped');
+  assert.equal(checked.tasks[0].type, 'script');
+});
+
+test('#42: the import plan honours add / replace / skip', () => {
+  const incoming = [{ id: 'cron_a', title: 'A' }, { id: 'cron_b', title: 'B' }];
+  const existing = ['cron_a'];
+
+  const skip = planImport(incoming, existing, 'skip');
+  assert.deepEqual(skip.add.map((t) => t.id), ['cron_b']);
+  assert.deepEqual(skip.replace, []);
+  assert.deepEqual(skip.skip.map((t) => t.id), ['cron_a']);
+
+  const replace = planImport(incoming, existing, 'replace');
+  assert.deepEqual(replace.add.map((t) => t.id), ['cron_b']);
+  assert.deepEqual(replace.replace.map((t) => t.id), ['cron_a']);
+  assert.deepEqual(replace.skip, []);
+
+  const add = planImport(incoming, existing, 'add');
+  assert.deepEqual(add.add.map((t) => t.id), [undefined, 'cron_b'], 'a colliding id is dropped so a new one is generated');
+  assert.deepEqual(add.replace, []);
+  assert.deepEqual(add.skip, []);
+
+  assert.equal(planImport(incoming, existing, 'nonsense').strategy, 'skip', 'an unknown strategy falls back to the safe one');
+});
+
+test('#42: export and import round-trip through the API', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+  store.set({ id: 'cron_a', title: 'Watch disk', schedule: '0 4 * * *', prompt: 'df -h', type: 'script', status: 'paused', channels: ['discord'], totalTokens: 42 });
+  store.recordRun('cron_a', { at: Date.now(), status: 'success', durationMs: 5, output: 'ok' });
+
+  const exportRes = mockRes();
+  await handler({ method: 'GET', url: '/dsh-cron/tasks/export', headers: {} }, exportRes);
+  assert.equal(exportRes.statusCode, 200);
+  assert.equal(exportRes.payload.count, 1);
+  const document_ = exportRes.payload.document;
+  assert.equal(document_.tasks[0].totalTokens, undefined);
+
+  // Dry run reports the plan without touching the store.
+  const dryRes = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, dryRun: true, strategy: 'skip' }), dryRes);
+  assert.equal(dryRes.statusCode, 200);
+  assert.deepEqual(dryRes.payload.summary, { add: 0, replace: 0, skip: 1 });
+  assert.equal(store.list({ status: 'all' }).length, 1, 'a dry run changes nothing');
+
+  // Skip leaves the existing task alone.
+  const skipRes = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, strategy: 'skip' }), skipRes);
+  assert.equal(skipRes.payload.imported, 0);
+  assert.equal(store.list({ status: 'all' }).length, 1);
+
+  // Add creates a second task with a fresh id.
+  const addRes = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: document_, strategy: 'add' }), addRes);
+  assert.equal(addRes.payload.imported, 1);
+  const all = store.list({ status: 'all' });
+  assert.equal(all.length, 2);
+  const imported = all.find((x) => x.id !== 'cron_a');
+  assert.ok(imported.id, 'the imported task has an id');
+  assert.equal(imported.title, 'Watch disk');
+  assert.equal(imported.totalTokens, 0, 'run counters start clean');
+  assert.equal(store.getHistory(imported.id).length, 0);
+
+  // A broken document is refused without side effects.
+  const badRes = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: { kind: 'other' }, strategy: 'add' }), badRes);
+  assert.equal(badRes.statusCode, 400);
+  assert.equal(store.list({ status: 'all' }).length, 2, 'the store is untouched after a rejected import');
 });
