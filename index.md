@@ -32,6 +32,8 @@
 ## Основные компоненты
 
 - `@lib/index.js` — REST API `/dsh-cron/*`, инструменты `cron_*`, настройки.
+- `@lib/metrics.js` — экспозиция состояния планировщика в текстовом формате Prometheus
+  (`GET /dsh-cron/metrics`, #53); счётчики запусков ведёт планировщик.
 - `@lib/scheduler.js` — croner-планировщик, one-shot, overlap-политики,
   вызов доставки через инжектируемый `deliver`.
 - `@lib/runner.js` — shell/agent-исполнение, таймауты и отмена.
