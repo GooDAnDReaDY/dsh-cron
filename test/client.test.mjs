@@ -139,6 +139,11 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
 
   // #48 — a recipe preset fills the runtime, the channels and the rule.
   assert.ok(code.includes("if (preset.silentRule !== undefined) setFormSilentRule(preset.silentRule || '')"), 'a recipe carries its silent rule into the form');
+  // A recipe must survive the form reset: the reset runs BEFORE the preset.
+  assert.ok(
+    code.indexOf("setFormSilentRule('');") < code.indexOf("if (preset.silentRule !== undefined) setFormSilentRule(preset.silentRule || '')"),
+    'the form resets its rule field before the preset fills it',
+  );
   assert.ok(code.includes("'recs.hint'"), 'the suggestion block explains that nothing is created until saving');
 
   // #43 — the failure inspector.
