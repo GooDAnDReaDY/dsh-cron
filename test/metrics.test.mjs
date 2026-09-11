@@ -33,19 +33,21 @@ function mockRes() {
 test('#53: metrics carry task counts, durations and run counters', () => {
   const body = renderMetrics({
     tasks: [
-      { id: 'cron_a', status: 'active', lastDurationMs: 2500 },
+      { id: 'cron_a', status: 'active', lastDurationMs: 2500, lastRunAt: 1 },
       { id: 'cron_b', status: 'paused' },
-      { id: 'cron_c', status: 'active', lastDurationMs: 0 },
+      { id: 'cron_c', status: 'active', lastDurationMs: 0, lastRunAt: 2 },
+      { id: 'cron_never', status: 'active', lastDurationMs: 0 },
     ],
     stats: { totalRuns: 7 },
     runCounters: { success: 4, error: 1 },
   });
   assert.ok(body.includes('# TYPE dsh_cron_tasks_total gauge'), 'the task counter is typed');
-  assert.ok(body.includes('dsh_cron_tasks_total{status=' + Q + 'active' + Q + '} 2'));
+  assert.ok(body.includes('dsh_cron_tasks_total{status=' + Q + 'active' + Q + '} 3'));
   assert.ok(body.includes('dsh_cron_tasks_total{status=' + Q + 'paused' + Q + '} 1'));
   assert.ok(body.includes('dsh_cron_task_last_duration_seconds{task=' + Q + 'cron_a' + Q + '} 2.5'));
   assert.ok(body.includes('dsh_cron_task_last_duration_seconds{task=' + Q + 'cron_c' + Q + '} 0'));
   assert.ok(!body.includes('{task=' + Q + 'cron_b' + Q + '}'), 'no duration sample without a finished run');
+  assert.ok(!body.includes('{task=' + Q + 'cron_never' + Q + '}'), 'a task that never ran has no duration');
   assert.ok(body.includes('# TYPE dsh_cron_runs_total counter'));
   assert.ok(body.includes('dsh_cron_runs_total{status=' + Q + 'success' + Q + '} 4'));
   assert.ok(body.includes('dsh_cron_runs_total{status=' + Q + 'error' + Q + '} 1'));
@@ -58,13 +60,13 @@ test('#53: label values are escaped for the text format', () => {
   assert.equal(escapeLabel('plain'), 'plain');
   assert.equal(escapeLabel('a' + BS + 'b'), 'a' + BS + BS + 'b');
   assert.equal(escapeLabel('say ' + Q + 'hi' + Q), 'say ' + BS + Q + 'hi' + BS + Q);
-  const body = renderMetrics({ tasks: [{ id: 'cron_' + Q + 'x' + Q, status: 'active', lastDurationMs: 1 }] });
+  const body = renderMetrics({ tasks: [{ id: 'cron_' + Q + 'x' + Q, status: 'active', lastDurationMs: 1, lastRunAt: 1 }] });
   assert.ok(body.includes('{task=' + Q + 'cron_' + BS + Q + 'x' + BS + Q + Q + '}'), 'a quote cannot break the exposition');
 });
 
 test('#53: the endpoint answers GET and refuses writes', async (t) => {
   const { store, scheduler } = makeEnv(t);
-  store.set({ id: 'cron_g', title: 'G', schedule: '0 4 * * *', prompt: 'echo g', type: 'script', status: 'active', lastDurationMs: 120 });
+  store.set({ id: 'cron_g', title: 'G', schedule: '0 4 * * *', prompt: 'echo g', type: 'script', status: 'active', lastDurationMs: 120, lastRunAt: Date.now() });
   const handler = createMetricsHandler({ store, scheduler });
 
   const ok = mockRes();

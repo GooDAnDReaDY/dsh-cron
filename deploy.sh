@@ -125,7 +125,9 @@ post_install_checks() {
   token="$(resolve_web_token)"
   jar="$(mktemp)"
   bundle_file="$(mktemp)"
-  trap "rm -f '$jar' '$bundle_file'" RETURN
+  # RETURN covers the normal path, EXIT covers a fail() that ends the script
+  # while the temp files still exist.
+  trap "rm -f '$jar' '$bundle_file'" RETURN EXIT
 
   if [ -n "$token" ]; then
     curl -fsS -c "$jar" -o /dev/null "$WEB_BASE/?token=$token" || fail "DSH web UI rejected the token on $WEB_BASE"

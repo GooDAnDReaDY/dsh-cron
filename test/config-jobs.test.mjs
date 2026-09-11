@@ -66,6 +66,36 @@ test('#50: a job may be staged as paused and may use a one-shot schedule', () =>
   assert.equal(once.job.schedule, '2030-01-02T03:04:05Z');
 });
 
+test('#50: an entry keeps its id declared even when the rest is invalid', (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const log = quietLog();
+  applyConfigSync({ store, scheduler, entries: [JOB], log });
+  assert.equal(store.get('cron_nightly').managedBy, MANAGED_BY_CONFIG);
+
+  // A typo in one field must not read as "the job left the config": the
+  // working task and its history have to survive.
+  const summary = applyConfigSync({
+    store,
+    scheduler,
+    entries: [{ ...JOB, schedule: 'nonsense' }],
+    log,
+  });
+  assert.equal(summary.removed, 0);
+  assert.equal(summary.skipped, 1);
+  assert.ok(store.get('cron_nightly'), 'the previously synced task is still there');
+
+  const plan = planConfigSync([{ id: 'cron_nightly', schedule: 'nonsense' }], [{ id: 'cron_nightly', managedBy: MANAGED_BY_CONFIG }]);
+  assert.deepEqual(plan.remove, [], 'an invalid entry is not a removal');
+});
+
+test('#50: a job whose payload is the prompt cannot declare an empty one', () => {
+  assert.match(buildConfigJob({ ...JOB, type: 'script', prompt: undefined }, 0).error, /script jobs require a non-empty prompt/);
+  assert.match(buildConfigJob({ ...JOB, type: 'script', prompt: '   ' }, 0).error, /non-empty prompt/);
+  assert.equal(buildConfigJob({ ...JOB, type: 'script', prompt: 'echo hi' }, 0).ok, true);
+  // http carries its payload in httpUrl, so the prompt stays optional there.
+  assert.equal(buildConfigJob({ ...JOB, type: 'http', prompt: undefined, httpUrl: 'http://127.0.0.1:9/ping' }, 0).ok, true);
+});
+
 test('#50: a runtime type keeps its own required fields', () => {
   const docker = buildConfigJob({ ...JOB, type: 'docker' }, 0);
   assert.equal(docker.ok, false);
