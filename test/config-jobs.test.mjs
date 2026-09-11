@@ -92,6 +92,11 @@ test('#50: a job whose payload is the prompt cannot declare an empty one', () =>
   assert.match(buildConfigJob({ ...JOB, type: 'script', prompt: undefined }, 0).error, /script jobs require a non-empty prompt/);
   assert.match(buildConfigJob({ ...JOB, type: 'script', prompt: '   ' }, 0).error, /non-empty prompt/);
   assert.equal(buildConfigJob({ ...JOB, type: 'script', prompt: 'echo hi' }, 0).ok, true);
+  // ssh and docker describe how to connect, not what to run: without a prompt
+  // the runner would execute `true` and report success.
+  assert.match(buildConfigJob({ type: 'ssh', id: 'a', title: 'A', schedule: '0 4 * * *', sshTarget: 'user@host' }, 0).error, /ssh jobs require a non-empty prompt/);
+  assert.match(buildConfigJob({ type: 'docker', id: 'a', title: 'A', schedule: '0 4 * * *', dockerImage: 'image' }, 0).error, /docker jobs require a non-empty prompt/);
+  assert.equal(buildConfigJob({ type: 'ssh', id: 'a', title: 'A', schedule: '0 4 * * *', sshTarget: 'user@host', prompt: 'uptime' }, 0).ok, true);
   // http carries its payload in httpUrl, so the prompt stays optional there.
   assert.equal(buildConfigJob({ ...JOB, type: 'http', prompt: undefined, httpUrl: 'http://127.0.0.1:9/ping' }, 0).ok, true);
 });
