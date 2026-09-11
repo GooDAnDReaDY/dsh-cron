@@ -143,6 +143,17 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes('.dsh-cron-form-row { grid-template-columns: 1fr; }'), 'forms collapse to one column');
   assert.ok(code.includes('.dsh-cron-modal-foot { flex-direction: column-reverse; }'), 'modal actions stack on phones');
   assert.ok(code.includes('.dsh-cron-tabs { flex-wrap: nowrap; overflow-x: auto;'), 'tabs scroll instead of wrapping into a block');
+
+  // #34 — sidebar accordion: collapsed by default, persisted, capped, keyboard-safe.
+  assert.ok(code.includes('function mountSidebarJobs('), 'sidebar job list exists');
+  assert.ok(code.includes("const STORAGE_KEY = 'dsh-cron-sidebar-open';"), 'open state is persisted');
+  assert.ok(code.includes('const MAX_ROWS = 5;'), 'the list is capped');
+  assert.ok(code.includes("T('sidebar.moreJobs'"), 'a busy schedule shows an "and N more" line');
+  assert.ok(code.includes("entry.insertAdjacentElement('afterend', root)"), 'the list is mounted under the sidebar entry');
+  assert.ok(code.includes("headEl.setAttribute('aria-expanded'"), 'the head exposes aria-expanded');
+  assert.ok(code.includes('pendingTaskHighlight'), 'clicking a job asks the panel to highlight that task');
+  assert.ok(code.includes("'data-task-id': task.id"), 'task rows are addressable for highlighting');
+  assert.ok(code.includes("T('sidebar.noActiveJobs')"), 'an empty state avoids a blank block');
 });
 
 test('#51: settings UI stores credential names, never secret values', () => {
