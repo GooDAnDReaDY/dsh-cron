@@ -93,3 +93,31 @@ test('#50: the agent tools refuse to change a config-owned task', async (t) => {
   assert.equal(read.task.title, 'From config', 'and nothing was changed by the refusals');
   assert.ok(tools.get('cron_run_task'), 'a manual run stays available for a config-owned task');
 });
+
+test('#50: dropping the jobs section retires the tasks it used to own', async (t) => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-cron-wiring-retire-'));
+  const previous = process.env.DSH_DATA_DIR;
+  process.env.DSH_DATA_DIR = dataDir;
+  t.after(() => {
+    if (previous === undefined) delete process.env.DSH_DATA_DIR;
+    else process.env.DSH_DATA_DIR = previous;
+    try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch {}
+  });
+
+  const toolsWithJobs = new Map();
+  const ctxA = fakeCtx();
+  ctxA.tools = { register: (tool) => { toolsWithJobs.set(tool.name, tool); } };
+  plugin.apply(ctxA, {
+    jobs: [{ id: 'cron_retire', title: 'Retire me', schedule: '0 4 * * *', prompt: 'summarise', type: 'llm', status: 'paused' }],
+  });
+
+  // A restart without the section: the config no longer owns the task, so the
+  // sync must retire it instead of leaving an orphan behind.
+  const toolsAfter = new Map();
+  const ctxB = fakeCtx();
+  ctxB.tools = { register: (tool) => { toolsAfter.set(tool.name, tool); } };
+  plugin.apply(ctxB, {});
+
+  const read = await toolsAfter.get('cron_get_task').execute({ id: 'cron_retire' });
+  assert.equal(read.success, false, 'the orphaned config task was retired');
+});
