@@ -7,7 +7,8 @@
 ## Product / Purpose
 
 - Проект: `dsh-cron` — плагин DeepSeek Harness: планировщик cron-задач, фоновая
-  автоматизация и запуск агентских сессий по расписанию.
+  автоматизация и запуск агентских сессий по расписанию; рантаймы shell/node/
+  python/http/ssh/docker, доставка отчётов в 10 каналов.
 - DEV: `/mnt/external/Project/DEV/dhsplugins/dsh-cron` (вложенный репозиторий
   внутри workspace `dhsplugins`).
 - OPT / production: DSH web-профиль на MiniAI (`192.168.1.111`), CLI
@@ -16,8 +17,9 @@
 - Основные пользователи: пользователи DSH, автоматизирующие периодические
   процессы (сводки, мониторинг, проверки тикетов).
 - Текущий статус: active, в production-профиле установлена
-  `@goodandready/dsh-cron@0.1.24` (проверено `dsh plugin --profile web list`,
-  2026-09-09).
+  `@goodandready/dsh-cron@0.1.24`; ветка `feat/0.2.5-delivery-secrets`
+  (рантаймы + доставка/секреты) проверена на MiniPC, релиз не опубликован
+  (проверено 2026-09-11).
 
 ## Package policy
 
@@ -52,13 +54,23 @@
 - `lib/index.js` — серверная половина (cordis): REST API `/dsh-cron/*`,
   инструменты `cron_*`, регистрация настроек (`dsh-cron`), lifecycle.
 - `lib/scheduler.js` — croner-планировщик, one-shot таймеры, overlap-политики
-  (skip/queue/replace), история запусков, Telegram/Kanban доставка.
+  (skip/queue/replace), история запусков; доставку вызывает через инжектируемый
+  `deliver`, сам каналы не знает.
 - `lib/runner.js` — исполнение задач: shell (`type: 'script'`) или изолированная
   агентская сессия; таймаут и abort передаются в сессию.
-- `lib/store.js` — атомарное JSON-хранилище задач/истории/настроек
-  (`$DSH_DATA_DIR/cron/tasks.json`).
-- `lib/telegram.js`, `lib/integrations.js` — доставка отчётов, канбан-карточки,
-  оценка стоимости токенов.
+- `lib/runtimes.js` — рантаймы node/python/http/ssh/docker, env и worktree.
+- `lib/secrets.js` — credential-ссылки: `resolveCredentialValue` (DSH
+  credentials-сервис → ENV), `resolveTelegramSecrets`, эвристика «похоже на
+  секрет». В настройках хранятся только ИМЕНА credential'ов.
+- `lib/templates.js` — шаблоны сообщений `{var}`, встроенные plain/failure шаблоны.
+- `lib/channels.js` — `CHANNEL_IDS`, чистые builder'ы payload по каналам,
+  `sendToChannel` (инжектируемый fetch) и `deliverRun` (собирает сбои каналов,
+  никогда не бросает).
+- `lib/store.js` — атомарное JSON-хранилище задач/истории/настроек; каталог
+  данных: `DSH_DATA_DIR` → `DSH_HOME/data` → `~/.dsh/data`; сырые secret-ключи
+  в настройки не принимаются (`FORBIDDEN_SETTING_KEYS`).
+- `lib/telegram.js`, `lib/integrations.js` — Telegram-форматирование и отправка,
+  канбан-карточки, оценка стоимости токенов.
 - `lib/http-utils.js` — тело запроса с лимитом, same-origin проверка, whitelist
   PATCH-полей.
 - `lib/client.js` — браузерная половина: панель задач, карточка настроек,
@@ -75,7 +87,9 @@
   `npm pack --dry-run --json` (файлы пакета ≤ 256 KiB).
 - Проверка клиентской половины после установки:
   `curl -s http://127.0.0.1:3080/ | grep -c '@goodandready/dsh-cron'` и
-  `curl -s -o /dev/null -w '%{http_code}' .../plugins/@goodandready/dsh-cron/client.js`.
+  `curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3080/plugins/??@goodandready/dsh-cron/client.js"`.
+  Ядро раздаёт клиентов только через комбинированный `??`-запрос: плоский
+  путь `/plugins/<name>/client.js` отвечает 404 (учитывается в `deploy.sh`).
 
 ## Testing
 
@@ -90,9 +104,14 @@
 - Runtime: `croner`.
 - Peer (опционально, предоставляются ядром DSH): `@deepseek-ai/dsh-tools`,
   `@deepseek-ai/schemastery`, `@deepseek-ai/dsh-agent`, `@deepseek-ai/dsh-llm`,
-  `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-settings`, `@deepseek-ai/cordis`.
-- Внешние API: Telegram Bot API (если настроен); внутренние: `dsh-kanban`
-  (HTTP), `dsh-messenger-gateway` (best-effort чтение дефолтных креденшелов).
+  `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-settings`,
+  `@deepseek-ai/dsh-credentials`, `@deepseek-ai/cordis`.
+- Опционально в рантайме харнесса: `nodemailer` (канал email; при отсутствии
+  канал сообщает об ошибке и не мешает остальным).
+- Внешние API: Telegram Bot API, Discord/Slack webhook, ntfy, Bark, PushPlus,
+  SMTP, Gitea REST (если соответствующий канал настроен); внутренние:
+  `dsh-kanban` (HTTP), `dsh-tts` (`/dsh-tts/speak`), `dsh-remote-workspace`
+  (`sshProfileId`), `dsh-messenger-gateway` (best-effort дефолтные креденшелы).
 - `npm audit` / `ncu` — read-only перед релизом; обновления зависимостей —
   только отдельным issue/веткой.
 
@@ -107,8 +126,8 @@
 ## Commits, Versions And Releases
 
 - Формат: `<type>(<scope>): <summary>` + body «почему», footer `Refs: #<n>`.
-- Текущая версия: `0.1.24` (package.json). Обычный релиз меняет только `z`;
-  переход `y` (например `0.2.0`) — только по прямой просьбе владельца.
+- Текущая версия: `0.2.3` (package.json). Обычный релиз меняет только `z`;
+  переход `y` (например `0.3.0`) — только по прямой просьбе владельца.
 - Публикация: только после test server + production-приёмки кандидата и
   явного «Публикуем релиз?» / «ок».
 
@@ -127,13 +146,28 @@
 
 - IANA-таймзоны не поддерживаются (задачи идут в локальном времени сервера) —
   issue #13.
-- Креденшелы Telegram хранятся в собственном хранилище плагина, а не в сервисе
-  учётных данных — issue #51.
-- Дубли repo/org-меток в Gitea — issue #95.
+- Дубли repo/org-меток в Gitea — issue #95; токен `zcode` не имеет scope
+  `read:organization`, поэтому org-репозитории не листятся.
+- Канал email требует `nodemailer` в рантайме харнесса.
+- Доставка в Gitea пока прямым REST-вызовом: `dsh-gitea` не даёт программного
+  API создания issue (запрос `goodandready/dsh-gitea#196`).
+- `dsh-test-plugin` на MiniPC сообщает об ошибке после успешной установки:
+  healthcheck ждёт 3 с при реальном старте ~9 с (issue #113). Обход только
+  ручной проверкой состояния профиля; force-режимы не применять.
 - Прочее: открытые issues `goodandready/dsh-cron`.
 
 ## Locked Decisions
 
+- 2026-09-11 — Доставка отделена от планировщика: шаблоны `{var}` (#25),
+  маршрутизатор с чистым builder'ом на канал и инжектируемым fetch (#26,
+  #20–#23, #28, #47). Сбои каналов собираются и не роняют запуск; явные
+  `channels` задачи перекрывают legacy `notifyTelegram`/`kanbanMode`.
+- 2026-09-11 — Секреты только как credential-ссылки (#51): в настройках —
+  имя credential, значение резолвится при отправке (DSH credentials → ENV);
+  store отклоняет сырые secret-ключи.
+- 2026-09-11 — Каталог данных плагина: `DSH_DATA_DIR` → `DSH_HOME/data` →
+  `~/.dsh/data`. Причина: изолированный профиль не должен писать в чужой
+  домашний каталог (issue #112).
 - 2026-09-09 — `settings.plugin.item` с `key: 'dsh-cron'`; fallback
   `settings.section` остаётся запасным путём. Причина: контракт слота настроек.
 - 2026-09-09 — английские канонические строки + locale-словарь `STRINGS.en`;

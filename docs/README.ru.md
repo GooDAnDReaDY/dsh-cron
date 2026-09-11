@@ -35,6 +35,8 @@
 2. **Интерактивный сценарий «Создать с DSH»** — опишите задачу словами, агент уточнит детали и оформит расписание.
 3. **Автономный tool calling** — нативные инструменты `cron_*` позволяют агентам планировать собственные последующие действия прямо в диалоге.
 4. **Надёжный планировщик и атомарное хранилище** — на базе `croner`: интервалы, разовые задачи с задержкой, атомарная запись, история запусков, учёт стоимости.
+5. **Шесть рантаймов исполнения** — shell, Node.js, Python, HTTP/webhook, удалённый SSH и Docker, плюс переменные окружения на задачу, привязка workspace и изолированные git worktree для изменяющих код агентских задач.
+6. **Многоканальная доставка с шаблонами** — один запуск расходится в Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email, голос (`dsh-tts`) и Gitea, с шаблонами сообщений `{переменные}` и секретами по имени credential в DSH.
 
 ---
 
@@ -46,8 +48,8 @@ graph TD
         SidebarBtn["Кнопка-часы в сайдбаре<br/>(слот DSH Client UI)"]
         Overlay["Панель управления задачами<br/>(табы: Все, Активные, На паузе, Завершённые)"]
         CreateWithDSH["Диалог «Создать с DSH»<br/>(задача на естественном языке)"]
-        ManualForm["Ручная форма задачи<br/>(cron, таймаут, overlap, модель)"]
-        SettingsCard["Карточка настроек<br/>(интеграции Telegram / Kanban)"]
+        ManualForm["Ручная форма задачи<br/>(рантайм, cron, таймаут, overlap, каналы)"]
+        SettingsCard["Карточка настроек<br/>(каналы, шаблоны, credentials)"]
     end
 
     subgraph Server ["Серверная часть (Cordis и сервисы DSH)"]
@@ -56,7 +58,9 @@ graph TD
         Scheduler["Движок TaskScheduler<br/>(экземпляры Croner + таймеры one-shot)"]
         Store["Атомарный TaskStore<br/>(tasks.json, атомарная запись)"]
         AgentRunner["Диспетчер агентских сессий<br/>(запуск промпта выбранной моделью)"]
-        Notify["Доставка<br/>(Telegram Bot API, карточки dsh-kanban)"]
+        Runtimes["Рантаймы исполнения<br/>(shell, node, python, http, ssh, docker)"]
+        Notify["Маршрутизатор доставки<br/>(шаблоны + 10 каналов)"]
+        Secrets["Credential-ссылки<br/>(DSH credentials / ENV)"]
     end
 
     SidebarBtn --> Overlay
@@ -94,7 +98,7 @@ graph TD
 
 | Инструмент | Описание |
 |:---|:---|
-| `cron_create_task` | Создаёт задачу: `title`, `schedule`, `prompt`, опционально `type` (`llm`/`script`), `delivery`, `provider`, `model`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
+| `cron_create_task` | Создаёт задачу: `title`, `schedule`, `prompt`, опционально `type` (`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`), `delivery`, `provider`, `model`, `channels`, `template`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
 | `cron_schedule_task` | Псевдоним `cron_create_task` для совместимости с существующими промптами |
 | `cron_list_tasks` | Список задач со статусами, временем следующего запуска, токенами и стоимостью |
 | `cron_pause_task` | Приостанавливает расписание без удаления конфигурации |
@@ -131,24 +135,43 @@ cron_create_task({
 * **Лимит параллельности** — настройка `maxConcurrent` ограничивает число одновременных запусков; лишние помечаются `skipped` с причиной.
 * **Живой индикатор** — в списке задач пульсирует статус и идёт таймер текущего запуска.
 
-### 6. Интеграция сессий и права
+### 6. Рантаймы исполнения
+Каждая задача выбирает собственный рантайм; не-LLM рантаймы не используют модель и не тратят токены:
+
+* **Shell** (`script`) — команда или скрипт через shell харнесса, с `env` и `cwd`.
+* **Node.js** (`node`) и **Python** (`python`) — запуск сниппета с указанием интерпретатора (`nodePath`, `pythonPath`); для Python определяется виртуальное окружение проекта.
+* **HTTP** (`http`) — GET/POST/… по URL с собственными заголовками и телом; статус и вывод ответа попадают в историю запуска.
+* **SSH** (`ssh`) — выполнение команды на удалённом хосте через профиль `dsh-remote-workspace` (`sshProfileId`) или отдельные поля host/key.
+* **Docker** (`docker`) — выполнение команды в контейнере образа (`dockerImage`).
+* **Переменные окружения** — карта `env` на задачу (в UI — строки KEY VALUE) для внешних рантаймов; секретам здесь не место.
+* **Workspace и worktree** — привязка задачи к workspace харнесса (`workspaceId`) и, для изменяющих код агентских задач, запуск в изолированном git worktree (`worktree`, `keepWorktree`).
+
+### 7. Интеграция сессий и права
 * **Permission-пресеты на задачу** — `default`, `read-only`, `workspace-write` или `full` применяются к сессии агента перед запуском промпта.
 * **Автоархивация сессий** — изолированные cron-сессии архивируются после запуска (best-effort), не засоряя список чатов.
 * **История → сессия** — каждый LLM-запуск хранит свою сессию; открыть диалог можно прямо из записи истории.
 
-### 5. Уведомления Telegram
-Прямая интеграция с Telegram Bot API доставляет отчёты о запусках и трейсы ошибок в мессенджер:
+### 8. Каналы доставки и шаблоны сообщений
+Отчёт о завершённом запуске уходит во все каналы, выбранные для задачи — Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email (SMTP), голос через `dsh-tts` и issue в Gitea:
 
-* **Автоматические или собственные креденшелы** — введите свои `botToken` и `chatId` в диалоге настроек или позвольте плагину унаследовать значения по умолчанию из секции `dsh-messenger-gateway` вашего DSH `settings.yaml` (best-effort).
-* **Режим «только при сбоях»** — включите `onlyOnFailure` глобально или для отдельной задачи. Успешные запуски молчат; сбои (статусы `error` и `timeout`) отправляют алерт с трейсом.
-* **Markdown-оформление** — статусные значки (✅ / ❌), длительность, описание расписания и monospace-блоки вывода; динамические значения экранируются, поэтому нестандартные символы в названии не сломают сообщение.
+* **Каналы на задачу** — отметьте каналы в форме задачи; явный выбор перекрывает legacy-переключатели `notifyTelegram`/`kanbanMode`, а пустой выбор возвращается к ним.
+* **Изоляция сбоев** — недоступный канал фиксируется в логе планировщика, остальные каналы получают отчёт; сломанный webhook не поглощает доставку целиком.
+* **Шаблоны сообщений** — глобальный шаблон, переопределения по каналам или шаблон на задачу с переменными `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`. Неизвестные плейсхолдеры остаются как есть, для сбойных запусков по умолчанию используется шаблон ошибки.
+* **`onlyOnFailure`** — глобально или на задачу: успешные запуски молчат, уходят только `error`/`timeout`.
+* **Креденшелы по ссылке** — токены webhook'ов, пароль SMTP и токен Telegram вводятся как ИМЯ credential в DSH (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `smtpPasswordRef`, `giteaTokenRef`); значение резолвится в момент отправки через credentials-сервис DSH с фолбэком на переменную окружения. Секрет не хранится в файле настроек.
+* **Telegram** — Markdown-отчёт со статусными значками (✅ / ❌), длительностью, описанием расписания и monospace-блоком вывода; динамические значения экранируются. Креденшелы можно ввести напрямую или унаследовать из секции `dsh-messenger-gateway` вашего DSH `settings.yaml` (best-effort).
+* **Discord / Slack** — доставка через webhook: Discord получает embed с цветом по статусу запуска, Slack — обычный текст.
+* **ntfy / Bark / PushPlus** — мобильные пуши: тема/ключ устройства и опциональный bearer-токен; у Bark заголовок и текст идут в пути запроса, у PushPlus endpoint настраивается (self-hosted прокси).
+* **Email** — SMTP с хостом, портом, TLS, пользователем, `smtpFrom` и списком получателей; требует `nodemailer` в рантайме харнесса и сообщает понятную ошибку, если его нет.
+* **Голос** — `dsh-tts` озвучивает отчёт через свой HTTP-маршрут (`ttsBaseUrl`, по умолчанию `http://127.0.0.1:3080`).
+* **Gitea** — создаёт issue с отчётом (`giteaBaseUrl`, `giteaRepo`, credential токена); сбойные запуски помечаются метками `cron`, `bug`, `alert`.
 * **Кнопка проверки** — проверьте доставку в Telegram до запуска критичных задач.
 
-### 6. Интеграция с Kanban и учёт стоимости
+### 9. Интеграция с Kanban и учёт стоимости
 * **Автоматические карточки Kanban** — при `kanbanMode` = `on_failure` или `always` плагин создаёт карточки в `dsh-kanban` (`on_failure` → *Backlog* при `error`/`timeout`; `always` → *Done*/*Backlog* по завершении).
 * **Счётчик токенов и стоимости** — потребление токенов (ввод, вывод, чтения из кэша) учитывается по запускам и задачам с оценкой в USD по встроенной таблице цен и сводной панелью аналитики.
 
-### 7. Политики наложения и таймаут выполнения
+### 10. Политики наложения и таймаут выполнения
 
 * **Таймаут (`timeoutSeconds`)** — по достижении лимита shell-процесс немедленно завершается через abort-сигнал, а агентская сессия закрывается, чтобы не расходовать токены. По умолчанию `1800` (30 минут).
 * **Политика наложения (`overlapPolicy`)** — что делать, когда тик срабатывает при ещё активном предыдущем запуске:
@@ -186,6 +209,30 @@ dsh-cron:
   maxConcurrent: 0             # максимум параллельных запусков (0 = без лимита)
   heartbeatUrl: ""             # URL dead man's snitch, пингуется по интервалу
   heartbeatIntervalSec: 0      # интервал heartbeat-пинга в секундах (0 = выключено)
+  # --- каналы доставки ---
+  botTokenRef: ""              # ИМЯ credential для токена Telegram-бота
+  template: ""                 # глобальный шаблон сообщения, напр. "⏰ {title} — {status}"
+  channelTemplates: {}         # переопределения шаблонов по каналам
+  discordWebhookUrl: ""        # webhook Discord
+  slackWebhookUrl: ""          # incoming webhook Slack
+  ntfyUrl: "https://ntfy.sh"   # сервер ntfy; ntfyTopic / ntfyTokenRef
+  ntfyTopic: ""
+  ntfyTokenRef: ""
+  barkServerUrl: "https://api.day.app"  # сервер Bark; barkKey — ключ устройства
+  barkKey: ""
+  pushplusUrl: "https://www.pushplus.plus/send"  # pushplusTokenRef
+  pushplusTokenRef: ""
+  smtpHost: ""                 # smtpPort / smtpSecure / smtpUser / smtpFrom / smtpTo
+  smtpPort: 587
+  smtpSecure: false
+  smtpUser: ""
+  smtpPasswordRef: ""          # ИМЯ credential для пароля SMTP
+  smtpFrom: ""
+  smtpTo: ""
+  ttsBaseUrl: "http://127.0.0.1:3080"   # базовый URL dsh-tts
+  giteaBaseUrl: ""             # giteaRepo = owner/repo, giteaTokenRef = ИМЯ credential
+  giteaRepo: ""
+  giteaTokenRef: ""
 ```
 
 ### Параметры
@@ -201,6 +248,16 @@ dsh-cron:
 | `maxConcurrent` | `number` | `0` | Лимит параллельных запусков; лишние помечаются `skipped` (0 = без лимита) |
 | `heartbeatUrl` | `string` | `""` | URL dead man's snitch, пингуемый каждый `heartbeatIntervalSec`, пока жив планировщик |
 | `heartbeatIntervalSec` | `number` | `0` | Интервал heartbeat-пинга в секундах (0 = выключено) |
+| `botTokenRef` | `string` | `""` | Имя credential DSH с токеном Telegram-бота; резолвится при отправке (фолбэк: `botToken` → настройки messenger-gateway → переменная окружения `CRON_TELEGRAM_BOT_TOKEN`) |
+| `template` | `string` | `""` | Глобальный шаблон сообщения с плейсхолдерами `{title}`/`{status}`/`{duration}`/…; пусто = встроенный текст |
+| `channelTemplates` | `object` | `{}` | Переопределения шаблонов по каналам (`telegram`, `discord`, …) |
+| `discordWebhookUrl` / `slackWebhookUrl` | `string` | `""` | Webhook-URL каналов Discord и Slack |
+| `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | Сервер ntfy, тема и опциональное имя credential токена (`Authorization: Bearer …`) |
+| `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Сервер Bark и ключ устройства (ключ, заголовок и текст идут в пути запроса) |
+| `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | Endpoint PushPlus (переопределяется для self-hosted прокси) и имя credential токена |
+| `smtpHost` / `smtpPort` / `smtpSecure` / `smtpUser` / `smtpPasswordRef` / `smtpFrom` / `smtpTo` | `string`/`number`/`boolean` | `""` / `587` / `false` / `""` / `""` / `""` / `""` | Канал email; пароль задаётся ссылкой на credential, для отправки нужен `nodemailer` в рантайме харнесса |
+| `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | Базовый URL плагина `dsh-tts` для голосовых объявлений |
+| `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Канал Gitea: базовый URL, `owner/repo` и имя credential API-токена |
 
 Примечания:
 

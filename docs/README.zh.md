@@ -35,6 +35,8 @@
 2. **交互式“由 DSH 创建”流程** —— 与智能体对话，把高层需求转化为规范的定时任务。
 3. **自主工具调用** —— 原生 `cron_*` 工具让智能体在会话中自行安排后续执行。
 4. **健壮的调度器与原子存储** —— 基于 `croner`：间隔别名、一次性延时任务、原子写入、运行历史与成本追踪。
+5. **六种执行运行时** —— shell、Node.js、Python、HTTP/webhook、远程 SSH 与 Docker，并支持按任务的环境变量、工作区绑定以及面向代码修改任务的隔离 git worktree。
+6. **多渠道路由与模板** —— 一次运行可投递到 Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、邮件、语音（`dsh-tts`）与 Gitea，支持 `{变量}` 消息模板与按 DSH 凭据名称引用的密钥。
 
 ---
 
@@ -46,8 +48,8 @@ graph TD
         SidebarBtn["侧边栏时钟按钮<br/>(DSH 客户端插槽)"]
         Overlay["任务管理面板<br/>(标签: 全部 / 活跃 / 暂停 / 已完成)"]
         CreateWithDSH["“由 DSH 创建”对话框<br/>(自然语言任务)"]
-        ManualForm["手动任务表单<br/>(cron 表达式、超时、重叠策略、模型)"]
-        SettingsCard["设置卡片<br/>(Telegram / Kanban 集成)"]
+        ManualForm["手动任务表单<br/>(运行时、cron、超时、重叠策略、渠道)"]
+        SettingsCard["设置卡片<br/>(渠道、模板、凭据)"]
     end
 
     subgraph Server ["服务端 (Cordis 与 DSH 服务)"]
@@ -56,7 +58,9 @@ graph TD
         Scheduler["TaskScheduler 引擎<br/>(Croner 实例 + one-shot 定时器)"]
         Store["原子 TaskStore<br/>(tasks.json 原子写入)"]
         AgentRunner["智能体会话调度器<br/>(以指定模型执行提示词)"]
-        Notify["通知投递<br/>(Telegram Bot API、dsh-kanban 卡片)"]
+        Runtimes["执行运行时<br/>(shell、node、python、http、ssh、docker)"]
+        Notify["投递路由<br/>(模板 + 10 个渠道)"]
+        Secrets["凭据引用<br/>(DSH credentials / ENV)"]
     end
 
     SidebarBtn --> Overlay
@@ -94,7 +98,7 @@ graph TD
 
 | 工具 | 说明 |
 |:---|:---|
-| `cron_create_task` | 创建任务：`title`、`schedule`、`prompt`，可选 `type`（`llm`/`script`）、`delivery`、`provider`、`model`、`notifyTelegram`、`onlyOnFailure`、`timeoutSeconds`、`overlapPolicy`、`kanbanMode` |
+| `cron_create_task` | 创建任务：`title`、`schedule`、`prompt`，可选 `type`（`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`）、`delivery`、`provider`、`model`、`channels`、`template`、`notifyTelegram`、`onlyOnFailure`、`timeoutSeconds`、`overlapPolicy`、`kanbanMode` |
 | `cron_schedule_task` | `cron_create_task` 的别名，保持与既有提示词兼容 |
 | `cron_list_tasks` | 列出任务的状态、下次运行时间、token 总量与成本估算 |
 | `cron_pause_task` | 暂停调度而不删除配置 |
@@ -131,19 +135,43 @@ cron_create_task({
 * **并发上限** —— 插件设置 `maxConcurrent` 限制并行运行数；超出的运行记录为 `skipped` 并附原因。
 * **实时执行指示** —— 任务列表中的脉冲状态图标与运行计时器。
 
-### 5. Telegram 通知与投递路由
-通过与 Telegram Bot API 的直接集成，将执行报告与错误跟踪推送到你的即时通讯工具：
+### 6. 执行运行时
+每个任务可选择自己的运行时；非 LLM 运行时不需要模型，也不消耗 token：
 
-* **自动获取或自定义凭据** —— 在设置对话框中输入自己的 `botToken` 与 `chatId`，或让插件从 DSH `settings.yaml` 的 `dsh-messenger-gateway` 段尽力继承默认值。
-* **仅失败时通知** —— 全局或按任务启用 `onlyOnFailure`。成功运行保持静默；失败（`error` 或 `timeout` 状态）会发送带错误跟踪的告警。
-* **Markdown 排版** —— 消息包含状态徽标（✅ / ❌）、耗时、调度描述与等宽输出块；动态值会被转义，特殊字符不会破坏消息。
+* **Shell**（`script`）—— 通过 Harness shell 执行命令或脚本，支持 `env` 与 `cwd`。
+* **Node.js**（`node`）与 **Python**（`python`）—— 指定解释器（`nodePath`、`pythonPath`）运行片段；Python 会自动识别项目虚拟环境。
+* **HTTP**（`http`）—— 以自定义请求头与请求体访问 URL，状态码与响应写入运行历史。
+* **SSH**（`ssh`）—— 通过 `dsh-remote-workspace` 配置（`sshProfileId`）或独立 host/key 字段在远程主机执行命令。
+* **Docker**（`docker`）—— 在镜像容器（`dockerImage`）中执行命令。
+* **环境变量** —— 按任务的 `env` 映射（界面中每行 KEY VALUE）应用于外部运行时；请勿在此存放密钥。
+* **工作区与 worktree** —— 将任务绑定到 Harness 工作区（`workspaceId`）；对会修改代码的智能体任务，可在隔离的 git worktree 中运行（`worktree`、`keepWorktree`）。
+
+### 7. 会话集成与权限
+* **按任务的权限预设** —— `default`、`read-only`、`workspace-write` 或 `full` 在提示词执行前应用于任务会话。
+* **会话自动归档** —— 隔离的 cron 会话在运行后自动归档（尽力而为），不干扰聊天列表。
+* **历史 → 会话** —— 每次 LLM 运行都会记录会话，可直接从历史记录打开对话。
+
+### 8. 通知渠道与消息模板
+运行完成后，报告会发送到该任务配置的所有渠道 —— Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、邮件（SMTP）、语音（`dsh-tts`）以及 Gitea issue：
+
+* **按任务选择渠道** —— 在任务表单中勾选渠道；显式选择会覆盖旧版 `notifyTelegram`/`kanbanMode` 开关，留空则回退到它们。
+* **故障隔离** —— 某个渠道不可用会记录在调度器日志中，其余渠道仍会收到报告；失效的 webhook 不会吞掉整份报告。
+* **消息模板** —— 支持全局模板、按渠道覆盖或按任务模板，变量为 `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`。未知占位符保持原样，失败运行默认使用失败模板。
+* **`onlyOnFailure`** —— 全局或按任务生效：成功运行静默，仅发送 `error`/`timeout`。
+* **凭据按名称引用** —— webhook token、SMTP 密码与 Telegram bot token 填写 DSH 凭据的名称（`botTokenRef`、`ntfyTokenRef`、`pushplusTokenRef`、`smtpPasswordRef`、`giteaTokenRef`），发送时通过 DSH credentials 服务解析，并可回退到环境变量。设置文件不保存密钥本身。
+* **Telegram** —— 带状态徽标（✅ / ❌）、耗时、调度描述与等宽输出块的 Markdown 报告；动态值会被转义。凭据可直接填写，或从 DSH `settings.yaml` 的 `dsh-messenger-gateway` 段继承（尽力而为）。
+* **Discord / Slack** —— 通过 webhook 投递：Discord 使用按运行状态着色的 embed，Slack 使用纯文本正文。
+* **ntfy / Bark / PushPlus** —— 移动推送，支持主题/设备键与可选 bearer token；Bark 的标题与正文放在请求路径中，PushPlus 端点可指向自建代理。
+* **邮件** —— SMTP（host、port、TLS、user、`smtpFrom` 与逗号分隔的收件人）；需要 Harness 运行时安装 `nodemailer`，缺少时会给出明确错误。
+* **语音** —— `dsh-tts` 通过其 HTTP 路由朗读报告（`ttsBaseUrl`，默认 `http://127.0.0.1:3080`）。
+* **Gitea** —— 创建包含运行报告的 issue（`giteaBaseUrl`、`giteaRepo`、token 凭据）；失败运行标记为 `cron`、`bug`、`alert`。
 * **测试发送按钮** —— 在安排关键任务前现场验证 Telegram 连通性。
 
-### 6. Kanban 集成与成本统计
+### 9. Kanban 集成与成本统计
 * **自动创建 Kanban 卡片** —— 当 `kanbanMode` 为 `on_failure` 或 `always` 时，插件在 `dsh-kanban` 中创建卡片（`on_failure` → `error`/`timeout` 时进入 *Backlog*；`always` → 完成后进入 *Done*/*Backlog*）。
 * **Token 与执行成本计量** —— 按运行与任务统计 token 消耗（输入、输出、缓存读取），基于内置价格表估算美元成本，并提供汇总分析栏。
 
-### 7. 重叠策略与执行超时
+### 10. 重叠策略与执行超时
 
 * **执行超时（`timeoutSeconds`）** —— 达到限制后，shell 子进程通过 abort 信号立即终止，智能体会话被释放以停止消耗 token。默认 `1800`（30 分钟）。
 * **重叠策略（`overlapPolicy`）** —— 上一次运行尚未结束时再次触发调度时的行为：
@@ -153,7 +181,7 @@ cron_create_task({
 
 如果守护进程在计划时刻处于离线状态，启动时该次运行会被记录为 `missed`，历史空档始终可见。
 
-### 8. 心跳监控（Dead man's switch）
+### 11. 心跳监控（Dead man's switch）
 * 在插件设置中配置 `heartbeatUrl` 与 `heartbeatIntervalSec`，调度器会按间隔 GET 该地址 —— 外部监控可在心跳停止时告警。
 * 内置 `GET /dsh-cron/heartbeat` 端点返回存活状态、活跃任务数与最近运行时间，便于自建看门狗。
 
@@ -185,6 +213,30 @@ dsh-cron:
   maxConcurrent: 0             # 最大并行运行数（0 = 不限）
   heartbeatUrl: ""             # 心跳上报 URL（dead man's snitch）
   heartbeatIntervalSec: 0      # 心跳间隔秒数（0 = 关闭）
+  # --- 投递渠道 ---
+  botTokenRef: ""              # Telegram bot token 的凭据名称
+  template: ""                 # 全局消息模板，例如 "⏰ {title} — {status}"
+  channelTemplates: {}         # 按渠道覆盖模板
+  discordWebhookUrl: ""        # Discord webhook
+  slackWebhookUrl: ""          # Slack incoming webhook
+  ntfyUrl: "https://ntfy.sh"   # ntfy 服务器；ntfyTopic / ntfyTokenRef
+  ntfyTopic: ""
+  ntfyTokenRef: ""
+  barkServerUrl: "https://api.day.app"  # Bark 服务器；barkKey = 设备键
+  barkKey: ""
+  pushplusUrl: "https://www.pushplus.plus/send"  # pushplusTokenRef
+  pushplusTokenRef: ""
+  smtpHost: ""                 # smtpPort / smtpSecure / smtpUser / smtpFrom / smtpTo
+  smtpPort: 587
+  smtpSecure: false
+  smtpUser: ""
+  smtpPasswordRef: ""          # SMTP 密码的凭据名称
+  smtpFrom: ""
+  smtpTo: ""
+  ttsBaseUrl: "http://127.0.0.1:3080"   # dsh-tts 基础地址
+  giteaBaseUrl: ""             # giteaRepo = owner/repo，giteaTokenRef = 凭据名称
+  giteaRepo: ""
+  giteaTokenRef: ""
 ```
 
 ### 配置参数
@@ -200,6 +252,16 @@ dsh-cron:
 | `maxConcurrent` | `number` | `0` | 并行运行上限；超出的运行记录为 `skipped`（0 = 不限） |
 | `heartbeatUrl` | `string` | `""` | 心跳上报 URL，调度器存活期间按 `heartbeatIntervalSec` 间隔 GET |
 | `heartbeatIntervalSec` | `number` | `0` | 心跳间隔秒数（0 = 关闭） |
+| `botTokenRef` | `string` | `""` | 保存 Telegram bot token 的 DSH 凭据名称；发送时解析（回退顺序：`botToken` → messenger-gateway 设置 → 环境变量 `CRON_TELEGRAM_BOT_TOKEN`） |
+| `template` | `string` | `""` | 带 `{title}`/`{status}`/`{duration}` 等占位符的全局消息模板；留空使用内置文本 |
+| `channelTemplates` | `object` | `{}` | 按渠道 ID 覆盖模板（`telegram`、`discord` 等） |
+| `discordWebhookUrl` / `slackWebhookUrl` | `string` | `""` | Discord 与 Slack 渠道的 webhook 地址 |
+| `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | ntfy 服务器、主题与可选的 token 凭据名称（以 `Authorization: Bearer …` 发送） |
+| `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Bark 服务器与设备键（键、标题和正文位于请求路径中） |
+| `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus 端点（可指向自建代理）与 token 凭据名称 |
+| `smtpHost` / `smtpPort` / `smtpSecure` / `smtpUser` / `smtpPasswordRef` / `smtpFrom` / `smtpTo` | `string`/`number`/`boolean` | `""` / `587` / `false` / `""` / `""` / `""` / `""` | 邮件渠道；密码以凭据名称引用，发送需要 Harness 运行时安装 `nodemailer` |
+| `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | 用于语音播报的 `dsh-tts` 基础地址 |
+| `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea 渠道：基础地址、`owner/repo` 与 API token 的凭据名称 |
 
 说明：
 
