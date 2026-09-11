@@ -80,6 +80,24 @@ test('#50: a config task cannot be patched, paused or deleted over HTTP', async 
   assert.ok(store.get('cron_cfg'), 'the task is still there');
 });
 
+test('#50: create-or-update cannot overwrite a config task either', async (t) => {
+  const { store, handler } = makeEnv(t);
+  seedConfigTask(store);
+
+  const res = mockRes();
+  await handler(mockBody('POST', '/dsh-cron/tasks', {
+    id: 'cron_cfg',
+    title: 'Replaced through POST',
+    schedule: '0 6 * * *',
+    prompt: 'other',
+    type: 'llm',
+  }), res);
+  assert.equal(res.statusCode, 409);
+  assert.match(res.payload.error, /declared in the profile config/);
+  assert.equal(store.get('cron_cfg').title, 'Nightly report', 'the config task is untouched');
+  assert.equal(store.get('cron_cfg').schedule, '0 3 * * *');
+});
+
 test('#50: a config task can still be triggered by hand', async (t) => {
   const { store, handler } = makeEnv(t);
   seedConfigTask(store);
