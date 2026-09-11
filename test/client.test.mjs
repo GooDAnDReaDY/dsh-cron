@@ -136,6 +136,13 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes('dryRun: true'), 'import asks the server for a plan before changing anything');
   assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
   assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
+
+  // #39 — responsive rules stay layout-only.
+  assert.ok(code.includes('@media (max-width: 900px)'), 'tablet breakpoint present');
+  assert.ok(code.includes('@media (max-width: 640px)'), 'phone breakpoint present');
+  assert.ok(code.includes('.dsh-cron-form-row { grid-template-columns: 1fr; }'), 'forms collapse to one column');
+  assert.ok(code.includes('.dsh-cron-modal-foot { flex-direction: column-reverse; }'), 'modal actions stack on phones');
+  assert.ok(code.includes('.dsh-cron-tabs { flex-wrap: nowrap; overflow-x: auto;'), 'tabs scroll instead of wrapping into a block');
 });
 
 test('#51: settings UI stores credential names, never secret values', () => {
