@@ -13,6 +13,17 @@
 #       До публикации production получает только проверенный кандидат .tgz из
 #       main по общему release-workflow — не из DEV/worktree.
 #
+#   bash deploy.sh verify [exact-version]
+#       Только post-install проверки уже установленного профиля: фактическая
+#       версия, доступ к web UI и загрузка клиентского бандла. Ничего не меняет,
+#       используется после приёмки кандидата и после установки опубликованной
+#       версии.
+#
+# Проверки обращаются к web UI с токеном: профиль стоит за dsh-lanmode и
+# отвечает 401 анонимному запросу. Токен берётся из DSH_WEB_TOKEN или из
+# журнала юнита (DSH_WEB_UNIT, по умолчанию dsh-web.service); адрес — из
+# DSH_WEB_BASE. Секретов в скрипте нет.
+#
 # Скрипт не содержит секретов, не делает rsync/scp/копирование, не трогает
 # конфиги и данные, не использует force-режимы.
 
@@ -25,6 +36,8 @@ cd "$SCRIPT_DIR"
 PACKAGE_NAME="@goodandready/dsh-cron"
 SIZE_HARD_LIMIT=262144   # 256 KiB — отклоняет DSH Store
 SIZE_WARN_LIMIT=256000   # практический порог предупреждения
+WEB_BASE="${DSH_WEB_BASE:-http://127.0.0.1:3080}"
+WEB_UNIT="${DSH_WEB_UNIT:-dsh-web.service}"
 
 fail() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -83,6 +96,23 @@ build_candidate() {
   echo "candidate: dist/$tarball"
 }
 
+# The web profile on production sits behind dsh-lanmode and answers 401 to an
+# anonymous request, and plugin clients are served only through the exact
+# combined "??" URL printed in the authenticated index (a bare
+# /plugins/<name>/client.js answers 404 even for core plugins) — see #126.
+resolve_web_token() {
+  if [ -n "${DSH_WEB_TOKEN:-}" ]; then
+    printf '%s' "$DSH_WEB_TOKEN"
+    return 0
+  fi
+  # The token is printed once per process start, so a narrow window would miss
+  # a profile that has been up for a while; the last line of the day is the
+  # current one. A stale token is harmless: the authenticated request below
+  # fails with a clear message instead.
+  journalctl -u "$WEB_UNIT" --since '-24h' --no-pager 2>/dev/null \
+    | grep -oE 'token=[A-Za-z0-9_-]+' | tail -1 | cut -d= -f2 || true
+}
+
 post_install_checks() {
   local expected_version="$1"
   echo "--- post-install checks ---"
@@ -90,16 +120,36 @@ post_install_checks() {
   listed="$(dsh plugin --profile web list 2>/dev/null | grep -F "$PACKAGE_NAME@$expected_version" || true)"
   [ -n "$listed" ] || fail "installed profile does not report $PACKAGE_NAME@$expected_version"
   echo "profile: $listed"
-  curl -fsS -o /dev/null http://127.0.0.1:3080/ || fail "DSH web UI is not responding on 127.0.0.1:3080"
-  echo "web UI: responding"
-  curl -fsS http://127.0.0.1:3080/ | grep -qF "$PACKAGE_NAME" || fail "client entry not found in DSH index"
-  # The core serves plugin clients through the combined "??" request; the plain
-  # /plugins/<name>/client.js path answers 404, so probing it would fail a
-  # healthy install.
-  local client_code
-  client_code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3080/plugins/??$PACKAGE_NAME/client.js")"
-  [ "$client_code" = "200" ] || fail "client.js not served through the combined plugin URL (HTTP $client_code)"
-  echo "client.js: HTTP $client_code (combined plugin URL)"
+
+  local token jar index bundle_url bundle_code bundle_file
+  token="$(resolve_web_token)"
+  jar="$(mktemp)"
+  bundle_file="$(mktemp)"
+  # RETURN covers the normal path, EXIT covers a fail() that ends the script
+  # while the temp files still exist.
+  trap "rm -f '$jar' '$bundle_file'" RETURN EXIT
+
+  if [ -n "$token" ]; then
+    curl -fsS -c "$jar" -o /dev/null "$WEB_BASE/?token=$token" || fail "DSH web UI rejected the token on $WEB_BASE"
+    echo "web UI: authenticated"
+  else
+    echo "web UI: DSH_WEB_TOKEN is not set and $WEB_UNIT logged no token; trying anonymous access"
+  fi
+
+  index="$(curl -fsS -b "$jar" "$WEB_BASE/")" || fail "DSH web UI is not answering on $WEB_BASE"
+  printf '%s' "$index" | grep -qF "$PACKAGE_NAME" || fail "client entry not found in the DSH index"
+
+  bundle_url="$(printf '%s' "$index" \
+    | tr '"' '\n' | grep -F '/plugins/??' | grep -F "$PACKAGE_NAME" | head -1 | sed 's/&amp;/\&/g')"
+  [ -n "$bundle_url" ] || fail "no combined plugin bundle URL for $PACKAGE_NAME in the DSH index"
+
+  # The bundle is written to a file before grepping: with pipefail, grep -q
+  # closing the pipe early would report curl's EPIPE as a check failure.
+  bundle_code="$(curl -s -b "$jar" -H "Referer: $WEB_BASE/" -o "$bundle_file" -w '%{http_code}' "$WEB_BASE$bundle_url")"
+  [ "$bundle_code" = "200" ] || fail "client bundle not served (HTTP $bundle_code)"
+  echo "client bundle: HTTP $bundle_code"
+  grep -qF "$PACKAGE_NAME" "$bundle_file" \
+    || fail "client bundle for $PACKAGE_NAME came back without the package name"
   echo "post-install checks passed"
 }
 
@@ -125,7 +175,12 @@ case "$MODE" in
     dsh plugin --profile web add "$PACKAGE_NAME@$TARGET_VERSION"
     post_install_checks "$TARGET_VERSION"
     ;;
+  verify)
+    command -v dsh >/dev/null 2>&1 || fail "dsh CLI not found in PATH"
+    command -v node >/dev/null 2>&1 || fail "node not found in PATH"
+    post_install_checks "${2:-$(node -p "require('./package.json').version")}"
+    ;;
   *)
-    fail "usage: bash deploy.sh check | DSH_CRON_APPROVED=yes bash deploy.sh install <exact-version>"
+    fail "usage: bash deploy.sh check | DSH_CRON_APPROVED=yes bash deploy.sh install <exact-version> | bash deploy.sh verify [exact-version]"
     ;;
 esac

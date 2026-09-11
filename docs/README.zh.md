@@ -197,6 +197,125 @@ cron_create_task({
 * 在插件设置中配置 `heartbeatUrl` 与 `heartbeatIntervalSec`，调度器会按间隔 GET 该地址 —— 外部监控可在心跳停止时告警。
 * 内置 `GET /dsh-cron/heartbeat` 端点返回存活状态、活跃任务数与最近运行时间，便于自建看门狗。
 
+### 15. 来自配置的声明式任务（#50）
+长期运行的任务可以直接声明在配置文件里，而无需在界面中手工重建。配置文件拥有这些任务：每次插件启动时会创建或更新它们，从文件中消失的任务会被删除。
+
+在配置文件（`cordis.patch.yml`）的插件段加入 `jobs` 列表：
+
+```yaml
+dsh-cron:
+  jobs:
+    - id: nightly-backup
+      title: Nightly backup
+      schedule: "0 3 * * *"
+      type: script
+      prompt: "bash /path/to/backup.sh"
+      channels: ["telegram"]
+      timeoutSeconds: 3600
+    - id: morning-digest
+      title: Morning digest
+      schedule: "0 8 * * 1-5"
+      type: llm
+      prompt: "Prepare a brief morning digest of active tasks."
+      provider: my-provider
+      model: provider-id/model-id
+```
+
+* 每条必填：`id`、`title`、`schedule`；以提示词承载有效载荷的类型（`script`、`node`、`python`、`ssh`、`docker`、`llm`、`skill`、`workflow`）还需非空 `prompt`。`http` 例外：目标由 `httpUrl`（或 `prompt`）给出。
+* 其余任务字段按原样透传，校验与 API 一致：`channels`、`model`、`provider`、`fallbackModel`、`silentRule`、`inspectOnFailure`、`timezone`、`timeoutSeconds`、`template`、`env`、`cwd`，以及运行时字段（`nodePath`、`pythonPath`、`httpUrl`、`httpMethod`、`httpHeaders`、`httpBody`、`sshProfileId`、`sshTarget`、`dockerImage`、`workspaceId`、`worktree`、`keepWorktree`、`skillName`、`workflowName`）。
+* 声明式任务标记为**由配置管理**；面板中显示来源标签而不是编辑/删除按钮。
+* 对配置任务的编辑、暂停、恢复、切换与删除在面板和 API 上返回 `409`，携带配置任务现有 `id` 的创建或更新请求 `POST /dsh-cron/tasks` 同样被拒绝 —— 配置文件的来源为唯一真值。**立即运行**仍然可用。
+* 通过 UI、API 或智能体工具创建的、`id` 相同的任务绝不会被覆盖：该条目会被跳过，冲突写入日志。
+* 会执行代码的类型照常激活，但启动时插件会向日志写警告，使通过配置引入的代码路径可见。
+* 条目逐条校验并带下标（`config.jobs[i]: …`）；一条坏条目会被跳过，不会阻止其余任务或整个配置。
+
+### 16. 外部 REST API（`/dsh-cron/api/*`，#54）
+外部系统（CI、宿主机 cron、`curl`）无需打开面板即可驱动调度器。这是唯一由 bearer 令牌保护的接口；面板路由保持本地且防跨站。
+
+令牌是插件设置 `apiToken`（与所有密钥一样掩码显示）。认证与错误：
+* 未配置令牌 → 整个接口返回 `503`；
+* 缺少或错误的 `Authorization: Bearer <token>` → `401`，比较为常量时间。
+
+| 方法 | 路径 | 说明 |
+|:---|:---|:---|
+| `GET` | `/dsh-cron/api/tasks` | 任务列表（`status` / `query` 过滤，同面板） |
+| `GET` | `/dsh-cron/api/tasks/:id` | 读取单个任务 |
+| `POST` | `/dsh-cron/api/tasks` | 创建任务；带 `id` 时更新现有任务 |
+| `DELETE` | `/dsh-cron/api/tasks/:id` | 删除任务 |
+| `POST` | `/dsh-cron/api/tasks/:id/run` | 强制执行一次 |
+
+这些操作复用面板处理器，因此对会执行代码类型的 `x-dsh-cron-confirm: script` 门禁以及对配置任务的 `409` 拒绝与 UI 完全一致。
+
+```bash
+BASE="http://127.0.0.1:3080"
+TOKEN="<API_TOKEN>"
+
+# 列表
+curl -s -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks"
+
+# 创建；请求体带 id 时为更新
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"id":"cleanup","title":"Cleanup","schedule":"0 4 * * *","prompt":"Remove stale temporary files."}' \
+  "$BASE/dsh-cron/api/tasks"
+
+# 强制执行
+curl -s -X POST -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cleanup/run"
+
+# 删除
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/dsh-cron/api/tasks/cleanup"
+
+# 会执行代码的任务还需确认头
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "x-dsh-cron-confirm: script" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Disk check","schedule":"0 * * * *","type":"script","prompt":"df -h"}' \
+  "$BASE/dsh-cron/api/tasks"
+```
+
+### 17. Prometheus 指标（#53）
+`GET /dsh-cron/metrics` 返回 Prometheus 文本格式，无需新增依赖即可被抓取：
+
+* `dsh_cron_tasks_total{status}` —— 按状态统计的任务数（gauge）。
+* `dsh_cron_task_last_duration_seconds{task}` —— 任务最近一次完成运行的耗时（秒，gauge）。
+* `dsh_cron_runs_total{status}` —— 自插件进程启动以来完成的运行数（counter）；状态为 `success`、`error`、`timeout`、`skipped`、`missed`。
+* `dsh_cron_run_records` —— 当前保存在内存中的运行记录数（gauge）。
+
+导出内容只有计数、状态和耗时；提示词、运行输出与任务配置不会出现在其中。
+
+```yaml
+scrape_configs:
+  - job_name: dsh-cron
+    static_configs:
+      - targets: ["127.0.0.1:3080"]
+    metrics_path: /dsh-cron/metrics
+```
+
+### 18. 严格的渠道校验（#121）
+创建或更新任务时若包含未知的投递渠道 id，现在会返回 `400` 并列出违规项：
+
+```json
+{ "ok": false, "error": "Unknown channel ids: email_ping", "unknownChannels": ["email_ping"] }
+```
+
+Changed in v0.2.7：此前未知 id 会被静默丢弃，客户端即使有拼写错误也会得到 `ok: true`，最终得到一个不投递任何地方的任务。
+
+导入有意保持宽容（文件可能来自旧版本）：未知 id 会从导入的任务中丢弃，但会在响应（`unknownChannels`）中列出并写入调度器日志，而不是无声消失。
+
+### 19. 安装后校验（#126）
+`deploy.sh` 新增仅校验模式，用于检查已安装的配置而不安装任何东西：
+
+```bash
+bash deploy.sh verify [exact-version]
+```
+
+它确认配置报告了指定版本（默认取 `package.json` 的版本），登录 Web UI，然后下载客户端 bundle 并确认其中包含包名。
+
+为什么需要它：Web 配置可能位于认证插件之后并对匿名请求返回 `401`，而插件客户端 bundle 只能通过认证后索引中打印的精确组合 `??` URL 获取 —— 裸的 `/plugins/<name>/client.js` 会返回 `404`。因此校验需要先建立已认证会话。
+
+校验使用的环境变量：`DSH_WEB_BASE`（默认 `http://127.0.0.1:3080`）、`DSH_WEB_TOKEN`（令牌；未设置时脚本从单元日志读取最后一个）、`DSH_WEB_UNIT`（默认 `dsh-web.service`）。脚本中不含任何密钥。
+
+### 20. 内部重构：调度解析与排程（#97）
+面向开发者，行为不变。`parseScheduleExpression` 被拆分为保持相同分支顺序的小函数 —— `parseAtExpression`、`parseRelativeOneShot`、`parseIntervalExpression`、`parseAliasExpression`、`parseCronExpression`，`scheduleTask` 拆分为 `clearScheduled`、`scheduleOneShot`、`scheduleCron`。原有测试全部通过，并新增了针对分支优先级与错误的测试。
+
 ---
 
 ## 📦 安装
@@ -243,6 +362,8 @@ dsh-cron:
   giteaBaseUrl: ""             # giteaRepo = owner/repo，giteaTokenRef = 凭据名称
   giteaRepo: ""
   giteaTokenRef: ""
+  # --- 外部 REST API（#54）---
+  apiToken: ""                 # 外部 /dsh-cron/api/* 接口的 bearer 令牌（掩码；空 = 503）
 ```
 
 ### 配置参数
@@ -268,6 +389,7 @@ dsh-cron:
 | `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus 端点（可指向自建代理）与 token 凭据名称 |
 | `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | 用于语音播报的 `dsh-tts` 基础地址 |
 | `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea 渠道：基础地址、`owner/repo` 与 API token 的凭据名称 |
+| `apiToken` | `string` | `""` | 外部 `/dsh-cron/api/*` 接口的 Bearer 令牌。保密字段，返回时掩码；为空时接口返回 503，错误值返回 401 |
 
 说明：
 
@@ -304,6 +426,10 @@ dsh-cron:
 | `POST` | `/dsh-cron/telegram/test` | 发送 Telegram 测试消息 |
 | `POST` | `/dsh-cron/kanban/test` | 创建 Kanban 连通性测试卡片 |
 | `*` | `/dsh-cron/action/:id/:action` | 任务操作路由的兼容别名（`run`、`toggle`、`delete`、`history`） |
+| `GET` | `/dsh-cron/metrics` | Prometheus 文本格式的任务与运行计数 —— 不含提示词与输出（#53） |
+| `GET` / `POST` | `/dsh-cron/api/tasks` | 令牌保护的外部接口：列表 / 创建或更新（#54） |
+| `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | 令牌保护的外部接口：读取 / 删除（#54） |
+| `POST` | `/dsh-cron/api/tasks/:id/run` | 令牌保护的外部接口：强制执行（#54） |
 
 ---
 
