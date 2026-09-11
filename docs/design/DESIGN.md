@@ -18,7 +18,7 @@
   - Блок «Рекомендуемые задачи»: готовые шаблоны (Daily digest, Weekly review, Follow-up monitor) в один клик.
   - Карточка настроек в слоте settings.plugin.item, key = namespace `dsh-cron`; отдельный раздел настроек не используется (#102).
 - LLM Tools: cron_create_task (+ alias cron_schedule_task), cron_list_tasks, cron_pause_task, cron_resume_task, cron_delete_task, cron_run_task. Параметры задачи включают рантайм (`type`), `channels` (список каналов доставки) и `template` (шаблон сообщения).
-- API: HTTP эндпоинты /dsh-cron/* (tasks, models, chat/start, settings, telegram/test, kanban/test, tasks/:id/actions, legacy action/:id/:action). Мутирующие эндпоинты отклоняют cross-origin запросы; script-задачи по HTTP требуют заголовок x-dsh-cron-confirm. Настройки доставки принимаются как плоские ключи (webhook URL, топики, поля SMTP, base URL) и `channelTemplates` — карта шаблонов по каналам.
+- API: HTTP эндпоинты /dsh-cron/* (tasks, models, chat/start, settings, telegram/test, kanban/test, tasks/:id/actions, legacy action/:id/:action). Мутирующие эндпоинты отклоняют cross-origin запросы; script-задачи по HTTP требуют заголовок x-dsh-cron-confirm. Настройки доставки принимаются как плоские ключи (webhook URL, топики, base URL) и `channelTemplates` — карта шаблонов по каналам.
 - Chat / Slash Commands: отсутствуют (ранее заявленные /cron-команды не были реализованы и удалены из документации; решение 2026-09-09).
 
 ## Visual Direction
@@ -42,7 +42,7 @@
   - CronSidebarButton: кнопка в левом сайдбаре DSH.
   - CronScreen: основной оверлей со списком, табами, статистикой и рекомендациями.
   - CreateDropdown: всплывающее меню выбора способа создания.
-  - ManualTaskModal: модальная форма создания/редактирования (вкладки «Параметры» / «История запусков»); блок каналов доставки — сетка чекбоксов (Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, Email, Voice, Gitea) и поле шаблона сообщения с подсказкой по переменным.
+  - ManualTaskModal: модальная форма создания/редактирования (вкладки «Параметры» / «История запусков»); блок каналов доставки — сетка чекбоксов (Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, Voice, Gitea) и поле шаблона сообщения с подсказкой по переменным.
   - SettingsModal: настройки доставки с тестами; три сворачиваемые секции — «Credentials (references)», «Delivery channels», «Message templates» (шапка-кнопка, aria-expanded, шеврон).
   - DeliverySettingsForm: общая форма настроек доставки, одна реализация для SettingsModal и CronSettingsCard; секреты вводятся только по имени credential-ссылки.
   - TaskItem: строка задачи с переключателем состояния и действиями.
@@ -58,7 +58,7 @@
 ## User Flows
 1. Создание через DSH-чат: «напоминай каждый день в 9 утра...» → «Создать с DSH» → агент уточняет тип (LLM/NO-LLM), расписание, модель, Silent Rule → после подтверждения вызывает cron_create_task → задача появляется на экране.
 2. Создание вручную: кнопка сайдбара → «Создать ⌄» → «Настроить вручную» → форма → сохранение.
-3. Выполнение по расписанию: croner/таймер one-shot → запуск по выбранному рантайму (агентская сессия, shell, node, python, http, ssh, docker) → запись в историю → доставка отчёта в выбранные каналы (Telegram, Kanban, Discord, Slack, ntfy, Bark, PushPlus, Email, Voice, Gitea) с учётом `onlyOnFailure`.
+3. Выполнение по расписанию: croner/таймер one-shot → запуск по выбранному рантайму (агентская сессия, shell, node, python, http, ssh, docker) → запись в историю → доставка отчёта в выбранные каналы (Telegram, Kanban, Discord, Slack, ntfy, Bark, PushPlus, Voice, Gitea) с учётом `onlyOnFailure`.
 4. Разбор инцидента: история запусков в карточке задачи → статус, длительность, вывод/ошибка.
 
 ## Locked Design Decisions

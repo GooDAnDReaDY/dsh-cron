@@ -8,7 +8,7 @@
 
 - Проект: `dsh-cron` — плагин DeepSeek Harness: планировщик cron-задач, фоновая
   автоматизация и запуск агентских сессий по расписанию; рантаймы shell/node/
-  python/http/ssh/docker, доставка отчётов в 10 каналов.
+  python/http/ssh/docker, доставка отчётов в 9 каналов.
 - DEV: `/mnt/external/Project/DEV/dhsplugins/dsh-cron` (вложенный репозиторий
   внутри workspace `dhsplugins`).
 - OPT / production: DSH web-профиль на MiniAI (`192.168.1.111`), CLI
@@ -108,10 +108,9 @@
   `@deepseek-ai/schemastery`, `@deepseek-ai/dsh-agent`, `@deepseek-ai/dsh-llm`,
   `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-settings`,
   `@deepseek-ai/dsh-credentials`, `@deepseek-ai/cordis`.
-- Опционально в рантайме харнесса: `nodemailer` (канал email; при отсутствии
   канал сообщает об ошибке и не мешает остальным).
 - Внешние API: Telegram Bot API, Discord/Slack webhook, ntfy, Bark, PushPlus,
-  SMTP, Gitea REST (если соответствующий канал настроен); внутренние:
+  Gitea REST (если соответствующий канал настроен); внутренние:
   `dsh-kanban` (HTTP), `dsh-tts` (`/dsh-tts/speak`), `dsh-remote-workspace`
   (`sshProfileId`), `dsh-messenger-gateway` (best-effort дефолтные креденшелы).
 - `pnpm audit` / `ncu` — read-only перед релизом (проект использует pnpm,
@@ -151,7 +150,6 @@
   issue #13.
 - Дубли repo/org-меток в Gitea — issue #95; токен `zcode` не имеет scope
   `read:organization`, поэтому org-репозитории не листятся.
-- Канал email требует `nodemailer` в рантайме харнесса.
 - Доставка в Gitea пока прямым REST-вызовом: `dsh-gitea` не даёт программного
   API создания issue (запрос `goodandready/dsh-gitea#196`).
 - `dsh-test-plugin` на MiniPC сообщает об ошибке после успешной установки:
