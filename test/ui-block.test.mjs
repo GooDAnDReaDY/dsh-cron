@@ -401,3 +401,32 @@ test('#42: a failed write rolls the import back', async (t) => {
   assert.match(res.payload.error, /rolled back/);
   assert.equal(store.list({ status: 'all' }).length, 0, 'the first write was undone');
 });
+
+test('#42: replacing an armed task through import pauses it in the scheduler too', async (t) => {
+  const { store, scheduler } = makeEnv(t);
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+
+  // A live, armed task: the store says active and croner holds a job for it.
+  const active = store.set({
+    id: 'cron_live',
+    title: 'live job',
+    schedule: '0 4 * * *',
+    prompt: 'df -h',
+    type: 'script',
+    status: 'active',
+    channels: ['discord'],
+  });
+  scheduler.scheduleTask(active);
+  assert.equal(scheduler.jobs.has('cron_live'), true, 'the task is armed before the import');
+
+  const doc = exportDoc([{ id: 'cron_live', title: 'live job (restored)', schedule: '0 6 * * *', prompt: 'df -h', type: 'script' }]);
+  const res = mockRes();
+  await handler(mockPost('/dsh-cron/tasks/import', { document: doc, strategy: 'replace' }, SCRIPT_CONFIRM), res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.imported, 1);
+  assert.equal(store.get('cron_live').status, 'paused', 'the store reports paused');
+  // Writing "paused" does not disarm a croner job: the scheduler must be told,
+  // otherwise a task shown as paused would keep firing on schedule.
+  assert.equal(scheduler.jobs.has('cron_live'), false, 'the imported replacement is disarmed');
+});
