@@ -56,6 +56,17 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   assert.ok(code.includes('dsh-cron-card-head-btn'), 'head is a toggle button');
   assert.ok(code.includes('dsh-cron-chev-open'), 'chevron rotates when open');
 
+  // Execution-engine runtimes (#4 #5 #7 #8 #9 #38): the form offers every
+  // runtime and conditional configuration for each of them.
+  assert.ok(code.includes("'form.typeNode'"), 'node runtime option present');
+  assert.ok(code.includes("'form.typePython'"), 'python runtime option present');
+  assert.ok(code.includes("'form.typeHttp'"), 'http runtime option present');
+  assert.ok(code.includes("'form.typeSsh'"), 'ssh runtime option present');
+  assert.ok(code.includes("'form.typeDocker'"), 'docker runtime option present');
+  assert.ok(code.includes('parseEnvText('), 'env textarea parsed into the task env');
+  assert.ok(code.includes('CODE_FORM_TYPES'), 'confirm header covers all code-executing runtimes');
+  assert.ok(code.includes('AGENT_FORM_TYPES'), 'agent-only fields gated by runtime');
+
   // English canonical strings live in a locale dictionary that is registered
   // with the DSH locale service (#87)
   assert.ok(code.includes('const STRINGS = {'), 'locale dictionary present');
