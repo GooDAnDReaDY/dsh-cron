@@ -99,7 +99,7 @@ Autonomous agents can manage schedules directly:
 
 | Tool | Description |
 |:---|:---|
-| `cron_create_task` | Creates a scheduled task: `title`, `schedule`, `prompt`, optional `type` (`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`), `delivery`, `provider`, `model`, `channels`, `template`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
+| `cron_create_task` | Creates a scheduled task: `title`, `schedule`, `prompt`, `fallbackModel` (one retry on a stronger model when a run fails), optional `type` (`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`), `delivery`, `provider`, `model`, `channels`, `template`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
 | `cron_schedule_task` | Alias of `cron_create_task` kept for compatibility with existing agent prompts |
 | `cron_list_tasks` | Lists tasks with statuses, next run timestamps, token totals, and cost estimates |
 | `cron_pause_task` | Pauses a schedule without deleting its configuration |
@@ -147,12 +147,15 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 * **Environment variables** — a per-task `env` map (KEY VALUE per line in the UI) applied to external runtimes; secrets do not belong here.
 * **Workspaces and worktrees** — bind a task to a harness workspace (`workspaceId`) and, for code-modifying agent tasks, run it in an isolated git worktree (`worktree`, `keepWorktree`).
 
-### 7. Session Integration & Permissions
+### 7. Cost Control: Fallback Model
+A task can run on the cheap model by default and still finish on the strong one: set `fallbackModel` (and optionally `fallbackProvider`) and a failed run — `error` or `timeout` — is retried **once** on that model before the ordinary retry backoff applies. History records which model produced the result and whether the fallback was used, usage and cost of both attempts are summed, and the `{model}` template variable renders the model that finished the run. Only agent-mediated tasks (`llm`, `skill`, `workflow`) can use a fallback.
+
+### 8. Session Integration & Permissions
 * **Per-task permission presets** — `default`, `read-only`, `workspace-write`, or `full` are applied to the task's agent session before the prompt runs.
 * **Session auto-archive** — isolated cron sessions are archived after each run (best-effort) so they do not clutter the chat list.
 * **History → session navigation** — every LLM run records its session; open it straight from the run history entry.
 
-### 8. Notification Channels & Message Templates
+### 9. Notification Channels & Message Templates
 A finished run is delivered to every channel configured for the task — Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, voice via `dsh-tts`, and Gitea issues:
 
 * **Per-task channels** — tick the channels in the task form; an explicit selection overrides the legacy `notifyTelegram` / `kanbanMode` switches, and an empty selection falls back to them.
@@ -168,11 +171,11 @@ A finished run is delivered to every channel configured for the task — Telegra
 * **Gitea** — opens an issue with the run report (`giteaBaseUrl`, `giteaRepo`, token credential); failures are labelled `cron`, `bug`, `alert`.
 * **Test dispatch button** — verify Telegram connectivity on the spot before scheduling critical jobs.
 
-### 9. Kanban Integration & Cost Meter
+### 10. Kanban Integration & Cost Meter
 * **Automatic Kanban cards** — with `kanbanMode` set to `on_failure` or `always`, the plugin creates cards in `dsh-kanban` (`on_failure` → *Backlog* on `error`/`timeout`; `always` → *Done*/*Backlog* on completion).
 * **Token & execution cost meter** — token consumption (input, output, cache reads) is tracked per run and per task, with USD estimates from a built-in pricing table and an aggregated analytics bar.
 
-### 10. Overlap Policies & Execution Timeout
+### 11. Overlap Policies & Execution Timeout
 Prevent rogue processes from stacking concurrent duplicate executions:
 
 * **Execution timeout (`timeoutSeconds`)** — when the limit is reached, shell subprocesses are killed immediately via the abort signal and agent sessions are disposed so they stop consuming tokens. Default: `1800` (30 minutes).
@@ -183,7 +186,7 @@ Prevent rogue processes from stacking concurrent duplicate executions:
 
 If the daemon was offline at a scheduled time, the run is recorded as `missed` on startup, so gaps in the history stay visible.
 
-### 11. Heartbeat Monitoring (#16-style dead man's switch)
+### 12. Heartbeat Monitoring (#16-style dead man's switch)
 * Set `heartbeatUrl` and `heartbeatIntervalSec` in the plugin settings and the scheduler pings that URL on schedule — an external monitor alerts when the pings stop.
 * A built-in `GET /dsh-cron/heartbeat` endpoint reports liveness, active task count and the last run time for your own watchdogs.
 

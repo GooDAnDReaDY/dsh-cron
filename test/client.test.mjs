@@ -137,6 +137,12 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
   assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
 
+  // #45 — the fallback model field exists for agent tasks only.
+  assert.ok(code.includes("'form.fallbackModelLabel'"), 'fallback model label present');
+  assert.ok(code.includes('const [formFallbackModel, setFormFallbackModel] = React.useState('), 'fallback model state present');
+  assert.ok(code.includes('fallbackModel: isAgentType ? (formFallbackModel.trim() || undefined) : undefined'), 'fallback is sent only for agent tasks');
+  assert.ok(code.includes("setFormFallbackModel(task.fallbackModel || '')"), 'the field loads the stored value');
+
   // #39 — responsive rules stay layout-only.
   assert.ok(code.includes('@media (max-width: 900px)'), 'tablet breakpoint present');
   assert.ok(code.includes('@media (max-width: 640px)'), 'phone breakpoint present');
