@@ -35,6 +35,8 @@ Autonomous AI agents often need to perform recurring duties: generating daily mo
 2. **Interactive "Create with DSH" Workflow** — chat with your agent to translate high-level requirements into a well-formed scheduled task.
 3. **Autonomous AI Tool Calling** — native `cron_*` tools let agents schedule their own follow-up executions during conversations.
 4. **Robust Scheduler & Atomic Storage** — built on `croner` with interval aliases, one-shot delays, atomic file persistence, run histories, and cost tracking.
+5. **Six Execution Runtimes** — shell, Node.js, Python, HTTP/webhook, remote SSH and Docker, plus per-task environment variables, workspace binding and isolated git worktrees for code-modifying agent tasks.
+6. **Multi-Channel Delivery With Templates** — one run fans out to Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email, voice (`dsh-tts`) and Gitea, with `{variable}` message templates and secrets referenced by DSH credential name.
 
 ---
 
@@ -47,7 +49,7 @@ graph TD
         Overlay["Visual Task Manager Panel<br/>(Tabs: All, Active, Paused, Completed)"]
         CreateWithDSH["'Create with DSH' Dialog<br/>(natural language task)"]
         ManualForm["Manual Task Form<br/>(Cron Expression, Timeout, Overlap, Model)"]
-        SettingsCard["Settings Card<br/>(Telegram / Kanban integration)"]
+        SettingsCard["Settings Card<br/>(Channels, Templates, Credentials)"]
     end
 
     subgraph Server ["Server Runtime (Cordis & DSH Services)"]
@@ -56,7 +58,9 @@ graph TD
         Scheduler["TaskScheduler Engine<br/>(Croner instances + one-shot timers)"]
         Store["Atomic TaskStore<br/>(tasks.json with atomic write)"]
         AgentRunner["Agent Session Dispatcher<br/>(Executes prompt with chosen model)"]
-        Notify["Delivery<br/>(Telegram Bot API, dsh-kanban cards)"]
+        Runtimes["Execution Runtimes<br/>(shell, node, python, http, ssh, docker)"]
+        Notify["Delivery Router<br/>(templates + 10 channels)"]
+        Secrets["Credential References<br/>(DSH credentials / ENV)"]
     end
 
     SidebarBtn --> Overlay
@@ -95,7 +99,7 @@ Autonomous agents can manage schedules directly:
 
 | Tool | Description |
 |:---|:---|
-| `cron_create_task` | Creates a scheduled task: `title`, `schedule`, `prompt`, optional `type` (`llm`/`script`), `delivery`, `provider`, `model`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
+| `cron_create_task` | Creates a scheduled task: `title`, `schedule`, `prompt`, optional `type` (`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`), `delivery`, `provider`, `model`, `channels`, `template`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
 | `cron_schedule_task` | Alias of `cron_create_task` kept for compatibility with existing agent prompts |
 | `cron_list_tasks` | Lists tasks with statuses, next run timestamps, token totals, and cost estimates |
 | `cron_pause_task` | Pauses a schedule without deleting its configuration |
@@ -132,24 +136,44 @@ Powered by `croner`, supporting standard 5-field cron expressions plus user-frie
 * **Concurrency limit** — `maxConcurrent` (plugin setting) caps parallel runs; extra runs are recorded as `skipped` with a reason.
 * **Live execution indicator** — the task list shows a pulsing status icon and a running timer for the task in flight.
 
-### 6. Session Integration & Permissions
+### 6. Execution Runtimes
+Every task picks its own runtime; non-LLM runtimes need no model and consume no tokens:
+
+* **Shell** (`script`) — command or script through the harness shell, with `env` and `cwd`.
+* **Node.js** (`node`) and **Python** (`python`) — run a snippet with an explicit interpreter path (`nodePath`, `pythonPath`); Python detects a project virtualenv.
+* **HTTP** (`http`) — GET/POST/… to a URL with custom headers and body, and the response status/output recorded in the run history.
+* **SSH** (`ssh`) — execute a command on a remote host through a `dsh-remote-workspace` profile (`sshProfileId`) or standalone host/key fields.
+* **Docker** (`docker`) — run the command in a container image (`dockerImage`).
+* **Environment variables** — a per-task `env` map (KEY VALUE per line in the UI) applied to external runtimes; secrets do not belong here.
+* **Workspaces and worktrees** — bind a task to a harness workspace (`workspaceId`) and, for code-modifying agent tasks, run it in an isolated git worktree (`worktree`, `keepWorktree`).
+
+### 7. Session Integration & Permissions
 * **Per-task permission presets** — `default`, `read-only`, `workspace-write`, or `full` are applied to the task's agent session before the prompt runs.
 * **Session auto-archive** — isolated cron sessions are archived after each run (best-effort) so they do not clutter the chat list.
 * **History → session navigation** — every LLM run records its session; open it straight from the run history entry.
 
-### 5. Telegram Notifications & Delivery Routing
-Direct integration with the Telegram Bot API delivers execution reports and error traces straight to your messenger:
+### 8. Notification Channels & Message Templates
+A finished run is delivered to every channel configured for the task — Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email (SMTP), voice via `dsh-tts`, and Gitea issues:
 
-* **Auto-detected or custom credentials** — enter a custom `botToken` and `chatId` in the settings dialog, or let the plugin inherit defaults from the `dsh-messenger-gateway` section of your DSH `settings.yaml` (best-effort fallback).
-* **Only-on-failure mode** — enable `onlyOnFailure` globally or per task. Clean runs stay silent; failures (`error` or `timeout` statuses) dispatch an alert with the error trace.
-* **Markdown formatting** — messages carry status badges (✅ / ❌), duration, schedule description, and monospace output blocks; dynamic values are escaped so odd titles cannot break the message.
+* **Per-task channels** — tick the channels in the task form; an explicit selection overrides the legacy `notifyTelegram` / `kanbanMode` switches, and an empty selection falls back to them.
+* **Failure isolation** — one unreachable channel is reported in the scheduler log with the other channels still delivered; a broken webhook never swallows the rest of the report.
+* **Message templates** — a global template, per-channel overrides, or a per-task template rendered from `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`. Unknown placeholders are left intact, failed runs default to a failure template.
+* **`onlyOnFailure`** — globally or per task, clean runs stay silent and only `error`/`timeout` runs are dispatched.
+* **Credentials by reference** — webhook tokens, SMTP passwords and the Telegram bot token are entered as the NAME of a DSH credential (`botTokenRef`, `ntfyTokenRef`, `pushplusTokenRef`, `smtpPasswordRef`, `giteaTokenRef`); the value is resolved at send time through the DSH credentials service with an environment-variable fallback, and never travels through plugin settings. Webhook URLs and the Bark device key do embed a secret, so they are stored in the plugin settings file but are always returned masked to the browser and a masked value echoed back by the UI never overwrites the stored one.
+* **Delivery timeout** — every channel request is bounded (`deliveryTimeoutMs`, default 15000 ms, editable in the settings panel or `settings.yaml`) and channels are dispatched concurrently, so one unresponsive endpoint is recorded as a failure and cannot delay the other channels or the next scheduled tick. The bound is enforced around the whole channel handler, which also covers credential resolution and the SMTP transport (`connectionTimeout`/`greetingTimeout`/`socketTimeout`), none of which support abort signals.
+* **Telegram** — Markdown report with status badges (✅ / ❌), duration, schedule description and monospace output; dynamic values are escaped so odd titles cannot break the message. Credentials may be entered directly, or inherited from the `dsh-messenger-gateway` section of your DSH `settings.yaml` (best-effort fallback).
+* **Discord / Slack** — webhook delivery; Discord carries an embed coloured by run status, Slack a plain text body.
+* **ntfy / Bark / PushPlus** — mobile push with a topic/device key and an optional bearer token; the Bark title and text travel in the request path.
+* **Email** — SMTP with host, port, TLS, user, `smtpFrom` and a comma-separated recipient list; requires `nodemailer` in the harness runtime and reports a clear error when it is missing. The transport inherits the delivery deadline, so a stalled SMTP server cannot hold the run.
+* **Voice** — `dsh-tts` speaks the report through its HTTP route (`ttsBaseUrl`, default `http://127.0.0.1:3080`).
+* **Gitea** — opens an issue with the run report (`giteaBaseUrl`, `giteaRepo`, token credential); failures are labelled `cron`, `bug`, `alert`.
 * **Test dispatch button** — verify Telegram connectivity on the spot before scheduling critical jobs.
 
-### 6. Kanban Integration & Cost Meter
+### 9. Kanban Integration & Cost Meter
 * **Automatic Kanban cards** — with `kanbanMode` set to `on_failure` or `always`, the plugin creates cards in `dsh-kanban` (`on_failure` → *Backlog* on `error`/`timeout`; `always` → *Done*/*Backlog* on completion).
 * **Token & execution cost meter** — token consumption (input, output, cache reads) is tracked per run and per task, with USD estimates from a built-in pricing table and an aggregated analytics bar.
 
-### 7. Overlap Policies & Execution Timeout
+### 10. Overlap Policies & Execution Timeout
 Prevent rogue processes from stacking concurrent duplicate executions:
 
 * **Execution timeout (`timeoutSeconds`)** — when the limit is reached, shell subprocesses are killed immediately via the abort signal and agent sessions are disposed so they stop consuming tokens. Default: `1800` (30 minutes).
@@ -160,7 +184,7 @@ Prevent rogue processes from stacking concurrent duplicate executions:
 
 If the daemon was offline at a scheduled time, the run is recorded as `missed` on startup, so gaps in the history stay visible.
 
-### 8. Heartbeat Monitoring (#16-style dead man's switch)
+### 11. Heartbeat Monitoring (#16-style dead man's switch)
 * Set `heartbeatUrl` and `heartbeatIntervalSec` in the plugin settings and the scheduler pings that URL on schedule — an external monitor alerts when the pings stop.
 * A built-in `GET /dsh-cron/heartbeat` endpoint reports liveness, active task count and the last run time for your own watchdogs.
 
@@ -194,6 +218,31 @@ dsh-cron:
   maxConcurrent: 0             # max parallel task runs (0 = unlimited)
   heartbeatUrl: ""             # dead man's snitch URL pinged on the heartbeat interval
   heartbeatIntervalSec: 0      # heartbeat ping interval in seconds (0 = off)
+  # --- delivery channels ---
+  botTokenRef: ""              # credential NAME for the Telegram bot token
+  template: ""                 # global message template, e.g. "⏰ {title} — {status}"
+  channelTemplates: {}         # per-channel template overrides keyed by channel id
+  deliveryTimeoutMs: 15000     # per-channel delivery timeout; slow channel = failure, others unaffected
+  discordWebhookUrl: ""        # Discord webhook
+  slackWebhookUrl: ""          # Slack incoming webhook
+  ntfyUrl: "https://ntfy.sh"   # ntfy server; ntfyTopic / ntfyTokenRef
+  ntfyTopic: ""
+  ntfyTokenRef: ""
+  barkServerUrl: "https://api.day.app"  # Bark server; barkKey = device key
+  barkKey: ""
+  pushplusUrl: "https://www.pushplus.plus/send"  # pushplusTokenRef
+  pushplusTokenRef: ""
+  smtpHost: ""                 # smtpPort / smtpSecure / smtpUser / smtpFrom / smtpTo
+  smtpPort: 587
+  smtpSecure: false
+  smtpUser: ""
+  smtpPasswordRef: ""          # credential NAME for the SMTP password
+  smtpFrom: ""
+  smtpTo: ""
+  ttsBaseUrl: "http://127.0.0.1:3080"   # dsh-tts base URL
+  giteaBaseUrl: ""             # giteaRepo = owner/repo, giteaTokenRef = credential NAME
+  giteaRepo: ""
+  giteaTokenRef: ""
 ```
 
 ### Configuration Parameters
@@ -209,6 +258,17 @@ dsh-cron:
 | `maxConcurrent` | `number` | `0` | Cap on parallel task runs; extra runs are recorded as `skipped` (0 = unlimited) |
 | `heartbeatUrl` | `string` | `""` | Dead man's snitch URL pinged every `heartbeatIntervalSec` while the scheduler is alive |
 | `heartbeatIntervalSec` | `number` | `0` | Heartbeat ping interval in seconds (0 = disabled) |
+| `botTokenRef` | `string` | `""` | Name of the DSH credential holding the Telegram bot token; resolved at send time (falls back to `botToken`, then the messenger-gateway settings, then the `CRON_TELEGRAM_BOT_TOKEN` environment variable) |
+| `template` | `string` | `""` | Global message template with `{title}`/`{status}`/`{duration}`/… placeholders; empty = built-in text |
+| `channelTemplates` | `object` | `{}` | Per-channel template overrides keyed by channel id (`telegram`, `discord`, …) |
+| `deliveryTimeoutMs` | `number` | `15000` | Per-channel delivery timeout; a slower endpoint is recorded as a delivery failure and does not delay the other channels or the next tick |
+| `discordWebhookUrl` / `slackWebhookUrl` | `string` | `""` | Webhook URLs for the Discord and Slack channels |
+| `ntfyUrl` / `ntfyTopic` / `ntfyTokenRef` | `string` | `"https://ntfy.sh"` / `""` / `""` | ntfy server, topic and an optional token credential name (sent as `Authorization: Bearer …`) |
+| `barkServerUrl` / `barkKey` | `string` | `"https://api.day.app"` / `""` | Bark server and device key (key, title and text travel in the request path) |
+| `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus endpoint (override for a self-hosted proxy) and token credential name |
+| `smtpHost` / `smtpPort` / `smtpSecure` / `smtpUser` / `smtpPasswordRef` / `smtpFrom` / `smtpTo` | `string`/`number`/`boolean` | `""` / `587` / `false` / `""` / `""` / `""` / `""` | Email channel; the password is referenced by credential name and email requires `nodemailer` in the harness runtime |
+| `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | Base URL of the `dsh-tts` plugin used for voice announcements |
+| `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea channel: base URL, `owner/repo`, and the credential name of the API token |
 
 Notes:
 
@@ -231,7 +291,7 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoint
 | `POST` | `/dsh-cron/tasks/:id/pause` | Pause the schedule |
 | `POST` | `/dsh-cron/tasks/:id/resume` | Resume the schedule |
 | `POST` | `/dsh-cron/tasks/:id/toggle` | Toggle active/paused |
-| `PATCH` | `/dsh-cron/tasks/:id` | Partial update (whitelisted fields only: `title`, `schedule`, `prompt`, `type`, `delivery`, `provider`, `model`, notification/timeout/overlap/kanban settings, `status`, `oneShot`) |
+| `PATCH` | `/dsh-cron/tasks/:id` | Partial update (whitelisted fields only: `title`, `schedule`, `prompt`, `type`, `delivery`, `provider`, `model`, runtime settings, `channels`, `template`, notification/timeout/overlap/kanban settings, `status`, `oneShot`) |
 | `DELETE` | `/dsh-cron/tasks/:id` | Delete the task |
 | `GET` | `/dsh-cron/models` | List LLM providers; `?provider=<id>` lists models |
 | `POST` | `/dsh-cron/chat/start` | Start a "Create with DSH" agent session with the task-setup instructions |

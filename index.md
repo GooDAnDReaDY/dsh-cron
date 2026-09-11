@@ -4,11 +4,15 @@
 в `docs/` и Gitea.
 
 - **Назначение**: плагин DeepSeek Harness — планировщик cron-задач, фоновая
-  автоматизация и запуск агентских сессий по расписанию; отчёты в Telegram,
-  карточки в dsh-kanban, учёт токенов и стоимости.
-- **Пакет**: `@goodandready/dsh-cron`, версия `0.1.24` (см. `package.json`).
-- **Статус**: active. В production web-профиле MiniAI установлена `0.1.24`
-  (проверено `dsh plugin --profile web list`, 2026-09-09).
+  автоматизация и запуск агентских сессий по расписанию; рантаймы shell, node,
+  python, http, ssh, docker, env и worktree; отчёты о запусках в Telegram,
+  dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, email, dsh-tts и Gitea;
+  учёт токенов и стоимости.
+- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.3` (см. `package.json`).
+- **Статус**: active, публикация блока «рантаймы + доставка» ещё не выполнена.
+  Ветка `feat/0.2.5-delivery-secrets` проверена на изолированном тест-сервере
+  MiniPC (7 каналов доставки на заглушку, изоляция сбоя канала). В production
+  web-профиле MiniAI пока установлена `0.1.24`.
 - **DEV**: `/mnt/external/Project/DEV/dhsplugins/dsh-cron` (корень read-only,
   работа в `.worktrees/<branch>`).
 - **OPT / production**: DSH web-профиль MiniAI; CLI
@@ -26,9 +30,17 @@
 ## Основные компоненты
 
 - `@lib/index.js` — REST API `/dsh-cron/*`, инструменты `cron_*`, настройки.
-- `@lib/scheduler.js` — croner-планировщик, one-shot, overlap-политики.
+- `@lib/scheduler.js` — croner-планировщик, one-shot, overlap-политики,
+  вызов доставки через инжектируемый `deliver`.
 - `@lib/runner.js` — shell/agent-исполнение, таймауты и отмена.
-- `@lib/store.js` — атомарное JSON-хранилище.
+- `@lib/runtimes.js` — рантаймы node/python/http/ssh/docker, env и worktree.
+- `@lib/secrets.js` — credential-ссылки: резолв через DSH credentials-сервис
+  с фолбэком на ENV; определение «похоже на секрет».
+- `@lib/templates.js` — шаблоны сообщений `{var}` и их переменные.
+- `@lib/channels.js` — адаптеры каналов, чистые builder'ы payload и
+  маршрутизатор `deliverRun` (собирает сбои каналов, не роняет запуск).
+- `@lib/store.js` — атомарное JSON-хранилище; каталог данных берётся из
+  `DSH_DATA_DIR` → `DSH_HOME/data` → `~/.dsh/data`.
 - `@lib/client.js` — UI (single-file: требование DSH-загрузчика).
 - `@lib/http-utils.js` — same-origin, лимит тела, whitelist PATCH.
 - `@docs/design/DESIGN.md` — дизайн-контракт UI.
@@ -50,5 +62,8 @@
 ## Известные ограничения
 
 - Таймзоны задач — локальное время сервера (IANA TZ — открытый вопрос, issue #13).
-- Креденшелы Telegram — в хранилище плагина, а не в credentials-сервисе (#51).
-- Обновлено: 2026-09-09 (проверка тестов 43/43 на MiniAI).
+- Канал email требует `nodemailer` в рантайме харнесса; без него канал
+  сообщает об ошибке и не мешает остальным каналам.
+- Доставка в Gitea идёт прямым REST-вызовом: `dsh-gitea` пока не даёт
+  программного API создания issue (запрос заведён в `goodandready/dsh-gitea#196`).
+- Обновлено: 2026-09-11 (105/105 тестов на ветке; приёмка на MiniPC, issue #112, #113).

@@ -93,8 +93,13 @@ post_install_checks() {
   curl -fsS -o /dev/null http://127.0.0.1:3080/ || fail "DSH web UI is not responding on 127.0.0.1:3080"
   echo "web UI: responding"
   curl -fsS http://127.0.0.1:3080/ | grep -qF "$PACKAGE_NAME" || fail "client entry not found in DSH index"
-  curl -fsS -o /dev/null -w "client.js: HTTP %{http_code}\n" \
-    "http://127.0.0.1:3080/plugins/$PACKAGE_NAME/client.js"
+  # The core serves plugin clients through the combined "??" request; the plain
+  # /plugins/<name>/client.js path answers 404, so probing it would fail a
+  # healthy install.
+  local client_code
+  client_code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3080/plugins/??$PACKAGE_NAME/client.js")"
+  [ "$client_code" = "200" ] || fail "client.js not served through the combined plugin URL (HTTP $client_code)"
+  echo "client.js: HTTP $client_code (combined plugin URL)"
   echo "post-install checks passed"
 }
 

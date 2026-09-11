@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { SessionRunner } from '../lib/runner.js';
-import { TaskStore } from '../lib/store.js';
+import { TaskStore, getDefaultStorePath } from '../lib/store.js';
 import { TaskScheduler, describeCron } from '../lib/scheduler.js';
 import { parseJsonBody } from '../lib/http-utils.js';
 import {
@@ -175,4 +175,40 @@ test('SessionRunner disposes a hung agent session when timeout fires', async () 
   // Give the abort listener tick a moment to run the dispose path.
   await new Promise((r) => setTimeout(r, 150));
   assert.equal(disposed, true, 'handle disposed after timeout abort');
+});
+
+test('store path honours DSH_DATA_DIR and DSH_HOME before the user home', () => {
+  const env = { ...process.env };
+  try {
+    // An isolated profile must not write into another home's data directory:
+    // that is how the MiniPC test cycle leaked a task into the non-test home.
+    process.env.DSH_DATA_DIR = path.join(os.tmpdir(), 'dsh-data-dir');
+    assert.equal(
+      getDefaultStorePath(),
+      path.join(os.tmpdir(), 'dsh-data-dir', 'cron', 'tasks.json'),
+      'DSH_DATA_DIR wins',
+    );
+
+    delete process.env.DSH_DATA_DIR;
+    process.env.DSH_HOME = path.join(os.tmpdir(), 'dsh-home');
+    assert.equal(
+      getDefaultStorePath(),
+      path.join(os.tmpdir(), 'dsh-home', 'data', 'cron', 'tasks.json'),
+      'DSH_HOME decides where profile data lives',
+    );
+
+    delete process.env.DSH_HOME;
+    process.env.HOME = path.join(os.tmpdir(), 'plain-home');
+    assert.equal(
+      getDefaultStorePath(),
+      path.join(os.tmpdir(), 'plain-home', '.dsh', 'data', 'cron', 'tasks.json'),
+      'user home is the last resort',
+    );
+  } finally {
+    process.env.DSH_DATA_DIR = env.DSH_DATA_DIR;
+    process.env.DSH_HOME = env.DSH_HOME;
+    process.env.HOME = env.HOME;
+    if (env.DSH_DATA_DIR === undefined) delete process.env.DSH_DATA_DIR;
+    if (env.DSH_HOME === undefined) delete process.env.DSH_HOME;
+  }
 });
