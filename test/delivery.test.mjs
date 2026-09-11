@@ -21,6 +21,9 @@ import {
   sendToChannel,
   deliverRun,
   DEFAULT_DELIVERY_TIMEOUT_MS,
+  MIN_DELIVERY_TIMEOUT_MS,
+  resolveDeliveryTimeoutMs,
+  unknownChannels,
 } from '../lib/channels.js';
 
 const task = { id: 'cron_1', title: 'Nightly', scheduleText: 'Every day at 03:00', schedule: '0 3 * * *' };
@@ -161,14 +164,15 @@ test('#26: a hanging channel times out instead of blocking the rest of the repor
   const result = await deliverRun({
     task: { ...task, channels: ['discord', 'slack'] },
     runInfo: okRun,
-    settings: { discordWebhookUrl: 'http://hang.test/hook', slackWebhookUrl: 'http://ok.test/hook', deliveryTimeoutMs: 120 },
+    // MIN_DELIVERY_TIMEOUT_MS is the shortest deadline the router accepts (#115).
+    settings: { discordWebhookUrl: 'http://hang.test/hook', slackWebhookUrl: 'http://ok.test/hook', deliveryTimeoutMs: MIN_DELIVERY_TIMEOUT_MS },
     fetchFn: http,
   });
   const elapsed = Date.now() - started;
   assert.deepEqual(result.delivered.map((d) => d.channel), ['slack'], 'the healthy channel still delivered');
   assert.equal(result.failures.length, 1);
-  assert.match(result.failures[0].error, /timed out after 120 ms/);
-  assert.ok(elapsed < 2000, `delivery returned promptly (took ${elapsed} ms)`);
+  assert.match(result.failures[0].error, /timed out after 1000 ms/);
+  assert.ok(elapsed < 3000, `delivery returned promptly (took ${elapsed} ms)`);
   assert.ok(seen.length >= 2, 'channels were dispatched despite the hang');
 });
 
@@ -216,12 +220,12 @@ test('#51: a credential resolver that never settles cannot hold the run', async 
   const result = await deliverRun({
     task: { ...task, channels: ['ntfy'] },
     runInfo: okRun,
-    settings: { ntfyTopic: 'topic', ntfyTokenRef: 'SLOW', deliveryTimeoutMs: 120 },
+    settings: { ntfyTopic: 'topic', ntfyTokenRef: 'SLOW', deliveryTimeoutMs: MIN_DELIVERY_TIMEOUT_MS },
     secrets: { resolveSecret: () => new Promise(() => {}) },
     fetchFn: async () => ({ ok: true, status: 200, json: async () => ({}) }),
   });
   assert.equal(result.failures.length, 1);
-  assert.match(result.failures[0].error, /timed out after 120 ms/);
+  assert.match(result.failures[0].error, /timed out after 1000 ms/);
 });
 
 // ------------------------------------------------------- payload builders
@@ -386,4 +390,40 @@ test('#26: a channel with missing configuration is reported, never thrown', asyn
   const result = await deliverRun({ task: { ...task, channels: ['slack'] }, runInfo: okRun, settings: {}, fetchFn: async () => ({ ok: true, status: 200 }) });
   assert.equal(result.failures.length, 1);
   assert.match(result.failures[0].error, /slackWebhookUrl/);
+});
+
+test('#115: the delivery deadline is clamped to a sane minimum', async () => {
+  assert.equal(MIN_DELIVERY_TIMEOUT_MS, 1000);
+  assert.equal(resolveDeliveryTimeoutMs(15000), 15000, 'a sane value is kept');
+  assert.equal(resolveDeliveryTimeoutMs(1), 1000, 'a value below the minimum is raised');
+  assert.equal(resolveDeliveryTimeoutMs(999), 1000);
+  assert.equal(resolveDeliveryTimeoutMs(undefined), DEFAULT_DELIVERY_TIMEOUT_MS, 'missing value falls back to the default');
+  assert.equal(resolveDeliveryTimeoutMs('abc'), DEFAULT_DELIVERY_TIMEOUT_MS);
+  assert.equal(resolveDeliveryTimeoutMs(0), DEFAULT_DELIVERY_TIMEOUT_MS);
+  assert.equal(resolveDeliveryTimeoutMs(-5), DEFAULT_DELIVERY_TIMEOUT_MS);
+
+  // The clamp must reach the wire: a stored 1 ms cannot make every channel
+  // fail instantly, so the report still goes out.
+  const calls = [];
+  const http = async (url) => {
+    calls.push({ url: String(url), signal: true });
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+  const started = Date.now();
+  const result = await deliverRun({
+    task: { ...task, channels: ['slack'] },
+    runInfo: okRun,
+    settings: { slackWebhookUrl: 'http://ok.test/hook', deliveryTimeoutMs: 1 },
+    fetchFn: http,
+  });
+  assert.equal(result.failures.length, 0, 'a misconfigured 1 ms timeout no longer fails the delivery');
+  assert.deepEqual(result.delivered.map((d) => d.channel), ['slack']);
+  assert.ok(Date.now() - started < 1000, 'the clamped deadline is used, not the stored 1 ms');
+});
+
+test('#121: a task that still references a removed channel reports it', () => {
+  assert.deepEqual(unknownChannels({ channels: ['discord', 'email', 'slack'] }), ['email']);
+  assert.deepEqual(unknownChannels({ channels: ['discord'] }), []);
+  assert.deepEqual(unknownChannels({}), []);
+  assert.deepEqual(unknownChannels({ channels: 'discord' }), [], 'a non-array is ignored');
 });

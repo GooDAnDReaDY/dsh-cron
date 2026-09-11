@@ -170,6 +170,16 @@ test('#51: the settings route rejects raw secrets and masked echoes before the s
   assert.equal(payload.template, '{title}');
 });
 
+test('#115: the settings route normalises the delivery deadline before the scope write', () => {
+  assert.equal(sanitizeSettingsPayload({ deliveryTimeoutMs: 1 }).deliveryTimeoutMs, 1000, 'a 1 ms deadline is raised to the minimum');
+  assert.equal(sanitizeSettingsPayload({ deliveryTimeoutMs: 20000 }).deliveryTimeoutMs, 20000, 'a sane value is kept');
+  assert.equal(sanitizeSettingsPayload({ deliveryTimeoutMs: 15000.4 }).deliveryTimeoutMs, 15000, 'fractional values are rounded');
+  assert.equal(sanitizeSettingsPayload({ deliveryTimeoutMs: '' }).deliveryTimeoutMs, undefined, 'an empty value is dropped so the default applies');
+  assert.equal(sanitizeSettingsPayload({ deliveryTimeoutMs: 'abc' }).deliveryTimeoutMs, undefined, 'a non-numeric value is dropped');
+  assert.equal(sanitizeSettingsPayload({ deliveryTimeoutMs: -1 }).deliveryTimeoutMs, undefined);
+  assert.equal(sanitizeSettingsPayload({ chatId: '42' }).deliveryTimeoutMs, undefined, 'an absent key stays absent');
+});
+
 test('#51: the messenger-gateway fallback reads the profile home, not another one', () => {
   const env = { ...process.env };
   try {

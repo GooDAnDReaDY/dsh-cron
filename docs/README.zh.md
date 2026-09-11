@@ -31,7 +31,7 @@
 
 **`@goodandready/dsh-cron`** 是 DeepSeek Harness 的原生全栈调度与后台自动化插件。它将标准 cron 表达式、自然语言间隔语法与自主智能体执行连接起来：
 
-1. **完善的可视化任务管理器** —— 侧边栏按钮与功能齐全的面板：查看、筛选、暂停、立即运行和创建任务。
+1. **完善的可视化任务管理器** —— 侧边栏按钮带可折叠的活跃任务列表（下次运行时间或实时状态，行数有上限且状态可记忆），以及功能齐全的面板：按类型、模型、渠道筛选，暂停、立即运行、复制、导出/导入与创建任务。
 2. **交互式“由 DSH 创建”流程** —— 与智能体对话，把高层需求转化为规范的定时任务。
 3. **自主工具调用** —— 原生 `cron_*` 工具让智能体在会话中自行安排后续执行。
 4. **健壮的调度器与原子存储** —— 基于 `croner`：间隔别名、一次性延时任务、原子写入、运行历史与成本追踪。
@@ -154,6 +154,7 @@ cron_create_task({
 ### 8. 通知渠道与消息模板
 运行完成后，报告会发送到该任务配置的所有渠道 —— Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、语音（`dsh-tts`）以及 Gitea issue：
 
+* **任务迁移** —— 将全部配置导出为版本化 JSON，并在别处导入（含预览摘要）；导入的任务处于暂停状态。
 * **按任务选择渠道** —— 在任务表单中勾选渠道；显式选择会覆盖旧版 `notifyTelegram`/`kanbanMode` 开关，留空则回退到它们。
 * **故障隔离** —— 某个渠道不可用会记录在调度器日志中，其余渠道仍会收到报告；失效的 webhook 不会吞掉整份报告。
 * **消息模板** —— 支持全局模板、按渠道覆盖或按任务模板，变量为 `{title} {id} {status} {output} {error} {duration} {schedule} {time} {tokens} {cost}`。未知占位符保持原样，失败运行默认使用失败模板。
@@ -278,6 +279,9 @@ dsh-cron:
 | `POST` | `/dsh-cron/tasks/:id/pause` | 暂停调度 |
 | `POST` | `/dsh-cron/tasks/:id/resume` | 恢复调度 |
 | `POST` | `/dsh-cron/tasks/:id/toggle` | 切换活跃/暂停 |
+| `POST` | `/dsh-cron/tasks/:id/duplicate` | 创建暂停状态的副本：复制配置，重置运行历史与计数 |
+| `GET` | `/dsh-cron/tasks/export` | 仅含任务配置的版本化 JSON —— 不含历史与计数。渠道按名称引用凭据，但手动填写在任务中的 `env` 与 HTTP 请求头属于配置，会出现在文件里 |
+| `POST` | `/dsh-cron/tasks/import` | 校验文档并以 `add`、`replace` 或 `skip` 策略导入；支持 `dryRun` 预览。导入的任务始终为**暂停**状态，恢复不会自动触发 |
 | `PATCH` | `/dsh-cron/tasks/:id` | 部分更新（仅白名单字段：`title`、`schedule`、`prompt`、`type`、`delivery`、`provider`、`model`、通知/超时/重叠/Kanban 设置、`status`、`oneShot`） |
 | `DELETE` | `/dsh-cron/tasks/:id` | 删除任务 |
 | `GET` | `/dsh-cron/models` | 列出 LLM 提供方；`?provider=<id>` 列出模型 |

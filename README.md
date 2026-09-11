@@ -31,7 +31,7 @@ Autonomous AI agents often need to perform recurring duties: generating daily mo
 
 **`@goodandready/dsh-cron`** is a native full-stack scheduling and background automation plugin for DeepSeek Harness. It bridges standard cron expressions and natural interval syntax with autonomous agent execution, providing:
 
-1. **Rich Visual Task Manager** — a sidebar button and a full-featured panel to inspect, filter, pause, trigger, and create recurring tasks.
+1. **Rich Visual Task Manager** — a sidebar button with a collapsible list of active jobs (next run or live state, capped and persisted), plus a full panel to inspect, filter by type/model/channel, pause, trigger, duplicate, export/import and create tasks.
 2. **Interactive "Create with DSH" Workflow** — chat with your agent to translate high-level requirements into a well-formed scheduled task.
 3. **Autonomous AI Tool Calling** — native `cron_*` tools let agents schedule their own follow-up executions during conversations.
 4. **Robust Scheduler & Atomic Storage** — built on `croner` with interval aliases, one-shot delays, atomic file persistence, run histories, and cost tracking.
@@ -282,6 +282,9 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoint
 | `POST` | `/dsh-cron/tasks/:id/pause` | Pause the schedule |
 | `POST` | `/dsh-cron/tasks/:id/resume` | Resume the schedule |
 | `POST` | `/dsh-cron/tasks/:id/toggle` | Toggle active/paused |
+| `POST` | `/dsh-cron/tasks/:id/duplicate` | Creates a paused copy of a task: configuration copied, run state (history, counters, last run) reset |
+| `GET` | `/dsh-cron/tasks/export` | Versioned JSON document with task configuration only — no history or counters. Channels reference credentials by name, but a task-level `env` map or HTTP headers you typed in yourself are part of the configuration and therefore appear in the file |
+| `POST` | `/dsh-cron/tasks/import` | Validates a document and applies it with `add`, `replace` or `skip`; supports a `dryRun` summary. Imported tasks always start **paused**, so a restore never fires until reviewed |
 | `PATCH` | `/dsh-cron/tasks/:id` | Partial update (whitelisted fields only: `title`, `schedule`, `prompt`, `type`, `delivery`, `provider`, `model`, runtime settings, `channels`, `template`, notification/timeout/overlap/kanban settings, `status`, `oneShot`) |
 | `DELETE` | `/dsh-cron/tasks/:id` | Delete the task |
 | `GET` | `/dsh-cron/models` | List LLM providers; `?provider=<id>` lists models |
