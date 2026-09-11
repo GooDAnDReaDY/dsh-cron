@@ -159,7 +159,10 @@ cron_create_task({
 ### 9. 按规则保持安静
 有输出的任务可以设置用自然语言描述的**静默规则**（例如“当没有分区使用率超过 80% 时保持安静”）。运行成功时，由便宜模型对照该规则判断输出，若结论为保持安静则跳过报告，并在运行历史中记录原因。遵循 fail-open：没有规则、没有模型、调用失败或答案无法解析时都会照常投递报告。插件设置 `silentRuleModel` 指定用于判断的模型。
 
-### 10. 通知渠道与消息模板
+### 10. 失败诊断
+智能体任务可以请求诊断：设置 `inspectOnFailure` 后，失败（`error` 或 `timeout`）的运行会连同任务提示词与截断输出一起交给模型，运行历史中会保存简短诊断与具体的提示词修改建议。历史记录提供按钮把该建议载入编辑表单 —— 不会自动应用。模型由 `inspectorModel` 指定，消息模板中可使用 `{diagnosis}`。模型不可用或调用失败时，失败的运行保持原样。
+
+### 11. 通知渠道与消息模板
 运行完成后，报告会发送到该任务配置的所有渠道 —— Telegram、dsh-kanban、Discord、Slack、ntfy、Bark、PushPlus、语音（`dsh-tts`）以及 Gitea issue：
 
 * **任务迁移** —— 将全部配置导出为版本化 JSON，并在别处导入（含预览摘要）；导入的任务处于暂停状态。
@@ -176,11 +179,11 @@ cron_create_task({
 * **Gitea** —— 创建包含运行报告的 issue（`giteaBaseUrl`、`giteaRepo`、token 凭据）；失败运行标记为 `cron`、`bug`、`alert`。
 * **测试发送按钮** —— 在安排关键任务前现场验证 Telegram 连通性。
 
-### 11. Kanban 集成与成本统计
+### 12. Kanban 集成与成本统计
 * **自动创建 Kanban 卡片** —— 当 `kanbanMode` 为 `on_failure` 或 `always` 时，插件在 `dsh-kanban` 中创建卡片（`on_failure` → `error`/`timeout` 时进入 *Backlog*；`always` → 完成后进入 *Done*/*Backlog*）。
 * **Token 与执行成本计量** —— 按运行与任务统计 token 消耗（输入、输出、缓存读取），基于内置价格表估算美元成本，并提供汇总分析栏。
 
-### 12. 重叠策略与执行超时
+### 13. 重叠策略与执行超时
 
 * **执行超时（`timeoutSeconds`）** —— 达到限制后，shell 子进程通过 abort 信号立即终止，智能体会话被释放以停止消耗 token。默认 `1800`（30 分钟）。
 * **重叠策略（`overlapPolicy`）** —— 上一次运行尚未结束时再次触发调度时的行为：
@@ -190,7 +193,7 @@ cron_create_task({
 
 如果守护进程在计划时刻处于离线状态，启动时该次运行会被记录为 `missed`，历史空档始终可见。
 
-### 13. 心跳监控（Dead man's switch）
+### 14. 心跳监控（Dead man's switch）
 * 在插件设置中配置 `heartbeatUrl` 与 `heartbeatIntervalSec`，调度器会按间隔 GET 该地址 —— 外部监控可在心跳停止时告警。
 * 内置 `GET /dsh-cron/heartbeat` 端点返回存活状态、活跃任务数与最近运行时间，便于自建看门狗。
 

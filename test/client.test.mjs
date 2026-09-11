@@ -137,6 +137,14 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes("'transfer.strategyReplace'"), 'all three import strategies are offered');
   assert.ok(code.includes("type: 'file'") && code.includes('accept: \'.json,application/json\''), 'import only accepts JSON exports');
 
+  // #43 — the failure inspector.
+  assert.ok(code.includes("'form.inspectOnFailureLabel'"), 'inspector checkbox present');
+  assert.ok(code.includes('const [formInspectOnFailure, setFormInspectOnFailure] = React.useState('), 'inspector state present');
+  assert.ok(code.includes('inspectOnFailure: isAgentType ? Boolean(formInspectOnFailure) : false'), 'inspection is limited to agent tasks');
+  assert.ok(code.includes("'settings.inspectorModelLabel'"), 'the inspector model is configurable');
+  assert.ok(code.includes("'history.diagnosis'") && code.includes('run.diagnosis'), 'the history shows the diagnosis');
+  assert.ok(code.includes("'history.applySuggestion'") && code.includes('{ prompt: run.suggestion }'), 'a suggestion can be loaded into the edit form');
+
   // #44 — the silent rule field and the history marker.
   assert.ok(code.includes("'form.silentRuleLabel'"), 'silent rule label present');
   assert.ok(code.includes('const [formSilentRule, setFormSilentRule] = React.useState('), 'silent rule state present');

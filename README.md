@@ -160,7 +160,10 @@ A task can run on the cheap model by default and still finish on the strong one:
 ### 9. Quiet by Rule
 A task with output can carry a **silent rule** written in plain words ("stay silent when no filesystem is above 80%"). On a successful run a cheap model judges the output against that rule and the report is skipped when the verdict is to stay silent, with the reason recorded in the run history. It fails open: no rule, no model, a failed call or an unreadable answer all mean the report is delivered. `silentRuleModel` (plugin setting) picks the model used for the judgement.
 
-### 10. Notification Channels & Message Templates
+### 10. Failure Diagnosis
+Agent tasks can ask for a diagnosis: with `inspectOnFailure` set, a failed run (`error` or `timeout`) is read by a model together with the task prompt and truncated output, and the run history stores a short diagnosis plus a concrete prompt change. The history entry offers to load that suggestion into the edit form — nothing is applied automatically. The model is configurable with `inspectorModel`, and `{diagnosis}` is available in message templates. A broken or unavailable model call leaves the failed run exactly as it was.
+
+### 11. Notification Channels & Message Templates
 A finished run is delivered to every channel configured for the task — Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, voice via `dsh-tts`, and Gitea issues:
 
 * **Per-task channels** — tick the channels in the task form; an explicit selection overrides the legacy `notifyTelegram` / `kanbanMode` switches, and an empty selection falls back to them.
@@ -176,11 +179,11 @@ A finished run is delivered to every channel configured for the task — Telegra
 * **Gitea** — opens an issue with the run report (`giteaBaseUrl`, `giteaRepo`, token credential); failures are labelled `cron`, `bug`, `alert`.
 * **Test dispatch button** — verify Telegram connectivity on the spot before scheduling critical jobs.
 
-### 11. Kanban Integration & Cost Meter
+### 12. Kanban Integration & Cost Meter
 * **Automatic Kanban cards** — with `kanbanMode` set to `on_failure` or `always`, the plugin creates cards in `dsh-kanban` (`on_failure` → *Backlog* on `error`/`timeout`; `always` → *Done*/*Backlog* on completion).
 * **Token & execution cost meter** — token consumption (input, output, cache reads) is tracked per run and per task, with USD estimates from a built-in pricing table and an aggregated analytics bar.
 
-### 12. Overlap Policies & Execution Timeout
+### 13. Overlap Policies & Execution Timeout
 Prevent rogue processes from stacking concurrent duplicate executions:
 
 * **Execution timeout (`timeoutSeconds`)** — when the limit is reached, shell subprocesses are killed immediately via the abort signal and agent sessions are disposed so they stop consuming tokens. Default: `1800` (30 minutes).
@@ -191,7 +194,7 @@ Prevent rogue processes from stacking concurrent duplicate executions:
 
 If the daemon was offline at a scheduled time, the run is recorded as `missed` on startup, so gaps in the history stay visible.
 
-### 13. Heartbeat Monitoring (#16-style dead man's switch)
+### 14. Heartbeat Monitoring (#16-style dead man's switch)
 * Set `heartbeatUrl` and `heartbeatIntervalSec` in the plugin settings and the scheduler pings that URL on schedule — an external monitor alerts when the pings stop.
 * A built-in `GET /dsh-cron/heartbeat` endpoint reports liveness, active task count and the last run time for your own watchdogs.
 
