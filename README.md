@@ -325,6 +325,13 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 - **History Rotation & Archival**: Active store holds the latest 100 runs per task; older entries are automatically archived into `tasks-history-archive.json`.
 - **Autonomous PR Reviewer Recipe (#33)**: Preconfigured recipe in Template Hub with optional toggle `prReviewerEnabled` in settings.
 
+### 22. Automation, Task Chaining & Observability Pack (Added in v0.2.10, #137)
+- **Two-Way Telegram Interactive Controls**: Run completion notifications include inline keyboard buttons (`🚀 Run Now`, `⏸️ Pause` / `▶️ Resume`, `📋 Last Output`). Actions are securely routed via `POST /dsh-cron/telegram/webhook` with Chat ID authorization matching plugin settings or harness defaults.
+- **Task Chaining & Pipelines**: Tasks can declare `onSuccess` and `onFailure` downstream task triggers. Upstream output is automatically forwarded to child tasks via `$DSH_PREV_OUTPUT` environment variable for shell/script tasks and `{{prevOutput}}` variable interpolation in LLM prompts. Infinite execution loops are strictly prevented with a recursion depth limit (max 5 consecutive executions).
+- **Structured LLM Actions**: Autonomous model runs can output structured JSON directives to trigger secondary tasks, dispatch channel notifications, or open issues. Controlled via `llmActionsEnabled: false` settings toggle (strictly disabled by default).
+- **History Archival & Latency Insights**: Active task store retains the most recent 100 runs for instant performance, while older runs are archived in `tasks_archive.json`. New REST endpoints `GET /dsh-cron/tasks/:id/archive` and `GET /dsh-cron/tasks/:id/stats` expose historical records and aggregated latency statistics. Task UI displays execution duration latency badges with color thresholds (<5s green, <30s yellow, >=30s red).
+- **Enriched Prometheus Observability**: The `/dsh-cron/metrics` endpoint exports the active concurrency gauge `dsh_cron_concurrent_running`, per-task prompt/completion token consumption counters `dsh_cron_task_tokens_total{task,model,type}`, and per-task cost estimation counters `dsh_cron_task_cost_usd_total{task,model}`.
+
 ---
 
 ## 📦 Installation
