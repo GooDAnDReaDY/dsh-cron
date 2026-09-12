@@ -317,6 +317,14 @@ Environment used by the check: `DSH_WEB_BASE` (default `http://127.0.0.1:3080`),
 ### 20. Internal Refactor: Schedule Parsing and Arming (#97)
 Developer-facing, no behaviour change. `parseScheduleExpression` was split into small functions that keep the same branch order — `parseAtExpression`, `parseRelativeOneShot`, `parseIntervalExpression`, `parseAliasExpression`, `parseCronExpression` — and `scheduleTask` into `clearScheduled`, `scheduleOneShot` and `scheduleCron`. The existing test suite passed unchanged and targeted tests were added for branch precedence and error messages.
 
+### 21. Performance & Process Isolation Pack (Added in v0.2.9, #134)
+- **Process-Tree Termination**: Shell and script tasks run in an isolated process group (`detached: true` on POSIX); aborts and timeouts send `SIGTERM` followed by `SIGKILL` to the entire group (`-child.pid`) to eliminate orphan and zombie processes.
+- **Concurrency Throttling**: Default safe limit `maxConcurrent = 2` prevents CPU and memory spikes during overlapping scheduled runs.
+- **Transient Error Retry**: Exponential backoff retry (up to 3 attempts) for transient network and provider errors (`429`, `502`, `503`, `504`, `ECONNRESET`).
+- **Network & UI Optimization**: `GET /dsh-cron/tasks` provides `ETag` and responds with `304 Not Modified`; client UI adapts polling frequency (`visibilitychange`: 30s in background tabs, 8s in active tabs).
+- **History Rotation & Archival**: Active store holds the latest 100 runs per task; older entries are automatically archived into `tasks-history-archive.json`.
+- **Autonomous PR Reviewer Recipe (#33)**: Preconfigured recipe in Template Hub with optional toggle `prReviewerEnabled` in settings.
+
 ---
 
 ## 📦 Installation
