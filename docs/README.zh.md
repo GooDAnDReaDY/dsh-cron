@@ -326,6 +326,29 @@ bash deploy.sh verify [exact-version]
 ### 20. 内部重构：调度解析与排程（#97）
 面向开发者，行为不变。`parseScheduleExpression` 被拆分为保持相同分支顺序的小函数 —— `parseAtExpression`、`parseRelativeOneShot`、`parseIntervalExpression`、`parseAliasExpression`、`parseCronExpression`，`scheduleTask` 拆分为 `clearScheduled`、`scheduleOneShot`、`scheduleCron`。原有测试全部通过，并新增了针对分支优先级与错误的测试。
 
+### 21. 性能与进程隔离增强包（v0.2.9，#134）
+- **进程树终止隔离**：Shell 和 Script 任务在独立进程组启动（POSIX 下 `detached: true`）；中止或超时向整组发送 `-child.pid SIGTERM -> SIGKILL`，杜绝孤儿进程与僵尸进程。
+- **并发控制限流**：默认安全阈值 `maxConcurrent = 2`，避免定时重叠引发 CPU 和内存峰值。
+- **瞬态错误重试**：针对网络抖动和模型速率限制（`429`、`502`、`503`、`504`、`ECONNRESET`）提供指数退避重试（最多3次）。
+- **网络与前端优化**：`GET /dsh-cron/tasks` 支持 `ETag` 与 `304 Not Modified`；前端页面根据 `visibilityState` 自适应轮询（前台 8s，后台 30s）。
+- **历史记录轮换与归档**：活动任务仅保留最新 100 次运行，超出部分自动归档至 `tasks-history-archive.json`。
+- **自主 PR 审查配方 (#33)**：Template Hub 预置配方与 `prReviewerEnabled` 设置项。
+
+### 22. 自动化、任务链与可观测性包（v0.2.10，#137）
+- **Telegram 双向交互控制**：任务通知附带内嵌操作按钮（`🚀 立即运行`、`⏸️ 暂停/恢复`、`📋 最新日志`）。由 `POST /dsh-cron/telegram/webhook` 处理，严格鉴权 Chat ID 并调用 `answerCallbackQuery` 反馈。
+- **任务管道与级联触发**：配置 `onSuccess` 与 `onFailure` 下游触发器。上游输出自动注入子任务环境变量 `$DSH_PREV_OUTPUT`，LLM 任务支持 `{{prevOutput}}` 插值。内置最大 5 级深度递归防护，杜绝死循环。
+- **模型结构化动作指令**：自主分析任务可输出 JSON 指令触发级联任务（`trigger_task`）、定向告警（`notify`）或创建 Issue。受 `llmActionsEnabled: false` 严格保护。
+- **历史归档与延迟洞察**：REST 接口 `GET /dsh-cron/tasks/:id/archive`（支持分页）与 `GET /dsh-cron/tasks/:id/stats`；UI 任务卡片展示耗时彩色徽章（<5s 绿，<30s 黄，≥30s 红）。
+- **Prometheus 监控增强**：`/dsh-cron/metrics` 导出当前活动并发量 `dsh_cron_concurrent_running`、各任务 Token 计数器及成本预估指标。
+
+### 23. 高级可靠性、自愈、心跳与体验包（v0.2.11，#139）
+- **心跳与寂静监控（Heartbeat / Dead Man's Snitch）**：针对外部备份与后台作业提供反向监控。外部脚本定期向 `/dsh-cron/heartbeat/:id` 发送请求；超出 `heartbeatIntervalSeconds` + 宽限期未打卡时，任务标记为 `missed`，即刻推送失联告警并触发 `onFailure` 应急流程。
+- **执行前置检查（Pre-flight Gates）**：执行前先验证条件（HTTP 状态 2xx、命令退出码 0、最低可用磁盘 MB）。未通过直接置为 `skipped`，杜绝因外部环境异常产生无意义的模型 Token 消耗与错误干扰。
+- **试运行与调度模拟器（Dry-Run & Simulator）**：接口 `POST /dsh-cron/tasks/:id/dry-run` 与 UI `🧪 试运行` 按钮支持无副作用执行（不入库历史、不发渠道通知）；`POST /dsh-cron/schedule/preview` 实时计算未来 5 次运行时间。
+- **优先级队列与并发池（Priority Queues）**：并发满载时，等待队列严格依据任务 `priority`（1 最高，10 最低）调度。
+- **自愈脚本与 AI 根因诊断（Self-Healing）**：任务失败后自动执行补偿指令 `selfHealingCommand`（例如重启服务或清理临时空间）；`autoDiagnose` 自动生成 AI 故障根因摘要。
+- **UI 交互式归档与管道全景**：支持分页浏览任务历史运行全量输出，直观展示 `➜ 成功触发` 与 `↳ 失败触发` 关联关系。
+
 ---
 
 ## 📦 安装
