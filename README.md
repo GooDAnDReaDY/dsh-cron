@@ -342,6 +342,14 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 - **History Archival & Latency Insights**: Active task store retains the most recent 100 runs for instant performance, while older runs are archived in `tasks_archive.json`. New REST endpoints `GET /dsh-cron/tasks/:id/archive` and `GET /dsh-cron/tasks/:id/stats` expose historical records and aggregated latency statistics. Task UI displays execution duration latency badges with color thresholds (<5s green, <30s yellow, >=30s red).
 - **Enriched Prometheus Observability**: The `/dsh-cron/metrics` endpoint exports the active concurrency gauge `dsh_cron_concurrent_running`, per-task prompt/completion token consumption counters `dsh_cron_task_tokens_total{task,model,type}`, and per-task cost estimation counters `dsh_cron_task_cost_usd_total{task,model}`.
 
+### 23. Advanced Reliability, Self-Healing, Heartbeats & UX Pack (Added in v0.2.11, #139)
+- **Heartbeat & Dead Man's Snitch**: Support for inverted cron monitoring where external backup scripts or background jobs ping `/dsh-cron/heartbeat/:id` (or `/dsh-cron/api/heartbeat/:id`). If a ping is missed within `heartbeatIntervalSeconds` + `gracePeriodSeconds`, the task is flagged as `missed`, dispatches an overdue failure alert, and triggers an `onFailure` recovery pipeline.
+- **Pre-flight Execution Gates**: Guard against wasted model tokens and noisy failures with preliminary checks (`preflightType`: `http` status 2xx, `command` exit code 0, or `disk` free MB space). Failing the gate cleanly marks the task as `skipped` without invoking LLMs or dispatching channel errors.
+- **Dry-Run Mode & Schedule Simulator**: Execute tasks on demand via `POST /dsh-cron/tasks/:id/dry-run` or UI `🧪 Dry Run` button without persisting run history or delivering messages. Preview next calculated execution dates via `POST /dsh-cron/schedule/preview`.
+- **Priority Queues & Concurrency Pools**: When the concurrent run limit is reached, queued tasks are ordered by `priority` (1 = highest, 10 = lowest) to ensure critical system alerts execute ahead of bulk background jobs.
+- **Self-Healing Runbooks & Auto-Diagnosis**: Failed tasks automatically execute an optional compensatory `selfHealingCommand` (e.g. system service restart or temp cleanup). Model failures can trigger `autoDiagnose: true` to append an instant root-cause diagnosis.
+- **Web UI Archive & Pipeline Visualization**: Interactive archive drawer with pagination and full log viewing; visual indicators for `➜ onSuccess` and `↳ onFailure` task connections.
+
 ---
 
 ## 📦 Installation
