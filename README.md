@@ -352,6 +352,13 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 ---
 
+### 24. Automatic Agent Preset Mounting & Tool Availability (#141 / GH-1, Added in v0.2.12)
+- **Automatic Agent Preset Mounting**: Scheduled autonomous `llm` tasks and on-demand agent runs now automatically resolve and mount the system agent preset (defaulting to user's standard preset via `presets.mount(agentCtx, preset.id)` in `setup`). Scheduled agent turns now possess complete tool access (file editing, workspace exploration, shell commands, etc.) instead of running with bare chat sessions.
+- **Per-Task Preset Override**: Tasks can explicitly configure an `agentPreset` identifier in the task form UI, REST API, or profile jobs (e.g. `coding`, `system`, `minimal`). When left empty, tasks automatically resolve to the harness's default preset.
+- **Graceful Toolset Fallback**: If the `agentPresets` service is absent or an unknown preset ID is provided, the scheduler logs an informative warning and safely proceeds with basic model execution without aborting the scheduled task.
+
+---
+
 ## 📦 Installation
 
 Install into your DeepSeek Harness web profile:
