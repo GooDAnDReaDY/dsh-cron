@@ -358,6 +358,19 @@ bash deploy.sh verify [exact-version]
 
 ---
 
+### 25. 常驻持久会话与上下文延续 (`targetSessionId`，v0.2.13 新增，#143)
+- **跨周期会话上下文延续**：支持在任务中配置 `targetSessionId`。设置后，调度器将在每次定时触发时通过 `agents.resume()` 唤醒已有会话，而不再每次生成孤立的临时会话（`cron-exec-${id}-${uuid}`）。智能体能够完整继承上一轮对话的历史记忆与分析结论。
+- **上下文窗口保护与轮转机制 (`targetSessionReset`)**：为防止高频执行导致模型上下文窗口超限与 Token 成本暴增，支持智能轮转策略：
+  - `never`：持续累积单一会话，不重置。
+  - `daily`：每日自动开启全新子会话（后缀 `<id>-YYYY-MM-DD`）。
+  - `weekly`：每周自动开启全新子会话（后缀 `<id>-YYYY-Www`）。
+  - 日期变量插值：`targetSessionId` 中支持 `{{date}}` 占位符，自动注入当前日期 `YYYY-MM-DD`。
+- **主界面原生可见交互**：持久会话不会被标记为 `ephemeral`/`internal`，且在执行后跳过自动归档（`sessions.archive()`），用户可在 DSH 聊天列表中直接查看并继续手动对话。
+- **预设工具链无缝适配**：恢复会话时同样完整挂载 `agentPresets`，保障文件读写、代码编辑与终端工具持续可用。
+- *致谢*：功能灵感源自社区开发者 [@RaulLazaro](https://github.com/RaulLazaro)。
+
+---
+
 ## 📦 安装
 
 ```bash
