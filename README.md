@@ -359,6 +359,19 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 ---
 
+### 25. Persistent Execution Sessions & Context Continuity (`targetSessionId`, Added in v0.2.13, #143)
+- **Continuous Conversation Context**: Tasks can configure a `targetSessionId`. When set, the scheduler resumes the existing session via `agents.resume()` instead of generating an isolated ephemeral session (`cron-exec-${id}-${uuid}`) on every tick. The agent retains conversational memory across runs, allowing periodic auditors or assistants to reference prior findings and outputs directly in context.
+- **Context Window Protection & Session Rotation (`targetSessionReset`)**: To prevent unbounded context growth and token cost explosion over long schedules, tasks can set an automatic rotation policy:
+  - `never`: Continues a single session thread indefinitely.
+  - `daily`: Automatically rotates the session daily (`<id>-YYYY-MM-DD`).
+  - `weekly`: Automatically rotates the session weekly (`<id>-YYYY-Www`).
+  - Custom templating: Any `targetSessionId` containing `{{date}}` automatically interpolates today's date (`YYYY-MM-DD`).
+- **Main Chat Visibility**: Persistent sessions are omitted from `sessions.archive()` and unflagged from `ephemeral`/`internal`, making them visible and interactable directly in the DeepSeek Harness chat interface.
+- **Preset & Tooling Compatibility**: Resumed sessions automatically preserve and remount configured `agentPresets`, ensuring full access to workspace, terminal, and file tools on every turn.
+- *Inspiration credit*: Community idea originally explored by [@RaulLazaro](https://github.com/RaulLazaro).
+
+---
+
 ## 📦 Installation
 
 Install into your DeepSeek Harness web profile:
