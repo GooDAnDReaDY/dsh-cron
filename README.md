@@ -372,6 +372,17 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 ---
 
+### 26. Reliability, Hardening & Self-Healing Maintenance Pack (v0.2.14, #145)
+- **Automatic Retry Budget Reset**: Fixed retry exhaustion amnesia. When a task exhausts its configured retry attempts (`maxRetries`), its attempts counter is automatically cleared, ensuring that subsequent scheduled ticks retain their full retry budget. Any regular or manual execution also guarantees a clean retry budget on launch.
+- **Zombie Queue Elimination**: Tasks paused via UI/API or deleted are immediately purged from the scheduler's concurrency waiting queue (`this.queue`). Additionally, when dequeuing tasks upon concurrency slot release, inactive or deleted tasks are safely skipped.
+- **Bounded History Archive**: Long-running production instances with high-frequency cron tasks safely bound `tasks-history-archive.json` to the latest 1,000 runs per task, eliminating unbounded disk growth and synchronous JSON serialization lag.
+- **Disaster Recovery & Store Auto-Backup**: `TaskStore` maintains an automatic atomic `.bak` copy of `tasks.json` on every successful save. In the event of process crash or file corruption, the store snapshots the corrupted file to `tasks.json.corrupted.<timestamp>` for forensic analysis and self-heals seamlessly from the backup.
+- **Context Window Overflow Auto-Recovery**: For persistent sessions (`targetSessionId`), if an agent turn fails due to context window saturation (`context_length_exceeded`), the runner detects the overflow, archives the exhausted session, automatically rotates to a fresh session thread, and transparently retries execution without task failure.
+- **Windows Process Tree Termination**: External process runners on Windows now execute `taskkill /pid <pid> /T /F` on task cancellation or timeout, preventing zombie background processes and orphan shells from lingering in the operating system.
+
+---
+
+
 ## 📦 Installation
 
 Install into your DeepSeek Harness web profile:
