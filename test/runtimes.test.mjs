@@ -87,9 +87,9 @@ test('#7: http request builder validates URL, method, headers and body', () => {
 
 test('#9: ssh invocation needs a target and carries port/key', () => {
   assert.throws(() => buildSshInvocation({ prompt: 'uname -a' }), /sshTarget/);
-  const inv = buildSshInvocation({ sshTarget: 'root@10.0.0.5', sshPort: 2222, sshKeyPath: '/k/id', prompt: 'uptime' });
+  const inv = buildSshInvocation({ sshTarget: 'user@example.com', sshPort: 2222, sshKeyPath: '/k/id', prompt: 'uptime' });
   assert.equal(inv.file, 'ssh');
-  assert.deepEqual(inv.args, ['-p', '2222', '-i', '/k/id', 'root@10.0.0.5', 'uptime']);
+  assert.deepEqual(inv.args, ['-p', '2222', '-i', '/k/id', 'user@example.com', 'uptime']);
 });
 
 test('#8: docker invocation passes env, mounts cwd and skips PATH/HOME', () => {
