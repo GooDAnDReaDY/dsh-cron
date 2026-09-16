@@ -391,6 +391,11 @@ bash deploy.sh verify [exact-version]
 
 
 
+### 30. 自更新模块英文与中文多语言支持 (v0.2.18, #160)
+- **设置面板自更新多语言 (#160)**：在 `lib/client-src/10-locales.js` 的英文 (`en`) 与中文 (`zh`) 字典中补全了全部 10 个自更新键值 (`updater.title`, `updater.btnCheck`, `updater.checking`, `updater.btnUpdate`, `updater.updating`, `updater.desc`, `updater.current`, `updater.available`, `updater.upToDate`, `updater.success`)。遵循 DSH 插件规范，插件核心内置英文与中文，俄语多语言由 `dsh-russian-lang` 统一扩展。
+
+---
+
 ### 29. 客户端模块化解耦与原生主题标准化 (v0.2.17, #149, #150)
 - **客户端模块化架构 (#150)**: 将庞大的单文件 `lib/client.js` (约 3950 行) 拆分为 `lib/client-src/` 下的 14 个高内聚模块文件 (各模块严格 <= 580 行)。集成零依赖构建脚本 `scripts/build-client.mjs` 并接入 `package.json` (`build:client`, `pretest`)，通过 `"files": ["lib/*.js", ...]` 避免开发源码冗余打包进 npm 发布包。
 - **DSH 语义化主题变量对齐 (#149)**: 将任务类型标签 (`onSuccess`, `onFailure`, `heartbeat`, `targetSession`, `preflight`) 的内联样式全部替换为基于主题变量的 `.dsh-cron-tag-*` 类；模态框遮罩层接入自适应主题遮罩变量 `var(--dsw-alias-bg-mask, rgba(0, 0, 0, 0.75))`，移除脉冲动画关键帧中的硬编码 RGBA。
