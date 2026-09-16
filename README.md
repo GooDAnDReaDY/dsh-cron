@@ -392,6 +392,13 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 
 
+### 29. Client Modular Decomposition & Theme Standardization (v0.2.17, #149, #150)
+- **Modular Client Architecture (#150)**: Decomposed monolithic `lib/client.js` (~3950 lines) into 14 focused, single-responsibility fragments under `lib/client-src/` (none exceeding 580 lines). Integrated zero-dependency build script `scripts/build-client.mjs` wired into `package.json` (`build:client`, `pretest`). Development fragments are excluded from npm distribution via `"files": ["lib/*.js", ...]`.
+- **DSH Theme Tokens & Visual Standardization (#149)**: Replaced inline styles on task type badges (`onSuccess`, `onFailure`, `heartbeat`, `targetSession`, `preflight`) with dedicated `.dsh-cron-tag-*` CSS classes powered by semantic `--dsh-cron-*` theme variables. Modal overlay now adapts dynamically using `var(--dsw-alias-bg-mask, rgba(0, 0, 0, 0.75))`, and keyframe pulse animations use theme variables without hardcoded RGBA.
+- **Label Governance & Triage Audit (#95)**: Standardized 100% of repository issues and triage on the canonical repo-level label set.
+
+---
+
 ### 28. In-App One-Click Auto-Updater & Error Resilience (v0.2.16, #147, #155, #156)
 - **Plugin Self-Updater (#147)**: Added in-app one-click self-updating module (`lib/updater.js`) with `/api/dsh-cron/update` endpoint and dedicated Settings UI card. Automatically queries npm registry, compares semver versions including pre-releases, and upgrades `@goodandready/dsh-cron` in-place through the DSH CLI without manual SSH sessions. POST updates are protected via origin validation (`rejectCrossOrigin`).
 - **Silent Failure Elimination (#156)**: Replaced silent empty catches with diagnostic logging: uncompleted import transaction rollbacks are surfaced to system logs with warning severity, dynamic core module fallback reasons are logged, and session opening failures inform the user with actionable notifications.

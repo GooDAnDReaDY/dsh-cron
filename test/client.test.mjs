@@ -226,11 +226,47 @@ test('#153: modal dialogs are bounded to viewport height with scroll and sticky 
   assert.ok(code.includes('max-height: min(90vh, calc(100vh - 36px))'), 'modal is bounded to viewport height');
   assert.ok(code.includes('overflow-y: auto'), 'modal has internal scroll');
   assert.ok(code.includes('position: sticky; bottom: -24px'), 'modal footer is sticky');
-  assert.ok(code.includes('.dsh-cron-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; box-sizing: border-box; overflow-y: auto; }'), 'overlay allows outer scroll on overflow');
+  assert.ok(code.includes('.dsh-cron-modal-overlay { position: fixed; inset: 0; background: var(--dsw-alias-bg-mask, rgba(0, 0, 0, 0.75)); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; box-sizing: border-box; overflow-y: auto; }'), 'overlay allows outer scroll on overflow');
 });
 
 test('#148, #152: package manifest drops duplicate docs and declares client injects', () => {
   const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
   assert.ok(!pkg.files.some(f => f.startsWith('docs/README')), 'no docs/README duplicates in package files (#148)');
   assert.deepEqual(pkg.dsh.client.inject, ['locale', 'slots'], 'client injects declared (#152)');
+});
+
+test('#149: task tags and pulse animations use CSS classes and theme variables without inline hardcoded colors', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+
+  // Verify dedicated CSS classes exist in styles
+  assert.ok(code.includes('.dsh-cron-tag-success { background: var(--dsh-cron-info-bg); color: var(--dsh-cron-info);'), 'tag-success class present');
+  assert.ok(code.includes('.dsh-cron-tag-failure { background: var(--dsh-cron-danger-bg); color: var(--dsh-cron-danger);'), 'tag-failure class present');
+  assert.ok(code.includes('.dsh-cron-tag-heartbeat { background: var(--dsh-cron-accent-bg); color: var(--dsh-cron-accent);'), 'tag-heartbeat class present');
+  assert.ok(code.includes('.dsh-cron-tag-session { background: var(--dsh-cron-info-bg); color: var(--dsh-cron-info);'), 'tag-session class present');
+  assert.ok(code.includes('.dsh-cron-tag-preflight { background: var(--dsh-cron-warning-bg); color: var(--dsh-cron-warning);'), 'tag-preflight class present');
+
+  // Verify tag elements use classes instead of inline style objects
+  assert.ok(code.includes("className: 'dsh-cron-type-tag dsh-cron-tag-success'"), 'onSuccess tag uses CSS class');
+  assert.ok(code.includes("className: 'dsh-cron-type-tag dsh-cron-tag-failure'"), 'onFailure tag uses CSS class');
+  assert.ok(code.includes("className: 'dsh-cron-type-tag dsh-cron-tag-heartbeat'"), 'heartbeat tag uses CSS class');
+  assert.ok(code.includes("className: 'dsh-cron-type-tag dsh-cron-tag-session'"), 'session tag uses CSS class');
+  assert.ok(code.includes("className: 'dsh-cron-type-tag dsh-cron-tag-preflight'"), 'preflight tag uses CSS class');
+
+  // Verify no hardcoded hex or rgba in keyframes
+  assert.ok(code.includes('@keyframes dsh-cron-pulse-ring { 0% { box-shadow: 0 0 0 0 var(--dsh-cron-success-bg);'), 'keyframes use theme variable');
+  assert.ok(!code.includes('rgba(16, 185, 129, 0.5)'), 'no hardcoded rgba in pulse keyframes');
+});
+
+test('#150: client.js is decomposed into lib/client-src/ fragments with no file exceeding 600 lines', async () => {
+  const fsPromises = (await import('node:fs/promises')).default;
+  const srcDir = new URL('../lib/client-src', import.meta.url);
+  const files = (await fsPromises.readdir(srcDir)).filter(f => f.endsWith('.js'));
+
+  assert.ok(files.length >= 10, 'decomposed into at least 10 fragments');
+
+  for (const file of files) {
+    const content = await fsPromises.readFile(new URL(`../lib/client-src/${file}`, import.meta.url), 'utf-8');
+    const lineCount = content.split('\n').length;
+    assert.ok(lineCount <= 600, `fragment ${file} has ${lineCount} lines (expected <= 600 lines)`);
+  }
 });
