@@ -270,3 +270,24 @@ test('#150: client.js is decomposed into lib/client-src/ fragments with no file 
     assert.ok(lineCount <= 600, `fragment ${file} has ${lineCount} lines (expected <= 600 lines)`);
   }
 });
+
+test('#160: updater localization keys exist in EN and ZH dictionaries', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  const expectedKeys = [
+    'updater.title',
+    'updater.btnCheck',
+    'updater.checking',
+    'updater.btnUpdate',
+    'updater.updating',
+    'updater.desc',
+    'updater.current',
+    'updater.available',
+    'updater.upToDate',
+    'updater.success'
+  ];
+
+  for (const key of expectedKeys) {
+    assert.ok(code.includes(`'${key}':`), `key ${key} present in client bundles`);
+  }
+});
+
