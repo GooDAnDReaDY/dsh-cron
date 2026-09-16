@@ -382,6 +382,15 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 ---
 
+### 27. Modal Dialog Viewport Bounds & Package Hygiene (v0.2.15, #153, #148, #151, #152)
+- **Viewport Height Bounding & Sticky Footer**: Modal forms (including task creation, editing, and ready recipe presets) now strictly respect viewport boundaries with `max-height: min(90vh, calc(100vh - 36px))` and smooth internal scrolling. The modal action footer (`Cancel`, `Save`, `Create`) is pinned via sticky positioning (`position: sticky`), guaranteeing that critical buttons remain immediately accessible and never clipped regardless of form complexity or display scale.
+- **Overlay Scroll Protection**: Modal overlays now provide safe viewport padding and overflow handling (`overflow-y: auto`), preventing flexbox centering clipping on small screens.
+- **Package Weight Optimization**: Removed redundant documentation duplicates from npm distribution files, trimming tarball weight by over 32 kB and unpacked size by ~102 kB.
+- **Cordis Client Inject Compliance**: Explicitly declared `locale` and `slots` dependencies in `package.json` client injection manifest (`dsh.client.inject`).
+
+---
+
+
 
 ## 📦 Installation
 

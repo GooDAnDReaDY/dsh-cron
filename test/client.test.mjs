@@ -220,3 +220,17 @@ test('#51: settings UI stores credential names, never secret values', () => {
   assert.equal(code.split('function renderDeliverySettings(').length - 1, 1, 'one shared definition');
   assert.ok(code.includes("'aria-expanded': open ? 'true' : 'false'"), 'collapsible section head exposes aria-expanded');
 });
+
+test('#153: modal dialogs are bounded to viewport height with scroll and sticky action footer', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  assert.ok(code.includes('max-height: min(90vh, calc(100vh - 36px))'), 'modal is bounded to viewport height');
+  assert.ok(code.includes('overflow-y: auto'), 'modal has internal scroll');
+  assert.ok(code.includes('position: sticky; bottom: -24px'), 'modal footer is sticky');
+  assert.ok(code.includes('.dsh-cron-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; box-sizing: border-box; overflow-y: auto; }'), 'overlay allows outer scroll on overflow');
+});
+
+test('#148, #152: package manifest drops duplicate docs and declares client injects', () => {
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+  assert.ok(!pkg.files.some(f => f.startsWith('docs/README')), 'no docs/README duplicates in package files (#148)');
+  assert.deepEqual(pkg.dsh.client.inject, ['locale', 'slots'], 'client injects declared (#152)');
+});
