@@ -392,6 +392,13 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 
 
+### 28. In-App One-Click Auto-Updater & Error Resilience (v0.2.16, #147, #155, #156)
+- **Plugin Self-Updater (#147)**: Added in-app one-click self-updating module (`lib/updater.js`) with `/api/dsh-cron/update` endpoint and dedicated Settings UI card. Automatically queries npm registry, compares semver versions including pre-releases, and upgrades `@goodandready/dsh-cron` in-place through the DSH CLI without manual SSH sessions. POST updates are protected via origin validation (`rejectCrossOrigin`).
+- **Silent Failure Elimination (#156)**: Replaced silent empty catches with diagnostic logging: uncompleted import transaction rollbacks are surfaced to system logs with warning severity, dynamic core module fallback reasons are logged, and session opening failures inform the user with actionable notifications.
+- **Dead Code & Export Hygiene (#155)**: Cleaned unused legacy helpers (`CHANNEL_LABELS`, `makeInspectAsk`), stripped unnecessary exports from 16 internal modules, and wired `supportsSilentRule` directly into execution pipeline.
+
+---
+
 ## 📦 Installation
 
 Install into your DeepSeek Harness web profile:
@@ -503,6 +510,7 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoint
 | `POST` | `/dsh-cron/kanban/test` | Create a Kanban connectivity-test card |
 | `*` | `/dsh-cron/action/:id/:action` | Legacy alias for the task action routes (`run`, `toggle`, `delete`, `history`) |
 | `GET` | `/dsh-cron/metrics` | Prometheus text exposition of task and run counters — never prompts or output (#53) |
+| `GET` / `POST` | `/api/dsh-cron/update` | One-click plugin self-updater: query registry version and in-place upgrade (#147) |
 | `GET` / `POST` | `/dsh-cron/api/tasks` | External token-guarded surface: list / create-or-update (#54) |
 | `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | External token-guarded surface: read / delete (#54) |
 | `POST` | `/dsh-cron/api/tasks/:id/run` | External token-guarded surface: force a run (#54) |

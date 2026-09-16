@@ -391,6 +391,13 @@ bash deploy.sh verify [exact-version]
 
 
 
+### 28. 应用内一键自更新与错误容错增强 (v0.2.16, #147, #155, #156)
+- **插件自更新模块 (#147)**：新增应用内一键自更新机制 (`lib/updater.js`)、`/api/dsh-cron/update` 接口与设置面板专属卡片。自动轮询 npmjs 仓库最新版本，精准比对 Semver 版本号（含预发布版本），通过 DSH CLI 就地升级 `@goodandready/dsh-cron`，无需 SSH 终端操作。POST 请求受跨域与来源保护 (`rejectCrossOrigin`)。
+- **消除静默异常与错误追踪 (#156)**：全面消除空 `catch` 异常压制：任务导入事务回滚失败记录 `warn` 级别日志、动态核心模块降级原因记录诊断日志、会话自动唤出失败向用户呈现友好提示。
+- **死代码清理与模块导出精简 (#155)**：清理未引用的旧版实体 (`CHANNEL_LABELS`, `makeInspectAsk`)，收回 16 个内部工具函数的暴露权限，并将 `supportsSilentRule` 接入静默规则核心执行流水线。
+
+---
+
 ## 📦 安装
 
 ```bash
@@ -500,6 +507,7 @@ dsh-cron:
 | `POST` | `/dsh-cron/kanban/test` | 创建 Kanban 连通性测试卡片 |
 | `*` | `/dsh-cron/action/:id/:action` | 任务操作路由的兼容别名（`run`、`toggle`、`delete`、`history`） |
 | `GET` | `/dsh-cron/metrics` | Prometheus 文本格式的任务与运行计数 —— 不含提示词与输出（#53） |
+| `GET` / `POST` | `/api/dsh-cron/update` | 插件一键自更新：查询仓库最新版本并就地平滑升级 (#147) |
 | `GET` / `POST` | `/dsh-cron/api/tasks` | 令牌保护的外部接口：列表 / 创建或更新（#54） |
 | `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | 令牌保护的外部接口：读取 / 删除（#54） |
 | `POST` | `/dsh-cron/api/tasks/:id/run` | 令牌保护的外部接口：强制执行（#54） |
