@@ -392,6 +392,11 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 
 
+### 30. Updater Localization in English & Chinese (v0.2.18, #160)
+- **Settings Card Updater Localization (#160)**: Added native translations for all 10 in-app updater keys (`updater.title`, `updater.btnCheck`, `updater.checking`, `updater.btnUpdate`, `updater.updating`, `updater.desc`, `updater.current`, `updater.available`, `updater.upToDate`, `updater.success`) into English (`en`) and Chinese (`zh`) dictionaries in `lib/client-src/10-locales.js`. In accordance with DSH core plugin architecture, Russian localization is maintained externally via `dsh-russian-lang`.
+
+---
+
 ### 29. Client Modular Decomposition & Theme Standardization (v0.2.17, #149, #150)
 - **Modular Client Architecture (#150)**: Decomposed monolithic `lib/client.js` (~3950 lines) into 14 focused, single-responsibility fragments under `lib/client-src/` (none exceeding 580 lines). Integrated zero-dependency build script `scripts/build-client.mjs` wired into `package.json` (`build:client`, `pretest`). Development fragments are excluded from npm distribution via `"files": ["lib/*.js", ...]`.
 - **DSH Theme Tokens & Visual Standardization (#149)**: Replaced inline styles on task type badges (`onSuccess`, `onFailure`, `heartbeat`, `targetSession`, `preflight`) with dedicated `.dsh-cron-tag-*` CSS classes powered by semantic `--dsh-cron-*` theme variables. Modal overlay now adapts dynamically using `var(--dsw-alias-bg-mask, rgba(0, 0, 0, 0.75))`, and keyframe pulse animations use theme variables without hardcoded RGBA.
