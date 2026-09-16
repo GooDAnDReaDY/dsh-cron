@@ -392,6 +392,15 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 
 
+### 31. Quality & Preflight Hardening Pack (v0.2.19, #149, #152, #155, #156, #162)
+- **Zero Empty Catch Blocks (#156)**: Implemented `lib/best-effort.js` matching standard architecture with synchronous/asynchronous error suppression, fallback value handling, and optional context logging. Eliminated all 63 empty catch blocks across runner, scheduler, store, and UI client scripts.
+- **CI Workflows & Local Preflight Gate (#162)**: Added automated CI workflows (`.gitea/workflows/ci.yml` and `.github/workflows/ci.yml`) running test suites and enforcing a strict preflight gate (`scripts/ci-preflight.mjs`) that halts on any syntax error, empty catch, theme hardcoding, or leak attempt.
+- **Theme Token Modernization (#149)**: Replaced all remaining raw `rgba(...)` declarations in UI styles and modals with native `color-mix(in srgb, var(--token) N%, transparent)`.
+- **Plugin Manifest Declarations (#152)**: Updated `dsh.client.inject` in `package.json` to declare full package dependencies (`@deepseek-ai/dsh-client-locale`, `@deepseek-ai/dsh-client-ui-slots`).
+- **Production Export Integration (#155)**: Connected test-only exports (`findDestructiveRecipe` in `listRecipes`, `shouldNotifyTask` in `shouldSendToChannel`, and `TEMPLATE_VARIABLES` in `buildTemplateVars`) into active production pipelines.
+
+---
+
 ### 30. Updater Localization in English & Chinese (v0.2.18, #160)
 - **Settings Card Updater Localization (#160)**: Added native translations for all 10 in-app updater keys (`updater.title`, `updater.btnCheck`, `updater.checking`, `updater.btnUpdate`, `updater.updating`, `updater.desc`, `updater.current`, `updater.available`, `updater.upToDate`, `updater.success`) into English (`en`) and Chinese (`zh`) dictionaries in `lib/client-src/10-locales.js`. In accordance with DSH core plugin architecture, Russian localization is maintained externally via `dsh-russian-lang`.
 

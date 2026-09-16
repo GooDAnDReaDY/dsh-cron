@@ -391,6 +391,15 @@ bash deploy.sh verify [exact-version]
 
 
 
+### 31. 质量加固与 CI 预检标准包 (v0.2.19, #149, #152, #155, #156, #162)
+- **彻底消除空 catch 块 (#156)**：引入符合标准规范的 `lib/best-effort.js` 模块，全面支持同步/异步安全调用、回退返回值和可选日志记录，清除了 runner、scheduler、store 及客户端中的所有 63 处空 catch 块。
+- **CI 工作流与本地预检门禁 (#162)**：新增自动化 CI 工作流（`.gitea/workflows/ci.yml` 与 `.github/workflows/ci.yml`），集成本地预检门禁脚本 `scripts/ci-preflight.mjs`，在出现语法错误、空 catch、颜色硬编码或信息泄露时自动阻断。
+- **主题设计令牌现代化 (#149)**：将模态对话框与设置卡片中遗留的 `rgba(...)` 全部重构为原生的 `color-mix(in srgb, var(--token) N%, transparent)`。
+- **插件清单注入声明规范化 (#152)**：在 `package.json` 的 `dsh.client.inject` 中统一声明完整的 Cordis 包名（`@deepseek-ai/dsh-client-locale`、`@deepseek-ai/dsh-client-ui-slots`）。
+- **生产管线导出连接 (#155)**：将此前仅在测试中调用的导出（`findDestructiveRecipe`、`shouldNotifyTask` 和 `TEMPLATE_VARIABLES`）全面接入配方过滤、通知分发及模板生成核心逻辑。
+
+---
+
 ### 30. 自更新模块英文与中文多语言支持 (v0.2.18, #160)
 - **设置面板自更新多语言 (#160)**：在 `lib/client-src/10-locales.js` 的英文 (`en`) 与中文 (`zh`) 字典中补全了全部 10 个自更新键值 (`updater.title`, `updater.btnCheck`, `updater.checking`, `updater.btnUpdate`, `updater.updating`, `updater.desc`, `updater.current`, `updater.available`, `updater.upToDate`, `updater.success`)。遵循 DSH 插件规范，插件核心内置英文与中文，俄语多语言由 `dsh-russian-lang` 统一扩展。
 
