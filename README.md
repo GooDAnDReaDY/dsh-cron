@@ -529,12 +529,18 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoint
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Preflight Verification
 
 Run the automated test suite covering schedule parsing, the scheduler engine, atomic storage, HTTP helpers, notifications and tool contracts:
 
 ```bash
 npm test
+```
+
+Run the local preflight gate to verify syntax, zero empty catch blocks, theme token compliance, package boundaries and leak protection:
+
+```bash
+node scripts/ci-preflight.mjs
 ```
 
 ---
