@@ -50,9 +50,10 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   assert.ok(code.includes("settings.retry"), 'unavailable state offers a retry');
 
   // Issue #100: the settings card follows the canonical collapsible card
-  // contract — collapsed by default, head is the toggle.
+  // contract — collapsed by default, head is the toggle. The row seat page view
+  // renders the same head element, so the expanded flag also honours `page`.
   assert.ok(code.includes("const [cardOpen, setCardOpen] = React.useState(false);"), 'card collapsed by default');
-  assert.ok(code.includes("'aria-expanded': cardOpen ? 'true' : 'false'"), 'head exposes aria-expanded');
+  assert.ok(code.includes("'aria-expanded': (page || cardOpen) ? 'true' : 'false'"), 'head exposes aria-expanded');
   assert.ok(code.includes('dsh-cron-card-head-btn'), 'head is a toggle button');
   assert.ok(code.includes('dsh-cron-chev-open'), 'chevron rotates when open');
 
