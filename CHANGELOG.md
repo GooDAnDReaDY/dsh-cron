@@ -2,6 +2,17 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.21
+
+### Fixed
+- **Settings reachable again on the plugin's own page**: the current DSH core
+  (0.1.6-alpha.2) renders a plugin's configuration page only for entries registered
+  in the plugin-list seat `plugins.item`. The view-aware settings card is now
+  registered there (`id: 'dsh-cron'`, order 60, static label); the row seat and the
+  legacy `settings.plugin.item` seat stay as fallbacks, and the rule from #102 (no
+  top-level section fallback) is preserved. Sources edited in `lib/client-src`,
+  `lib/client.js` rebuilt.
+
 ## 0.2.20
 
 ### Fixed
