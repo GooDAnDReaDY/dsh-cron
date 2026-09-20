@@ -97,6 +97,8 @@ Click the clock icon in the DSH sidebar (positioned next to the new-session butt
 * **1-Click Preset Templates**: scaffold common workflows like *Daily digest*, *Weekly review*, and *Follow-up monitor*.
 * **Execution History**: open any task card to review previous runs — timestamps, durations, statuses (success / failed / timeout / skipped / missed), outputs, and errors.
 * **Aggregated Stats Bar**: live dashboard with active task count, total runs, total token consumption, and the estimated dollar spend.
+* **Quick Schedule Presets**: quickly select standard cadence presets (`15m`, `1h`, `Daily 09:00`, `Weekdays`, `Weekly Mon`) directly within the modal task schedule editor with instant natural-language preview.
+* **Auto-Pause & Burn Guard Badges**: task cards prominently display alert badges when a task is paused by the Token & Cost Burn Guard with the specific reason indicated.
 
 ### 2. "Create with DSH" Dialog
 Transform natural language into a scheduled job without guessing cron syntax:
@@ -159,8 +161,9 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 * **Environment variables** — a per-task `env` map (KEY VALUE per line in the UI) applied to external runtimes; secrets do not belong here.
 * **Workspaces and worktrees** — bind a task to a harness workspace (`workspaceId`) and, for code-modifying agent tasks, run it in an isolated git worktree (`worktree`, `keepWorktree`).
 
-### 7. Cost Control: Fallback Model
-A task can run on the cheap model by default and still finish on the strong one: set `fallbackModel` (and optionally `fallbackProvider`) and a failed run — `error` or `timeout` — is retried **once** on that model before the ordinary retry backoff applies. History records which model produced the result and whether the fallback was used, usage and cost of both attempts are summed, and the `{model}` template variable renders the model that finished the run. Only agent-mediated tasks (`llm`, `skill`, `workflow`) can use a fallback.
+### 7. Cost Control: Fallback Model & Burn Guard
+* **Fallback Model** — A task can run on the cheap model by default and still finish on the strong one: set `fallbackModel` (and optionally `fallbackProvider`) and a failed run — `error` or `timeout` — is retried **once** on that model before the ordinary retry backoff applies. History records which model produced the result and whether the fallback was used, usage and cost of both attempts are summed, and the `{model}` template variable renders the model that finished the run. Only agent-mediated tasks (`llm`, `skill`, `workflow`) can use a fallback.
+* **Token & Cost Burn Guard** — Prevent runaway spending by configuring per-task limits: `costLimitUsd` (lifetime spend limit in USD), `dailyCostLimitUsd` (rolling 24-hour spend limit in USD), and `tokenLimit` (lifetime token limit). If a task exceeds any threshold, execution is halted, the task is automatically paused with `pausedReason` (`cost_limit_exceeded`, `daily_cost_limit_exceeded`, or `token_limit_exceeded`), and an alert notification is dispatched across all active channels.
 
 ### 8. Session Integration & Permissions
 * **Per-task permission presets** — `default`, `read-only`, `workspace-write`, or `full` are applied to the task's agent session before the prompt runs.
@@ -188,6 +191,14 @@ A finished run is delivered to every channel configured for the task — Telegra
 * **Voice** — `dsh-tts` speaks the report through its HTTP route (`ttsBaseUrl`, default `http://127.0.0.1:3080`).
 * **Gitea** — opens an issue with the run report (`giteaBaseUrl`, `giteaRepo`, token credential); failures are labelled `cron`, `bug`, `alert`.
 * **Test dispatch button** — verify Telegram connectivity on the spot before scheduling critical jobs.
+* **Interactive Telegram Bot Commands** — Remotely manage and monitor tasks via Telegram webhook (`/dsh-cron/api/telegram-webhook`):
+  * `/status` — general scheduler health, uptime, active/paused task counts.
+  * `/tasks` — list configured tasks with schedule and state.
+  * `/run <id>` — trigger immediate out-of-order execution of a task.
+  * `/pause <id>` and `/resume <id>` — pause or resume a task schedule.
+  * `/log <id>` — view the most recent run output and execution details.
+  * `/help` — display available bot commands.
+  Configured via incoming webhook and restricted to chat/user IDs specified in `telegramAllowedChatIds`.
 
 ### 12. Kanban Integration & Cost Meter
 * **Automatic Kanban cards** — with `kanbanMode` set to `on_failure` or `always`, the plugin creates cards in `dsh-kanban` (`on_failure` → *Backlog* on `error`/`timeout`; `always` → *Done*/*Backlog* on completion).
@@ -337,7 +348,7 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 
 ### 22. Automation, Task Chaining & Observability Pack (Added in v0.2.10, #137)
 - **Two-Way Telegram Interactive Controls**: Run completion notifications include inline keyboard buttons (`🚀 Run Now`, `⏸️ Pause` / `▶️ Resume`, `📋 Last Output`). Actions are securely routed via `POST /dsh-cron/telegram/webhook` with Chat ID authorization matching plugin settings or harness defaults.
-- **Task Chaining & Pipelines**: Tasks can declare `onSuccess` and `onFailure` downstream task triggers. Upstream output is automatically forwarded to child tasks via `$DSH_PREV_OUTPUT` environment variable for shell/script tasks and `{{prevOutput}}` variable interpolation in LLM prompts. Infinite execution loops are strictly prevented with a recursion depth limit (max 5 consecutive executions).
+- **Task Chaining Context & Dynamic Variables**: Tasks can declare `onSuccess` and `onFailure` downstream task triggers. Upstream output and execution metadata are forwarded to child tasks via `$DSH_PREV_OUTPUT`, `$DSH_PREV_TASK_ID`, and `$DSH_PREV_STATUS` environment variables for shell tasks, and `{{prev.output}}` (or `{{prevOutput}}`), `{{prev.taskId}}`, and `{{prev.status}}` variable interpolation in LLM prompts. Prompts also support dynamic runtime interpolation for `{{date}}`, `{{time}}`, `{{datetime}}`, `{{timestamp}}`, `{{year}}`, `{{month}}`, `{{day}}`, `{{taskId}}`, `{{taskName}}`, and `{{runCount}}`. Recursion depth is strictly bounded to prevent loops.
 - **Structured LLM Actions**: Autonomous model runs can output structured JSON directives to trigger secondary tasks, dispatch channel notifications, or open issues. Controlled via `llmActionsEnabled: false` settings toggle (strictly disabled by default).
 - **History Archival & Latency Insights**: Active task store retains the most recent 100 runs for instant performance, while older runs are archived in `tasks_archive.json`. New REST endpoints `GET /dsh-cron/tasks/:id/archive` and `GET /dsh-cron/tasks/:id/stats` expose historical records and aggregated latency statistics. Task UI displays execution duration latency badges with color thresholds (<5s green, <30s yellow, >=30s red).
 - **Enriched Prometheus Observability**: The `/dsh-cron/metrics` endpoint exports the active concurrency gauge `dsh_cron_concurrent_running`, per-task prompt/completion token consumption counters `dsh_cron_task_tokens_total{task,model,type}`, and per-task cost estimation counters `dsh_cron_task_cost_usd_total{task,model}`.
@@ -493,6 +504,7 @@ dsh-cron:
 | `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus endpoint (override for a self-hosted proxy) and token credential name |
 | `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | Base URL of the `dsh-tts` plugin used for voice announcements |
 | `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea channel: base URL, `owner/repo`, and the credential name of the API token |
+| `telegramAllowedChatIds` | `string` | `""` | Comma-separated list of Telegram chat or user IDs authorized to execute interactive bot commands |
 | `apiToken` | `string` | `""` | Bearer token for the external `/dsh-cron/api/*` surface. Stored as a secret field and returned masked; empty disables the surface (503), a wrong value answers 401 |
 
 Notes:

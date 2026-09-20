@@ -96,6 +96,8 @@ graph TD
 * **即时操作**：立即运行（**Run Now**）、暂停/恢复调度、带确认的删除。
 * **一键预设模板**：*每日摘要*、*每周回顾*、*待办监控*。
 * **运行历史**：打开任务卡片查看历史运行 —— 时间、耗时、状态（成功 / 失败 / 超时 / 跳过 / 错过）、输出与错误。
+* **快捷计划预设**：在任务编辑弹窗中通过预设按钮一键填入常用频率（`15m`、`1h`、`Daily 09:00`、`Weekdays`、`Weekly Mon`），并即时更新自然语言预览。
+* **自动暂停与预算保护徽章**：当任务因预算熔断机制（Burn Guard）自动暂停或手动暂停时，任务卡片上显著展示包含具体原因的状态徽章。
 * **汇总统计栏**：活跃任务数、总运行次数、总 token 消耗与估算美元成本。
 
 ### 2. “由 DSH 创建”对话框
@@ -158,8 +160,9 @@ cron_create_task({
 * **环境变量** —— 按任务的 `env` 映射（界面中每行 KEY VALUE）应用于外部运行时；请勿在此存放密钥。
 * **工作区与 worktree** —— 将任务绑定到 Harness 工作区（`workspaceId`）；对会修改代码的智能体任务，可在隔离的 git worktree 中运行（`worktree`、`keepWorktree`）。
 
-### 7. 成本控制：回退模型
-任务可以默认使用便宜模型，失败时改用更强模型完成：设置 `fallbackModel`（可选 `fallbackProvider`），失败（`error` 或 `timeout`）的运行会在该模型上重试一次，之后才进入常规重试退避。历史记录会标明最终产出结果的模型以及是否使用了回退，两次尝试的用量与成本都会累计，模板变量 `{model}` 渲染完成运行的模型。回退仅适用于智能体类型（`llm`、`skill`、`workflow`）。
+### 7. 成本控制：回退模型与支出保护（Burn Guard）
+* **回退模型** —— 任务可以默认使用便宜模型，失败时改用更强模型完成：设置 `fallbackModel`（可选 `fallbackProvider`），失败（`error` 或 `timeout`）的运行会在该模型上重试一次，之后才进入常规重试退避。历史记录会标明最终产出结果的模型以及是否使用了回退，两次尝试的用量与成本都会累计，模板变量 `{model}` 渲染完成运行的模型。回退仅适用于智能体类型（`llm`、`skill`、`workflow`）。
+* **Token 与成本支出保护（Burn Guard）** —— 为任务配置严格预算上限：`costLimitUsd`（总支出美元上限）、`dailyCostLimitUsd`（24小时滚动支出上限）和 `tokenLimit`（Token总数上限）。一旦达到任一阈值，任务将自动暂停并记录 `pausedReason`（`cost_limit_exceeded`、`daily_cost_limit_exceeded` 或 `token_limit_exceeded`），同时向所有配置的通知渠道发送报警通知。
 
 ### 8. 会话集成与权限
 * **按任务的权限预设** —— `default`、`read-only`、`workspace-write` 或 `full` 在提示词执行前应用于任务会话。
@@ -336,7 +339,7 @@ bash deploy.sh verify [exact-version]
 
 ### 22. 自动化、任务链与可观测性包（v0.2.10，#137）
 - **Telegram 双向交互控制**：任务通知附带内嵌操作按钮（`🚀 立即运行`、`⏸️ 暂停/恢复`、`📋 最新日志`）。由 `POST /dsh-cron/telegram/webhook` 处理，严格鉴权 Chat ID 并调用 `answerCallbackQuery` 反馈。
-- **任务管道与级联触发**：配置 `onSuccess` 与 `onFailure` 下游触发器。上游输出自动注入子任务环境变量 `$DSH_PREV_OUTPUT`，LLM 任务支持 `{{prevOutput}}` 插值。内置最大 5 级深度递归防护，杜绝死循环。
+- **任务链上下文与动态变量插值**：配置 `onSuccess` 与 `onFailure` 下游触发器。父任务的执行结果与元数据自动传递给子任务，在 Shell 任务中提供 `$DSH_PREV_OUTPUT`、`$DSH_PREV_TASK_ID`、`$DSH_PREV_STATUS` 环境变量，在 LLM Prompt 中支持 `{{prev.output}}`（或 `{{prevOutput}}`）、`{{prev.taskId}}`、`{{prev.status}}` 占位符插值。Prompt 额外支持动态运行时时间与元数据变量：`{{date}}`、`{{time}}`、`{{datetime}}`、`{{timestamp}}`、`{{year}}`、`{{month}}`、`{{day}}`、`{{taskId}}`、`{{taskName}}`、`{{runCount}}`。内置最大 5 级深度递归防护，杜绝死循环。
 - **模型结构化动作指令**：自主分析任务可输出 JSON 指令触发级联任务（`trigger_task`）、定向告警（`notify`）或创建 Issue。受 `llmActionsEnabled: false` 严格保护。
 - **历史归档与延迟洞察**：REST 接口 `GET /dsh-cron/tasks/:id/archive`（支持分页）与 `GET /dsh-cron/tasks/:id/stats`；UI 任务卡片展示耗时彩色徽章（<5s 绿，<30s 黄，≥30s 红）。
 - **Prometheus 监控增强**：`/dsh-cron/metrics` 导出当前活动并发量 `dsh_cron_concurrent_running`、各任务 Token 计数器及成本预估指标。
@@ -490,6 +493,7 @@ dsh-cron:
 | `pushplusUrl` / `pushplusTokenRef` | `string` | `"https://www.pushplus.plus/send"` / `""` | PushPlus 端点（可指向自建代理）与 token 凭据名称 |
 | `ttsBaseUrl` | `string` | `"http://127.0.0.1:3080"` | 用于语音播报的 `dsh-tts` 基础地址 |
 | `giteaBaseUrl` / `giteaRepo` / `giteaTokenRef` | `string` | `""` | Gitea 渠道：基础地址、`owner/repo` 与 API token 的凭据名称 |
+| `telegramAllowedChatIds` | `string` | `""` | 允许执行交互式机器人命令的 Telegram Chat ID 或 User ID（英文逗号分隔） |
 | `apiToken` | `string` | `""` | 外部 `/dsh-cron/api/*` 接口的 Bearer 令牌。保密字段，返回时掩码；为空时接口返回 503，错误值返回 401 |
 
 说明：
