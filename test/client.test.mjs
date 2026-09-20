@@ -292,3 +292,11 @@ test('#160: updater localization keys exist in EN and ZH dictionaries', () => {
   }
 });
 
+
+test('#177: task form includes quick schedule presets and view displays pausedReason badge', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  assert.ok(code.includes("label: '15m', expr: '*/15 * * * *'"), '15m preset present');
+  assert.ok(code.includes("label: '1h', expr: '0 * * * *'"), '1h preset present');
+  assert.ok(code.includes("label: 'Daily 09:00', expr: '0 9 * * *'"), 'Daily preset present');
+  assert.ok(code.includes("task.status === 'paused' && task.pausedReason"), 'pausedReason badge rendered when paused');
+});
