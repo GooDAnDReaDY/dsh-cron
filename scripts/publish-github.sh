@@ -94,8 +94,10 @@ done < <(git show "${gitea_ref:-origin/main}:package.json" | node -e '
 is_allowed() {
   local path="$1" entry
   for entry in "${ALLOW[@]}"; do
-    if [ "$path" = "$entry" ]; then return 0; fi
-    case "$path" in "$entry"/*) return 0 ;; esac
+    case "$path" in
+      $entry) return 0 ;;
+      $entry/*) return 0 ;;
+    esac
   done
   return 1
 }
