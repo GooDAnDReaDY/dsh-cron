@@ -156,3 +156,45 @@ test('5. End-to-end: Burn Guard auto-pauses task exceeding costLimitUsd and supp
   assert.equal(chainedTriggered, false);
 });
 
+
+test('6. Pre-flight check blocks task execution when budget limits are already breached', async (t) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'burn-guard-preflight-'));
+  t.after(() => {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  });
+
+  const store = new TaskStore(path.join(tmpDir, 'tasks.json'));
+  let runnerInvoked = false;
+
+  const task = store.set({
+    id: 'over_budget_task',
+    title: 'Over Budget Task',
+    schedule: '0 * * * *',
+    type: 'llm',
+    status: 'active',
+    costLimitUsd: 1.0,
+    totalCostUsd: 1.5,
+  });
+
+  const executeFn = async () => {
+    runnerInvoked = true;
+    return { status: 'success', output: 'should not run', costUsd: 0.5 };
+  };
+
+  const scheduler = new TaskScheduler(store, executeFn);
+  t.after(() => scheduler.stopAll());
+
+  const outcome = await scheduler.runTask(task.id);
+  assert.equal(runnerInvoked, false, 'Runner must not be invoked when budget is already breached');
+  assert.equal(outcome?.status, 'error');
+  assert.match(outcome?.error, /Cumulative cost limit exceeded/);
+
+  const updated = store.get(task.id);
+  assert.equal(updated.status, 'paused');
+  assert.match(updated.pausedReason, /Cumulative cost limit exceeded/);
+
+  const history = store.getHistory(task.id);
+  assert.equal(history.length, 1);
+  assert.equal(history[0].status, 'skipped');
+  assert.match(history[0].output, /Burn Guard pre-flight pause/);
+});
