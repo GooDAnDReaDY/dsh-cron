@@ -2,6 +2,30 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.23
+
+### Performance & Optimizations
+- **Debounced Asynchronous Storage & Compact History Archive** (#179):
+  Coalesced state saves (`scheduleSave(50)`) for run completions eliminate Node.js
+  event loop blocking during high-frequency execution ticks. Added synchronous `flushSync()`
+  for process termination and testing. Throttled `.bak` generation to at most once per 60s
+  and optimized `tasks-history-archive.json` to compact JSON.
+- **Throttled Sidebar MutationObserver** (#180):
+  Optimized sidebar jobs DOM observer with immediate short-circuiting when connected and
+  coalesced DOM checks into `requestAnimationFrame`, eliminating UI stutter and DOM-thrashing
+  during fast LLM token streaming in chat.
+
+### Fixed & Hardened
+- **Pre-flight Budget Gate & Notification Error Logging** (#181):
+  Added synchronous pre-flight budget validation before starting task executions: tasks
+  that have already exceeded cumulative spend, 24h rolling budget, or token limits are
+  auto-paused immediately without launching expensive LLM runs. Notification errors
+  during Burn Guard triggers are now properly captured and logged via `bestEffort`.
+- **Client Source Modularity** (#182):
+  Decomposed `52-cron-screen-actions.js` (586 lines) into two focused sub-modules
+  (`52-cron-screen-actions.js` 226 lines, `53-cron-screen-modal-actions.js` 360 lines),
+  bringing all client source modules comfortably within standard limits (<450 lines).
+
 ## 0.2.22
 
 ### Added
