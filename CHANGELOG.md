@@ -2,6 +2,12 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.26
+
+### Fixed & Compatibility
+- **Producer-owned source kinds on DSH format v4** (#189):
+  Migrated durable agent followup messages in scheduled tasks, resumed sessions (`lib/runner.js`), interactive chat setup (`lib/chat-start.js`), and helper calls (`lib/llm-ask.js`) to producer-owned source kinds (`{ kind: 'plugin:dsh-cron', form: '...' }`). This eliminates `SessionFormatError: format v4 message requires a producer-owned source kind` on `@deepseek-ai/dsh-session-format-v3-to-v4`.
+
 ## 0.2.25
 
 ### Fixed
