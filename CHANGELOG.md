@@ -2,6 +2,17 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.26
+
+### Fixed & Compatibility
+- **Producer-owned source kinds on DSH format v4** (#189):
+  Migrated durable agent followup messages in scheduled tasks, resumed sessions (`lib/runner.js`), interactive chat setup (`lib/chat-start.js`), and helper calls (`lib/llm-ask.js`) to producer-owned source kinds (`{ kind: 'plugin:dsh-cron', form: '...' }`). This eliminates `SessionFormatError: format v4 message requires a producer-owned source kind` on `@deepseek-ai/dsh-session-format-v3-to-v4`.
+
+## 0.2.25
+
+### Fixed
+- **Client fiber on current DSH** (#186): the browser client no longer injects `settingsScope`. Current DeepSeek Harness does not provide that service, so the fiber stayed pending and the cron UI never mounted. Host settings already use the native config editor.
+
 ## 0.2.24
 
 ### Fixed & Compatibility
