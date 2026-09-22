@@ -2,6 +2,11 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.25
+
+### Fixed
+- **Client fiber on current DSH** (#186): the browser client no longer injects `settingsScope`. Current DeepSeek Harness does not provide that service, so the fiber stayed pending and the cron UI never mounted. Host settings already use the native config editor.
+
 ## 0.2.24
 
 ### Fixed & Compatibility
