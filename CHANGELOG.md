@@ -2,6 +2,16 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.24
+
+### Fixed & Compatibility
+- **DSH 0.1.7 Settings Migration & Schema Projections** (#184):
+  Removed obsolete `sctx.settings.register` invocation, eliminating the `sctx.settings.register is not a function` warning/error on DeepSeek Harness 0.1.7 (`@deepseek-ai/dsh@0.1.7-alpha.1`).
+  Declared editable settings in `Config` schema with `.volatile()` so native DSH 0.1.7 config editor projects and edits fields live via `configEditor.edit()`.
+  Introduced `unwrapConfig` Proxy helper for transparent access to volatile values across scheduler and delivery transports.
+  Made the `settings` service optional in plugin injection.
+  Synchronized configuration writes between `TaskStore` and DSH 0.1.7 `settings.update('dsh-cron', patch)`.
+
 ## 0.2.23
 
 ### Performance & Optimizations
