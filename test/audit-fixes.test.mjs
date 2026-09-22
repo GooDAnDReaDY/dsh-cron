@@ -8,7 +8,8 @@ import { Config, name as pluginName, inject as pluginInject } from '../lib/index
 
 test('Audit #71: Config schemastery schema and plugin definition', () => {
   assert.equal(pluginName, '@goodandready/dsh-cron');
-  assert.ok(pluginInject.includes('settings'));
+  assert.ok(pluginInject.includes('tools'));
+  assert.ok(!pluginInject.includes('settings'));
   assert.ok(Config);
   assert.ok(Config.type === 'object' || typeof Config === 'function' || typeof Config === 'object');
 });
