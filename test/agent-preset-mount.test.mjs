@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SessionRunner } from '../lib/runner.js';
+import { chatStartHandler } from '../lib/chat-start.js';
 import { PATCHABLE_TASK_FIELDS, DUPLICATE_TASK_FIELDS } from '../lib/task-transfer.js';
 import { TaskStore } from '../lib/store.js';
 import fs from 'node:fs';
@@ -197,4 +198,96 @@ test('SessionRunner gracefully degrades when agentPresets service is missing (#G
   assert.ok(createPayload, 'agents.create called');
   assert.equal(createPayload.meta?.agentPreset, undefined, 'no agentPreset set in meta');
   assert.equal(createPayload.setup, undefined, 'no setup hook when presets missing');
+});
+
+test('SessionRunner gracefully degrades without throwing when Cordis throws "cannot get property agentPresets without inject" (#GH-2)', async () => {
+  let createPayload = null;
+  const mockAgent = {
+    session: { id: 'sess-cordis-proxy' },
+    whenIdle: async () => {},
+    followup: () => {},
+  };
+  const mockAgents = {
+    async create(payload) {
+      createPayload = payload;
+      return { agent: mockAgent };
+    }
+  };
+
+  // Simulate strict Cordis context proxy throwing on bare undeclared property access
+  const mockCtx = new Proxy({
+    agents: mockAgents,
+    get(name) {
+      if (name === 'agents') return mockAgents;
+      return null;
+    }
+  }, {
+    get(target, prop) {
+      if (prop === 'agentPresets') {
+        throw new Error('cannot get property "agentPresets" without inject');
+      }
+      if (prop in target) return target[prop];
+      return undefined;
+    }
+  });
+
+  const runner = new SessionRunner(mockCtx);
+  const task = {
+    id: 'test_cordis_strict',
+    title: 'Strict Cordis Task',
+    type: 'llm',
+    prompt: 'Should not crash on agentPresets lookup',
+  };
+
+  const res = await runner.execute(task);
+  assert.ok(res.output);
+  assert.ok(createPayload, 'agents.create called');
+  assert.equal(createPayload.meta?.agentPreset, undefined);
+});
+
+test('chatStartHandler gracefully degrades without throwing when Cordis throws "cannot get property agentPresets without inject" (#GH-2)', async () => {
+  let createdPayload = null;
+  const mockAgent = {
+    session: { id: 'chat-sess-strict' },
+    whenIdle: async () => {},
+    followup: () => {},
+  };
+  const mockAgents = {
+    async create(payload) {
+      createdPayload = payload;
+      return { agent: mockAgent };
+    }
+  };
+
+  const mockCtx = new Proxy({
+    agents: mockAgents,
+    get(name) {
+      if (name === 'agents') return mockAgents;
+      return null;
+    }
+  }, {
+    get(target, prop) {
+      if (prop === 'agentPresets') {
+        throw new Error('cannot get property "agentPresets" without inject');
+      }
+      if (prop in target) return target[prop];
+      return undefined;
+    }
+  });
+
+  let statusCode = 0;
+  let resData = null;
+  const sendJson = (res, code, data) => {
+    statusCode = code;
+    resData = data;
+  };
+  const parseJsonBody = async () => ({ prompt: 'Set up cron task' });
+
+  await chatStartHandler(mockCtx, { method: 'POST' }, {}, parseJsonBody, sendJson, () => 'uuid-chat-strict');
+
+  assert.equal(statusCode, 200);
+  assert.equal(resData.ok, true);
+  assert.equal(resData.sessionId, 'chat-sess-strict');
+  assert.equal(createdPayload?.meta?.agentPreset, 'standard');
+  assert.equal(createdPayload?.setup, undefined, 'no setup hook when preset resolution fails');
 });
