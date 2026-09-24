@@ -2,6 +2,12 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.27
+
+### Fixed & Reliability
+- **Safe optional Cordis service resolution for agent presets** (#192, GitHub #2):
+  Replaced bare property access `ctx.agentPresets` in scheduled task runner (`lib/runner.js`) and chat starter (`lib/chat-start.js`) with safe dynamic service lookup `(typeof ctx.get === 'function' ? ctx.get('agentPresets') : ctx.agentPresets)`. This prevents Cordis Proxy traps from throwing `cannot get property "agentPresets" without inject` when the optional `agentPresets` service is not registered in the host environment, allowing the graceful fallback to operate as designed.
+
 ## 0.2.26
 
 ### Fixed & Compatibility
