@@ -517,7 +517,7 @@ Notes:
 
 ## 🔌 HTTP API Reference
 
-All endpoints are served by the DSH web server under `/dsh-cron/`. Read endpoints are open to the local UI; **mutating endpoints reject cross-origin requests** and accept bodies up to 1 MB. Creating `script`-type tasks over HTTP additionally requires the `x-dsh-cron-confirm: script` header, which forged cross-site posts cannot attach.
+All endpoints are served by the DSH web server under `/dsh-cron/`. Endpoints are protected by a hardened HTTP source guard (`isTrustedRequest`): non-loopback remote callers require token authentication (`Authorization: Bearer <token>` or `x-dsh-cron-token`), and browser requests enforce strict `Host` and `Origin` matching, reject `Origin: null`, and restrict `Sec-Fetch-Site` to `same-origin` or `none`. Heartbeat ping routes strictly require the `POST` method. Task `GET` responses automatically redact sensitive fields (`env`, `httpHeaders`, `httpBody`) as `'[REDACTED]'`, and update operations preserve existing secrets when `'[REDACTED]'` is passed. Creating `script`-type tasks over HTTP additionally requires the `x-dsh-cron-confirm: script` header, which forged cross-site posts cannot attach. Body size is capped at 1 MB.
 
 | Method | Path | Description |
 |:---|:---|:---|

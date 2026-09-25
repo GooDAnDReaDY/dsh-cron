@@ -506,7 +506,7 @@ dsh-cron:
 
 ## 🔌 HTTP API 参考
 
-所有端点由 DSH Web 服务器在 `/dsh-cron/` 下提供。读端点对本地 UI 开放；**变更端点拒绝跨域请求**且请求体最大 1 MB。通过 HTTP 创建 `script` 类型任务还需要 `x-dsh-cron-confirm: script` 请求头 —— 伪造的跨站请求无法附加该头。
+所有端点由 DSH Web 服务器在 `/dsh-cron/` 下提供。所有端点均受到强化的 HTTP 来源防护（`isTrustedRequest`）：非回环远程客户端必须携带有效令牌（`Authorization: Bearer <token>` 或 `x-dsh-cron-token`），浏览器请求严格校验 `Host` 与 `Origin` 一致性并拒绝 `Origin: null`，同时限制 `Sec-Fetch-Site` 仅允许 `same-origin` 或 `none`。心跳 ping 端点严格要求 `POST` 方法。任务 `GET` 响应自动将敏感字段（`env`、`httpHeaders`、`httpBody`）掩码为 `'[REDACTED]'`，并在更新操作提交 `'[REDACTED]'` 时安全保留已有原密钥。通过 HTTP 创建 `script` 类型任务还需要 `x-dsh-cron-confirm: script` 请求头。请求体大小上限为 1 MB。
 
 | 方法 | 路径 | 说明 |
 |:---|:---|:---|
