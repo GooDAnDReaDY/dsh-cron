@@ -2,6 +2,16 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.28
+
+### Security & Hardening
+- **HTTP Source Guard & Remote Caller Verification** (#86):
+  Hardened incoming request validation (`isTrustedRequest`). Non-loopback remote callers are rejected with `403 Forbidden` unless authenticated via `Authorization: Bearer <token>` or `x-dsh-cron-token`. Browser requests strictly require matching `Host` and `Origin` headers, disallow `Origin: null`, and enforce `Sec-Fetch-Site` (`same-origin` or `none`).
+- **Heartbeat Endpoint Method Enforcement** (#86):
+  Restricted `/dsh-cron/heartbeat-ping/:id` and `/dsh-cron/tasks/:id/heartbeat` endpoints strictly to the `POST` HTTP method, returning `405 Method Not Allowed` for any other methods. Caller validation prevents remote unauthorized heartbeat registration.
+- **Task Secret Redaction & In-Place Restoration** (#86):
+  Redacted sensitive values (`env` variables, `httpHeaders` values, and `httpBody` payload) with `'[REDACTED]'` in all task `GET` responses (`/dsh-cron/tasks` and `/dsh-cron/tasks/:id`). When updating existing tasks via `POST` or `PATCH`, any `'[REDACTED]'` values in the payload seamlessly retain their original secret values in storage.
+
 ## 0.2.27
 
 ### Fixed & Reliability
