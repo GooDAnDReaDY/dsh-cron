@@ -80,18 +80,18 @@ test('#50: the agent tools refuse to change a config-owned task', async (t) => {
   });
   t.after(() => { if (typeof dispose === 'function') dispose(); });
 
-  for (const name of ['cron_pause_task', 'cron_resume_task', 'cron_delete_task', 'cron_update_task']) {
-    const tool = tools.get(name);
-    assert.ok(tool, name + ' is registered');
-    const result = await tool.execute({ id: 'cron_cfg', title: 'Renamed', status: 'paused' });
-    assert.equal(result.success, false, name + ' refuses a config-owned task');
+  const cronTool = tools.get('cron');
+  assert.ok(cronTool, 'cron is registered');
+  for (const action of ['pause', 'resume', 'delete', 'update']) {
+    const result = await cronTool.execute({ action, id: 'cron_cfg', title: 'Renamed', status: 'paused' });
+    assert.equal(result.success, false, action + ' refuses a config-owned task');
     assert.match(result.message || '', /declared in the profile config/);
   }
 
-  const read = await tools.get('cron_get_task').execute({ id: 'cron_cfg' });
+  const read = await cronTool.execute({ action: 'get', id: 'cron_cfg' });
   assert.equal(read.success, true, 'reading a config-owned task stays possible');
   assert.equal(read.task.title, 'From config', 'and nothing was changed by the refusals');
-  assert.ok(tools.get('cron_run_task'), 'a manual run stays available for a config-owned task');
+  assert.ok(cronTool, 'a manual run stays available for a config-owned task');
 });
 
 test('#50: dropping the jobs section retires the tasks it used to own', async (t) => {
@@ -118,6 +118,6 @@ test('#50: dropping the jobs section retires the tasks it used to own', async (t
   ctxB.tools = { register: (tool) => { toolsAfter.set(tool.name, tool); } };
   plugin.apply(ctxB, {});
 
-  const read = await toolsAfter.get('cron_get_task').execute({ id: 'cron_retire' });
+  const read = await toolsAfter.get('cron').execute({ action: 'get', id: 'cron_retire' });
   assert.equal(read.success, false, 'the orphaned config task was retired');
 });

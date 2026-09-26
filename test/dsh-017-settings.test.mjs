@@ -151,7 +151,7 @@ test('#184: settings service is optional and scheduler starts when settings is a
     plugin.apply(env.ctx, {});
   });
 
-  assert.ok(env.tools.has('cron_create_task'), 'tools must be registered');
+  assert.ok(env.tools.has('cron'), 'tools must be registered');
   assert.ok(env.routes.has('/dsh-cron/settings'), 'settings route must be registered');
 });
 

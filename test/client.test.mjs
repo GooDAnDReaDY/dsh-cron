@@ -166,7 +166,7 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   // #49 — tuning a task in a dialogue.
   assert.ok(code.includes("'actions.tuneWithDsh'"), 'tune action is labelled');
   assert.ok(code.includes('const handleTuneWithDsh = async (task)'), 'tune handler present');
-  assert.ok(code.includes('cron_update_task tool'), 'the dialogue is told which tool applies the change');
+  assert.ok(code.includes('cron tool (action: "update"'), 'the dialogue is told which tool applies the change');
   assert.ok(code.includes('confirm it with me explicitly'), 'code-executing changes require explicit confirmation');
   assert.ok(code.includes("'/dsh-cron/chat/start'"), 'tuning reuses the existing chat session start');
 
