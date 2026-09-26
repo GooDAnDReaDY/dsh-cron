@@ -64,7 +64,7 @@ graph TD
 
     subgraph Server ["服务端 (Cordis 与 DSH 服务)"]
         HttpRoutes["HTTP REST API<br/>(/dsh-cron/*)"]
-        AgentTools["工具调用网关<br/>(cron_create_task, cron_list_tasks, ...)"]
+        AgentTools["工具调用网关<br/>(cron)"]
         Scheduler["TaskScheduler 引擎<br/>(Croner 实例 + one-shot 定时器)"]
         Store["原子 TaskStore<br/>(tasks.json 原子写入)"]
         AgentRunner["智能体会话调度器<br/>(以指定模型执行提示词)"]
@@ -104,26 +104,49 @@ graph TD
 无需猜测 cron 语法，用自然语言即可创建任务：
 1. 点击 **Create ⌄** ➔ **Create with DSH**。
 2. 描述要自动化的内容（例如：*“每个工作日早上 9 点检查未处理的 PR 并起草评论”*）。
-3. 插件会创建一个注入了调度器指令的专属智能体会话。智能体会与你确认细节 —— LLM 还是 NO-LLM shell 任务、准确的 cron 表达式、在你的 DSH 安装中可用的经济型模型，以及是否启用“静默规则”（仅在新事件或故障时告警）—— 并在你确认后才通过 `cron_create_task` 工具注册任务。
+3. 插件会创建一个注入了调度器指令的专属智能体会话。智能体会与你确认细节 —— LLM 还是 NO-LLM shell 任务、准确的 cron 表达式、在你的 DSH 安装中可用的经济型模型，以及是否启用“静默规则”（仅在新事件或故障时告警）—— 评估属于对话内定时提醒（`schedule_create`）还是后台自动化（`cron`），并在获得您的确认后通过 `cron` 工具（`action: 'create'`）注册任务。
 
-### 3. 智能体工具（Tool Calling）
+### 2. DSH 核心内置 schedule 与 dsh-cron 对比
 
-| 工具 | 说明 |
-|:---|:---|
-| `cron_create_task` | 创建任务：`title`、`schedule`、`prompt`、`fallbackModel`（失败时改用更强模型重试一次），可选 `type`（`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`）、`delivery`、`provider`、`model`、`channels`、`template`、`notifyTelegram`、`onlyOnFailure`、`timeoutSeconds`、`overlapPolicy`、`kanbanMode` |
-| `cron_schedule_task` | `cron_create_task` 的别名，保持与既有提示词兼容 |
-| `cron_list_tasks` | 列出任务的状态、下次运行时间、token 总量与成本估算 |
-| `cron_pause_task` | 暂停调度而不删除配置 |
-| `cron_resume_task` | 恢复已暂停的调度 |
-| `cron_delete_task` | 永久删除任务及其历史 |
-| `cron_run_task` | 触发一次立即的带外运行 |
-| `cron_get_task` | 读取单个任务的完整配置，包括列表中看不到的字段 |
-| `cron_update_task` | 就地修改现有任务（白名单字段，校验与 HTTP 路由一致）；提示模型先与用户确认会执行代码的改动 |
+DeepSeek Harness 内置了轻量级扩展 `@deepseek-ai/dsh-schedule`，用于会话内的基础定时提醒。下表帮助您根据场景选择合适的工具：
+
+| 功能维度 | DSH 核心 `schedule` (`@deepseek-ai/dsh-schedule`) | `@goodandready/dsh-cron` |
+|:---|:---|:---|
+| **主要定位** | 当前会话内的定时提醒与催办消息 | 无人值守的后台自动化执行器与任务编排引擎 |
+| **执行上下文** | 当前活动会话内 | 独立的隔离智能体会话或外部后台进程 |
+| **执行运行时** | 仅当前会话提示词（LLM） | 9 种运行时：`llm`、`script` (bash/sh)、`node`、`python`、`http` (REST/webhook)、`ssh`、`docker`、`skill`、`workflow` |
+| **模型工具** | `schedule_create`、`schedule_list`、`schedule_delete` | 统一 `cron` 工具（action: `create`、`list`、`get`、`update`、`pause`、`resume`、`run`、`delete`） |
+| **工具模式体积** | 约 1.5k 字符 | 约 1.5k 字符（由 9 个工具合并为 1 个，节省约 12k 字符上下文） |
+| **推送渠道** | 仅限当前会话 | 多渠道：Telegram、Discord、Slack、Webhook、Kanban、ntfy、Bark、PushPlus、语音 (TTS)、Gitea |
+| **代码修改隔离** | 无 | 临时或保留的 git worktree 隔离环境（`worktree: true`） |
+| **成本与 Token 限制** | 无 | 成本熔断防护：`costLimitUsd`、`dailyCostLimitUsd`、`tokenLimit` 自动暂停 |
+| **容错与健康检查** | 无 | 指数退避自动重试、失败自动诊断、心跳监测 (Dead Man's Snitch / Better Uptime) |
+| **静默规则 (Silent Rule)** | 无 | 无新事件或变更时完全静默（杜绝通道垃圾消息） |
+| **任务管理** | 基础列表与删除 | 完整 UI 管理器、运行历史、日志查看器、指标统计、手动触发、导入导出、配置同步 |
+
+### 3. 智能体工具 (`cron`)
+
+自主智能体通过单个统一的 `cron` 工具直接管理定时任务，大幅降低模型模式开销：
+
+| 动作 (action) | 说明 | 核心参数 |
+|:---|:---|:---|
+| `create` | 创建新的后台定时任务或自动化作业 | `title`、`schedule`、`prompt`、`type`、`model`、`channels`、`delivery` 等 |
+| `list` | 列出任务的状态、下次运行时间、token 总量与成本估算 | `status` (`'all'`、`'active'`、`'paused'`、`'completed'`) |
+| `get` | 根据任务 ID 获取单项任务的完整配置 | `id` |
+| `update` | 就地修改现有任务（切换到代码执行运行时需 `confirmCodeSwitch: true`） | `id`、修改字段 |
+| `pause` | 暂停调度而不删除配置 | `id` |
+| `resume` | 恢复已暂停的调度 | `id` |
+| `run` | 触发一次立即的带外运行 | `id` |
+| `delete` | 永久删除任务及其历史 | `id` |
+
+> [!NOTE]
+> **上下文优化与平滑迁移**：此前 9 个单独的工具模式在每次模型轮次中消耗约 13.6k 字符。整合为单一 `cron` 工具后，模式开销减少约 88%（降至约 1.5k 字符）。旧工具名（`cron_create_task`、`cron_schedule_task`、`cron_list_tasks` 等）被优雅拦截，并返回清晰迁移提示，引导模型使用带对应 `action` 的 `cron` 工具。对于简单的会话内提醒，模型将建议使用核心内置的 `schedule_create`。
 
 会话中模型可进行的调用示例：
 
-```
-cron_create_task({
+```json
+cron({
+  "action": "create",
   "title": "Morning digest",
   "schedule": "0 8 * * 1-5",
   "prompt": "Prepare a brief morning digest of active tasks and open tickets.",
