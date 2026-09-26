@@ -140,7 +140,8 @@ post_install_checks() {
   printf '%s' "$index" | grep -qF "$PACKAGE_NAME" || fail "client entry not found in the DSH index"
 
   bundle_url="$(printf '%s' "$index" \
-    | tr '"' '\n' | grep -F '/plugins/??' | grep -F "$PACKAGE_NAME" | head -1 | sed 's/&amp;/\&/g')"
+    | tr '"' '\n' | grep -F 'plugins/??' | grep -F "$PACKAGE_NAME" | head -1 | sed 's/&amp;/\&/g')"
+  bundle_url="/${bundle_url#/}"
   [ -n "$bundle_url" ] || fail "no combined plugin bundle URL for $PACKAGE_NAME in the DSH index"
 
   # The bundle is written to a file before grepping: with pipefail, grep -q
