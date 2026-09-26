@@ -43,7 +43,7 @@ Autonomous AI agents often need to perform recurring duties: generating daily mo
 
 1. **Rich Visual Task Manager** — a sidebar button with a collapsible list of active jobs (next run or live state, capped and persisted), plus a full panel to inspect, filter by type/model/channel, pause, trigger, duplicate, export/import and create tasks.
 2. **Interactive "Create with DSH" Workflow** — chat with your agent to translate high-level requirements into a well-formed scheduled task.
-3. **Autonomous AI Tool Calling** — native `cron_*` tools let agents schedule their own follow-up executions during conversations.
+3. **Autonomous AI Tool Calling** — single unified `cron` tool (`action: 'create' | 'list' | 'get' | 'update' | 'pause' | 'resume' | 'run' | 'delete'`) lets agents inspect, trigger, and manage background automation without schema bloat.
 4. **Robust Scheduler & Atomic Storage** — built on `croner` with interval aliases, one-shot delays, atomic file persistence, run histories, and cost tracking.
 5. **Six Execution Runtimes** — shell, Node.js, Python, HTTP/webhook, remote SSH and Docker, plus per-task environment variables, workspace binding and isolated git worktrees for code-modifying agent tasks.
 6. **Multi-Channel Delivery With Templates** — one run fans out to Telegram, dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, voice (`dsh-tts`) and Gitea, with `{variable}` message templates and secrets referenced by DSH credential name.
@@ -64,7 +64,7 @@ graph TD
 
     subgraph Server ["Server Runtime (Cordis & DSH Services)"]
         HttpRoutes["HTTP REST API<br/>(/dsh-cron/*)"]
-        AgentTools["AI Tool Calling Gateway<br/>(cron_create_task, cron_list_tasks, ...)"]
+        AgentTools["AI Tool Calling Gateway<br/>(cron)"]
         Scheduler["TaskScheduler Engine<br/>(Croner instances + one-shot timers)"]
         Store["Atomic TaskStore<br/>(tasks.json with atomic write)"]
         AgentRunner["Agent Session Dispatcher<br/>(Executes prompt with chosen model)"]
@@ -104,27 +104,49 @@ Click the clock icon in the DSH sidebar (positioned next to the new-session butt
 Transform natural language into a scheduled job without guessing cron syntax:
 1. Click **Create ⌄** ➔ **Create with DSH**.
 2. Describe what you want to automate (e.g. *"Check open PRs every weekday at 9:00 and draft review comments"*).
-3. The plugin spawns a dedicated agent session pre-injected with scheduler instructions. The agent clarifies the details with you — LLM vs no-LLM shell task, the exact cron expression, an economical model from those available in your DSH installation, and whether a "silent rule" (alert only on new events or failures) should apply — and registers the task through the `cron_create_task` tool only after your confirmation.
+3. The plugin spawns a dedicated agent session pre-injected with scheduler instructions. The agent clarifies the details with you — LLM vs no-LLM shell task, the exact cron expression, an economical model from those available in your DSH installation, and whether a "silent rule" (alert only on new events or failures) should apply — evaluates simple in-chat reminder (`schedule_create`) vs background automation (`cron`), and registers the task through the `cron` tool (`action: 'create'`) only after your confirmation.
 
-### 3. Agent Tools (Tool Calling)
-Autonomous agents can manage schedules directly:
+### 2. DSH Core schedule vs dsh-cron
 
-| Tool | Description |
-|:---|:---|
-| `cron_create_task` | Creates a scheduled task: `title`, `schedule`, `prompt`, `fallbackModel` (one retry on a stronger model when a run fails), optional `type` (`llm`/`script`/`node`/`python`/`http`/`ssh`/`docker`/`skill`/`workflow`), `delivery`, `provider`, `model`, `channels`, `template`, `notifyTelegram`, `onlyOnFailure`, `timeoutSeconds`, `overlapPolicy`, `kanbanMode` |
-| `cron_schedule_task` | Alias of `cron_create_task` kept for compatibility with existing agent prompts |
-| `cron_list_tasks` | Lists tasks with statuses, next run timestamps, token totals, and cost estimates |
-| `cron_pause_task` | Pauses a schedule without deleting its configuration |
-| `cron_resume_task` | Resumes a paused schedule |
-| `cron_delete_task` | Permanently removes a task and its history |
-| `cron_run_task` | Triggers an immediate out-of-band run |
-| `cron_get_task` | Reads the full configuration of one task, including fields the list does not show |
-| `cron_update_task` | Changes an existing task in place (whitelisted fields, same validation as the HTTP route); the model is told to confirm code-executing changes with the user first |
+DeepSeek Harness includes a lightweight built-in `@deepseek-ai/dsh-schedule` extension for basic in-chat reminders. Use this guide to choose the right tool:
+
+| Capability | DSH Core `schedule` (`@deepseek-ai/dsh-schedule`) | `@goodandready/dsh-cron` |
+|:---|:---|:---|
+| **Primary Purpose** | In-chat reminders & timed prompts back into the active dialogue | Unattended background automation runner & orchestrator |
+| **Execution Context** | Active conversation session | Isolated dedicated agent sessions or background runner |
+| **Runtimes** | Chat session turn only (LLM prompt) | 9 runtimes: `llm`, `script` (bash/sh), `node`, `python`, `http` (REST/webhook), `ssh`, `docker`, `skill`, `workflow` |
+| **Model Tools** | `schedule_create`, `schedule_list`, `schedule_delete` | Unified `cron` tool (action: `create`, `list`, `get`, `update`, `pause`, `resume`, `run`, `delete`) |
+| **Tool Schema Footprint** | ~1.5k characters | ~1.5k characters (consolidated from 9 tools down to 1, saving ~12k characters of LLM context) |
+| **Delivery Channels** | Current chat only | Multi-channel: Telegram, Discord, Slack, Webhook, Kanban, ntfy, Bark, PushPlus, Voice (TTS), Gitea |
+| **Code Modifying Isolation** | None | Ephemeral or retained git worktrees (`worktree: true`) |
+| **Cost & Token Limits** | None | Guard rails: `costLimitUsd`, `dailyCostLimitUsd`, `tokenLimit` auto-pausing |
+| **Failure Handling & Health** | None | Automatic retries with exponential backoff, failure inspector, Dead Man's Snitch / Better Uptime heartbeats |
+| **Silent Rule** | None | Suppress delivery when no new events or changes occur (zero noise / zero spam) |
+| **Task Management** | Basic list / delete | Full UI manager, execution history, log viewer, run metrics, manual trigger, import/export, profile config sync |
+
+### 3. Agent Tool (`cron`)
+
+Autonomous agents manage schedules directly through a single unified `cron` tool, keeping LLM schema overhead minimal:
+
+| Action | Description | Key Parameters |
+|:---|:---|:---|
+| `create` | Creates a new background scheduled task or automation job | `title`, `schedule`, `prompt`, `type`, `model`, `channels`, `delivery`, etc. |
+| `list` | Lists tasks with status, next run timestamp, tokens, and cost | `status` (`'all'`, `'active'`, `'paused'`, `'completed'`) |
+| `get` | Reads the full detailed configuration of one task | `id` |
+| `update` | Modifies an existing task in place (requires `confirmCodeSwitch: true` when switching to code-executing runtimes) | `id`, patch fields |
+| `pause` | Pauses an active schedule without deleting its configuration | `id` |
+| `resume` | Resumes a paused schedule | `id` |
+| `run` | Triggers an immediate out-of-band execution | `id` |
+| `delete` | Permanently removes a task and its run history | `id` |
+
+> [!NOTE]
+> **Context Optimization & Migration**: Previously, 9 separate tool schemas consumed ~13.6k characters of context in every model turn. The consolidated `cron` tool cuts this footprint by ~88% down to ~1.5k characters. Legacy tool names (`cron_create_task`, `cron_schedule_task`, `cron_list_tasks`, etc.) are gracefully rejected with helpful guidance directing the model to `cron` with the matching `action`. For simple in-conversation reminders, models are instructed to recommend core `schedule_create`.
 
 Example invocation the model can make during a conversation:
 
-```
-cron_create_task({
+```json
+cron({
+  "action": "create",
   "title": "Morning digest",
   "schedule": "0 8 * * 1-5",
   "prompt": "Prepare a brief morning digest of active tasks and open tickets.",
