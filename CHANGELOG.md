@@ -2,6 +2,18 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.29
+
+### Performance & Tooling Architecture
+- **Unified Model Tool Consolidation** (#196):
+  Consolidated 9 separate model tools (`cron_create_task`, `cron_schedule_task`, `cron_list_tasks`, `cron_pause_task`, `cron_resume_task`, `cron_delete_task`, `cron_run_task`, `cron_get_task`, `cron_update_task`) into 1 unified tool `cron` with `action`: `create`, `list`, `get`, `update`, `pause`, `resume`, `run`, `delete`. Reduces model tool schema footprint by ~88% (~13.6k characters down to ~1.5k characters), eliminating context window bloat across all DSH sessions.
+- **Separation of Concerns with DSH Core Schedule** (#196):
+  Simple in-chat reminders and timed prompts belong to built-in `@deepseek-ai/dsh-schedule` (`schedule_create`). In tool descriptions and agent prompts (`lib/prompt.js`, `lib/client-src/52-cron-screen-actions.js`), models are instructed to delegate in-chat reminders to `schedule_create` and reserve `cron` for unattended background automation in separate isolated sessions, shell/code runtimes (`script`, `node`, `python`, `http`, `ssh`, `docker`), git worktree isolation, multi-channel delivery, cost guards, and failure monitoring.
+- **Graceful Legacy Migration**:
+  Calls with legacy tool names or legacy actions are intercepted and rejected with informative migration hints directing the agent to `cron` with the corresponding `action`.
+- **DSH Core schedule vs dsh-cron Documentation**:
+  Added comparison table and consolidated tool documentation in `README.md`, `README.ru.md`, and `README.zh.md`. Updated `package.json` description and `docs/design/DESIGN.md` contract.
+
 ## 0.2.28
 
 ### Security & Hardening
