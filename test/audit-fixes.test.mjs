@@ -130,3 +130,100 @@ test('Audit #66: TaskScheduler toggleTask pauses and resumes correctly', () => {
   scheduler.stopAll();
   try { fs.unlinkSync(tmpPath); } catch {}
 });
+
+test('Audit #199: CronSettingsCard does not hardcode stale version and dynamic version is supported', () => {
+  const cardCode = fs.readFileSync(new URL('../lib/client-src/70-settings-card.js', import.meta.url), 'utf-8');
+  assert.ok(!cardCode.includes("'0.2.24'"), 'hardcoded 0.2.24 version removed from CronSettingsCard');
+  assert.ok(cardCode.includes("currentVersion: '',"), 'currentVersion initialized to empty string');
+  assert.ok(cardCode.includes('data.settings.version'), 'reads dynamic version from settings endpoint');
+});
+
+test('Audit #200: /dsh-cron/heartbeat and /dsh-cron/models enforce GET method with 405', async () => {
+  const { getModelsHandler } = await import('../lib/models-handler.js');
+  let status = 0;
+  let responseData = null;
+  const sendJson = (res, code, data) => {
+    status = code;
+    responseData = data;
+  };
+
+  // POST to getModelsHandler must be rejected with 405
+  await getModelsHandler({}, { method: 'POST', url: '/dsh-cron/models' }, {}, sendJson);
+  assert.equal(status, 405);
+  assert.equal(responseData?.ok, false);
+  assert.equal(responseData?.error, 'Method not allowed');
+
+  // DELETE to getModelsHandler must be rejected with 405
+  await getModelsHandler({}, { method: 'DELETE', url: '/dsh-cron/models' }, {}, sendJson);
+  assert.equal(status, 405);
+});
+
+test('Audit #201: /tasks/export and /tasks/import reject wrong methods with 405, not 404', async () => {
+  const { createCronApiHandler } = await import('../lib/api.js');
+  const tmpPath = `/tmp/dsh-cron-test-methods-${Date.now()}.json`;
+  const store = new TaskStore(tmpPath);
+  const handler = createCronApiHandler(store, null, { recommendations: [] });
+
+  let status = 0;
+  let bodyData = null;
+  const mockRes = {
+    writeHead(code) { status = code; },
+    end(str) {
+      if (str) {
+        try { bodyData = JSON.parse(str); } catch {}
+      }
+    }
+  };
+
+  // POST /dsh-cron/tasks/export must answer 405 Method Not Allowed
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/export', headers: {} }, mockRes);
+  assert.equal(status, 405);
+  assert.equal(bodyData?.ok, false);
+  assert.equal(bodyData?.error, 'Method not allowed');
+
+  // GET /dsh-cron/tasks/import must answer 405 Method Not Allowed
+  await handler({ method: 'GET', url: '/dsh-cron/tasks/import', headers: {} }, mockRes);
+  assert.equal(status, 405);
+  assert.equal(bodyData?.ok, false);
+  assert.equal(bodyData?.error, 'Method not allowed');
+
+  try { fs.unlinkSync(tmpPath); } catch {}
+});
+
+test('Audit #202: dead exports createTaskParameters and createTaskOutput removed', async () => {
+  const indexModule = await import('../lib/index.js');
+  assert.equal(indexModule.createTaskParameters, undefined);
+  assert.equal(indexModule.createTaskOutput, undefined);
+  assert.ok(indexModule.cronToolParameters);
+});
+
+test('Audit #203: lib/client.js contains zero 6-digit hex colors', () => {
+  const clientCode = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  const hexMatches = clientCode.match(/#[0-9a-fA-F]{6}/g) || [];
+  assert.equal(hexMatches.length, 0, 'all 6-digit hex colors replaced with CSS theme variables');
+});
+
+test('Audit #204: lib/logger.js forwards log calls to ctx.logger when configured', async () => {
+  const { setLogger, logger } = await import('../lib/logger.js');
+  const logged = [];
+  const customLogger = {
+    info(...args) { logged.push({ level: 'info', args }); },
+    warn(...args) { logged.push({ level: 'warn', args }); },
+    error(...args) { logged.push({ level: 'error', args }); },
+    debug(...args) { logged.push({ level: 'debug', args }); },
+  };
+
+  setLogger(customLogger);
+  logger.info('[test] info message');
+  logger.warn('[test] warning message');
+  logger.error('[test] error message');
+
+  assert.equal(logged.length, 3);
+  assert.equal(logged[0].level, 'info');
+  assert.equal(logged[0].args[0], '[test] info message');
+  assert.equal(logged[1].level, 'warn');
+  assert.equal(logged[2].level, 'error');
+
+  // Reset back to console
+  setLogger(console);
+});

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { createTaskParameters, cronToolParameters } from '../lib/index.js';
+import { cronToolParameters } from '../lib/index.js';
 import { executeCronTool, LEGACY_TOOL_NAMES, LEGACY_ACTION_MAP, rejectLegacyTool } from '../lib/cron-tool.js';
 
 /**
@@ -31,7 +31,6 @@ test('every object-typed tool parameter declares additionalProperties explicitly
     walk(value, key);
   }
   // Backwards-compatible export
-  assert.equal(createTaskParameters, cronToolParameters);
 });
 
 test('lib/index.js defines exactly one unified cron tool following dsh-tools defineTool contract', () => {
