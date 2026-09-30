@@ -2,6 +2,24 @@
 
 Notable changes to `@goodandready/dsh-cron`.
 
+## 0.2.30
+
+### Fixed & Reliability
+- **Settings Card Dynamic Versioning** (#199):
+  Removed hardcoded fallback version in `CronSettingsCard`. The card now retrieves the current installed version dynamically from the server via `/dsh-cron/settings` and the updater service.
+- **Strict HTTP Method Enforcement (405 Method Not Allowed)** (#200):
+  Enforced HTTP GET method on `/dsh-cron/heartbeat` and `/dsh-cron/models`. Non-GET requests are rejected with `405 Method Not Allowed` and an `Allow: GET` header.
+- **Export/Import Route Precedence & Method Validation** (#201):
+  Fixed routing conflict on `/tasks/export` and `/tasks/import` where invalid HTTP methods previously fell through to the dynamic `/tasks/:id` route, incorrectly returning 404. Non-GET export and non-POST import requests now immediately return `405 Method Not Allowed`.
+
+### Refactoring & Code Quality
+- **Dead Export Cleanup** (#202):
+  Removed obsolete unused module exports `createTaskParameters` and `createTaskOutput` from `lib/index.js`, left behind from the legacy split tool implementation.
+- **DSH Theme Semantic Token Adoption** (#203):
+  Replaced 80 hardcoded hex color values across client modules (`styles`, `modal-dialogs`, `modal-task-form-tail`, `settings-card`) with official DSH theme variables (`var(--dsw-alias-...)`, `var(--dsh-cron-...)`). Bundle hex count reduced to 0.
+- **Cordis Context Logging Migration** (#204):
+  Replaced 72 direct `console.*` calls across 14 server modules with unified Cordis context logging (`ctx.logger`) via singleton `lib/logger.js`.
+
 ## 0.2.29
 
 ### Performance & Tooling Architecture
