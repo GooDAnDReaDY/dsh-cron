@@ -242,6 +242,8 @@ test('5. Store Archive and Stats: getArchivedRuns and getTaskStats', async () =>
     const archive = store.getArchivedRuns(task.id, { limit: 10, offset: 0 });
     assert.equal(archive.total, 2);
     assert.equal(archive.runs.length, 2);
+    // Verified GitHub Issue #3 / Gitea #247: archive runs ordered newest-first
+    assert.ok(archive.runs[0].at > archive.runs[1].at);
 
     // Filter search
     const filtered = store.getArchivedRuns(task.id, { search: 'timeout' });
