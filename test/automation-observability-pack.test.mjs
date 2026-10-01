@@ -276,3 +276,17 @@ test('6. Prometheus Metrics: enriched with concurrent_running and task tokens/co
   assert.ok(output.includes('dsh_cron_task_cost_usd_total{task="cron_m1"} 0.003'), 'should export task cost');
   assert.ok(output.includes('dsh_cron_task_last_duration_seconds{task="cron_m1"} 0.45'), 'should export duration');
 });
+
+test('7. Archive Modal Date Expression: fallback handling without r1 typo', () => {
+  const formatRunDate = (r) => (r.at || r.timestamp || r.startedAt) ? new Date(r.at || r.timestamp || r.startedAt).toLocaleString() : "";
+
+  const rWithAt = { at: 1727700000000 };
+  const rWithTimestamp = { timestamp: 1727700000000 };
+  const rWithStartedAt = { startedAt: 1727700000000 };
+  const rEmpty = {};
+
+  assert.ok(formatRunDate(rWithAt).length > 0, 'should format r.at');
+  assert.equal(formatRunDate(rWithTimestamp), formatRunDate(rWithAt), 'should fallback to r.timestamp');
+  assert.equal(formatRunDate(rWithStartedAt), formatRunDate(rWithAt), 'should fallback to r.startedAt');
+  assert.equal(formatRunDate(rEmpty), "", 'should return empty string for empty run');
+});
