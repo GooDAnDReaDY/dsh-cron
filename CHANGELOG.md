@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.32 (2026-10-01)
+
+- **Fix (Client)**: Fixed typo `r1.timestamp` -> `r.timestamp` in Execution Archive modal date expression (reported by @netweaver in GitHub Issue #3).
+- **Test**: Added unit test in `test/automation-observability-pack.test.mjs` verifying timestamp fallback handling for `r.at`, `r.timestamp`, and `r.startedAt`.
+
 Notable changes to `@goodandready/dsh-cron`.
 
 ## 0.2.30
