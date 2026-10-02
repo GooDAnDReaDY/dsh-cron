@@ -452,6 +452,7 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 - **Modular Client Architecture (#150)**: Decomposed monolithic `lib/client.js` (~3950 lines) into 14 focused, single-responsibility fragments under `lib/client-src/` (none exceeding 580 lines). Integrated zero-dependency build script `scripts/build-client.mjs` wired into `package.json` (`build:client`, `pretest`). Development fragments are excluded from npm distribution via `"files": ["lib/*.js", ...]`.
 - **DSH Theme Tokens & Visual Standardization (#149)**: Replaced inline styles on task type badges (`onSuccess`, `onFailure`, `heartbeat`, `targetSession`, `preflight`) with dedicated `.dsh-cron-tag-*` CSS classes powered by semantic `--dsh-cron-*` theme variables. Modal overlay now adapts dynamically using `var(--dsw-alias-bg-mask, rgba(0, 0, 0, 0.75))`, and keyframe pulse animations use theme variables without hardcoded RGBA.
 - **Label Governance & Triage Audit (#95)**: Standardized 100% of repository issues and triage on the canonical repo-level label set.
+- **Style Self-Healing on Dynamic DOM Sweeps (#263 / GH-4)**: Watches `<head>` and `<html>` via `MutationObserver` alongside a 2s backstop interval and `visibilitychange` listener (`startStyleSelfHeal`), automatically re-attaching or repairing the `<style id="dsh-cron-styles">` tag if swept by host head re-renders, theme switches, or neighbor cleanups.
 
 ---
 
