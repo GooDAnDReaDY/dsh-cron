@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.33 (2026-10-02)
+
+- **Security (Telegram Webhook, #208)**: Added `X-Telegram-Bot-Api-Secret-Token` validation, fail-closed handling for empty `allowedChatId`, replay prevention via `update_id` deduplication, and protected config-owned tasks from modification via Telegram.
+- **Security (Code Confirmation, #212)**: Extended code execution detection to shell hooks (`preflightCommand`, `preflightType: 'command'`, `selfHealingCommand`, `command`), enforcing confirmation headers on create, patch, import, and UI.
+- **Security (Docker Isolation, #226)**: Isolated container environment in Docker runtime, preventing host process environment secrets from leaking into container process arguments.
+- **Security (Worktree & Workspace Fail-Closed, #231)**: Enforced fail-closed behavior on workspace resolution and worktree creation, aborting tasks cleanly rather than falling back into base workspace.
+- **Test**: Added `test/security-pack1-audit.test.mjs` (10 unit tests for all 4 security vectors). Total 328/328 tests passing.
+
 ## 0.2.32 (2026-10-01)
 
 - **Fix (Client)**: Fixed typo `r1.timestamp` -> `r.timestamp` in Execution Archive modal date expression (reported by @netweaver in GitHub Issue #3).
