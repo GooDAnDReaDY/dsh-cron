@@ -444,6 +444,7 @@ bash deploy.sh verify [exact-version]
 - **客户端模块化架构 (#150)**: 将庞大的单文件 `lib/client.js` (约 3950 行) 拆分为 `lib/client-src/` 下的 14 个高内聚模块文件 (各模块严格 <= 580 行)。集成零依赖构建脚本 `scripts/build-client.mjs` 并接入 `package.json` (`build:client`, `pretest`)，通过 `"files": ["lib/*.js", ...]` 避免开发源码冗余打包进 npm 发布包。
 - **DSH 语义化主题变量对齐 (#149)**: 将任务类型标签 (`onSuccess`, `onFailure`, `heartbeat`, `targetSession`, `preflight`) 的内联样式全部替换为基于主题变量的 `.dsh-cron-tag-*` 类；模态框遮罩层接入自适应主题遮罩变量 `var(--dsw-alias-bg-mask, rgba(0, 0, 0, 0.75))`，移除脉冲动画关键帧中的硬编码 RGBA。
 - **标签治理与工单审计 (#95)**: 审计并确认全仓库 100% 统一规范使用仓库级标签集。
+- **动态 DOM 清理下的样式自动恢复（#263 / GH-4）**: 通过 `MutationObserver`、2 秒兜底定时器与 `visibilitychange` 事件（`startStyleSelfHeal`）监听 `<head>` 与 `<html>`，当宿主重绘 `<head>`、切换主题或邻近插件清理样式时，自动重新注入并修复 `<style id="dsh-cron-styles">` 标签。
 
 ---
 

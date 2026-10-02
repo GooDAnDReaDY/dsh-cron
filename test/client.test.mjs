@@ -300,3 +300,159 @@ test('#177: task form includes quick schedule presets and view displays pausedRe
   assert.ok(code.includes("label: 'Daily 09:00', expr: '0 9 * * *'"), 'Daily preset present');
   assert.ok(code.includes("task.status === 'paused' && task.pausedReason"), 'pausedReason badge rendered when paused');
 });
+
+test('GH-4 / #263: client style self-healing on dynamic DOM sweeps, head re-renders and hot reload', () => {
+  const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+
+  // Verify code signatures exist in client bundle
+  assert.ok(code.includes("const STYLE_HEAL_KEY = '__dshCronStyleHeal';"), 'STYLE_HEAL_KEY defined');
+  assert.ok(code.includes("startStyleSelfHeal"), 'startStyleSelfHeal defined');
+  assert.ok(code.includes("ensureStyles()"), 'ensureStyles called to repair styles');
+
+  // Simulate DOM environment to test execution
+  let elements = new Map();
+  let headChildren = [];
+  let observers = [];
+  let intervals = [];
+
+  class MockMutationObserver {
+    constructor(callback) {
+      this.callback = callback;
+      observers.push(this);
+    }
+    observe(target, options) {
+      this.target = target;
+      this.options = options;
+    }
+    disconnect() {
+      const idx = observers.indexOf(this);
+      if (idx !== -1) observers.splice(idx, 1);
+    }
+    trigger() {
+      this.callback();
+    }
+  }
+
+  const mockHead = {
+    appendChild: (el) => {
+      headChildren.push(el);
+      elements.set(el.id, el);
+      return el;
+    }
+  };
+
+  const mockDocument = {
+    head: mockHead,
+    documentElement: {
+      appendChild: (el) => {
+        headChildren.push(el);
+        elements.set(el.id, el);
+        return el;
+      },
+      setAttribute: () => {},
+      removeAttribute: () => {},
+    },
+    getElementById: (id) => elements.get(id) || null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: (tag) => {
+      const el = {
+        tagName: tag.toUpperCase(),
+        id: '',
+        dataset: {},
+        textContent: '',
+        setAttribute: () => {},
+        appendChild: () => {}
+      };
+      return el;
+    },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
+    visibilityState: 'visible'
+  };
+
+  const mockWindow = {
+    MutationObserver: MockMutationObserver,
+    setInterval: (fn, ms) => {
+      const id = { fn, ms };
+      intervals.push(id);
+      return id;
+    },
+    clearInterval: (id) => {
+      const idx = intervals.indexOf(id);
+      if (idx !== -1) intervals.splice(idx, 1);
+    },
+    fetch: async () => ({ ok: true, json: async () => ({ ok: true, tasks: [] }) })
+  };
+
+  let factory = null;
+  const context = {
+    window: {
+      ...mockWindow,
+      __ModuleLoader__: {
+        load: ({ factory: f }) => { factory = f; }
+      }
+    },
+    document: mockDocument,
+    console,
+    MutationObserver: MockMutationObserver,
+    setInterval: mockWindow.setInterval,
+    clearInterval: mockWindow.clearInterval,
+    fetch: mockWindow.fetch,
+    CustomEvent: class {}
+  };
+
+  vm.createContext(context);
+  vm.runInContext(code, context);
+
+  assert.ok(typeof factory === 'function', 'client factory registered');
+
+  const requireFn = () => ({});
+  const clientPlugin = factory(requireFn);
+  assert.ok(typeof clientPlugin.apply === 'function', 'clientPlugin.apply is function');
+
+  let effectCleanup = null;
+  const mockCtx = {
+    locale: { register: () => {}, bind: () => () => '' },
+    slots: { inject: () => true, register: () => {} },
+    effect: (fn) => { effectCleanup = fn(); }
+  };
+
+  // 1. apply mounts plugin and injects styles
+  clientPlugin.apply(mockCtx);
+  const styleEl = elements.get('dsh-cron-styles');
+  assert.ok(styleEl, 'style tag injected');
+  assert.equal(styleEl.dataset.dshPlugin, 'dsh-cron');
+  assert.ok(styleEl.textContent.length > 100);
+  assert.equal(typeof context.window.__dshCronStyleHeal, 'function', 'watcher registered globally on window');
+
+  // 2. Host drops the style node (e.g. head re-render or neighbor cleanup)
+  elements.delete('dsh-cron-styles');
+  assert.equal(mockDocument.getElementById('dsh-cron-styles'), null);
+
+  // 3. Observer fires -> style healed immediately
+  assert.ok(observers.length > 0, 'MutationObserver is active');
+  observers[0].trigger();
+  const healedEl = elements.get('dsh-cron-styles');
+  assert.ok(healedEl, 'style tag re-attached by self-healing');
+  assert.ok(healedEl.textContent.length > 100);
+
+  // 4. Corrupted style text is healed
+  healedEl.textContent = 'corrupted';
+  observers[0].trigger();
+  assert.ok(healedEl.textContent.length > 100, 'corrupted text restored');
+
+  // 5. Interval backstop also heals
+  elements.delete('dsh-cron-styles');
+  assert.ok(intervals.length > 0, 'Interval backstop is active');
+  intervals[0].fn();
+  assert.ok(elements.get('dsh-cron-styles'), 'healed via interval backstop');
+
+  // 6. Cleanup disposes watcher and stops observers + timer
+  assert.ok(typeof effectCleanup === 'function', 'effect cleanup returned');
+  effectCleanup();
+  assert.equal(context.window.__dshCronStyleHeal, undefined, 'global watcher cleaned up');
+  assert.equal(observers.length, 0, 'MutationObserver disconnected');
+  assert.equal(intervals.length, 0, 'Interval cleared');
+});
