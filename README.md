@@ -186,8 +186,11 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 ### 7. Cost Control: Fallback Model & Burn Guard
 * **Fallback Model** — A task can run on the cheap model by default and still finish on the strong one: set `fallbackModel` (and optionally `fallbackProvider`) and a failed run — `error` or `timeout` — is retried **once** on that model before the ordinary retry backoff applies. History records which model produced the result and whether the fallback was used, usage and cost of both attempts are summed, and the `{model}` template variable renders the model that finished the run. Only agent-mediated tasks (`llm`, `skill`, `workflow`) can use a fallback.
 * **Token & Cost Burn Guard** — Prevent runaway spending by configuring per-task limits: `costLimitUsd` (lifetime spend limit in USD), `dailyCostLimitUsd` (rolling 24-hour spend limit in USD), and `tokenLimit` (lifetime token limit). If a task exceeds any threshold, execution is halted, the task is automatically paused with `pausedReason` (`cost_limit_exceeded`, `daily_cost_limit_exceeded`, or `token_limit_exceeded`), and an alert notification is dispatched across all active channels.
+* **Event-Driven Token & Cost Extraction** — Reads real token usage from DSH session stream events (`assistant/message`, `assistant/chunk` usage, and `assistant/attempt`), accounting for uncached input, cached reads, output tokens, and paid failed attempts across retries.
+* **Rolling 24-Hour Cost Ledger** — Daily burn guard (`dailyCostLimitUsd`) maintains an independent rolling 24h cost ledger per task, preserved in `store.json`. Expenses remain fully counted across history archive rotations (beyond 100 runs) and survive daemon restarts.
 
 ### 8. Session Integration & Permissions
+* **Real Assistant Output & Terminal Status Extraction** — Isolates current turn session events, extracts the actual assistant message text (excluding previous turn history in persistent sessions), and validates terminal turn status (`turn/end` errors or interruptions) to guarantee accurate reporting, chaining, and structured action execution.
 * **Per-task permission presets** — `default`, `read-only`, `workspace-write`, or `full` are applied to the task's agent session before the prompt runs.
 * **Session auto-archive** — isolated cron sessions are archived after each run (best-effort) so they do not clutter the chat list.
 * **History → session navigation** — every LLM run records its session; open it straight from the run history entry.
@@ -234,6 +237,8 @@ Prevent rogue processes from stacking concurrent duplicate executions:
   * **`skip`** (default): drops the overlapping run and records a `skipped` entry in the run history.
   * **`queue`**: queues the next execution and starts it as soon as the active job completes.
   * **`replace`**: aborts the active run via `AbortController` and launches a fresh execution.
+* **Croner Overlap Policy Delegation** — Scheduled cron ticks fire without upstream suppression (`Croner protect: false`), allowing `skip` (with history logging), `queue` (delayed execution), and `replace` (clean abort) to govern recurring cron ticks and manual triggers consistently.
+* **Context-Preserving Queues** — Both the global concurrency queue and task overlap queue retain full immutable execution context (`chainDepth`, `prevOutput`, `prevTaskId`, `prevStatus`, `prevCostUsd`), preventing data loss under load.
 
 If the daemon was offline at a scheduled time, the run is recorded as `missed` on startup, so gaps in the history stay visible.
 
