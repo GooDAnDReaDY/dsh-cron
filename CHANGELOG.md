@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.36 (2026-10-02)
+
+- **Agent Runner (Real Turn Output & Terminal Status, #227)**: `_executeAgentTurn` now captures the session sequence boundary (`startSeq`), extracts true assistant message text from turn events (`assistant/message`) while isolating previous turns in persistent sessions, and validates terminal turn status (`turn/end` errors or interruptions) to fail the run accordingly.
+- **Accounting (Session Event Token & Cost Extraction, #228)**: `_extractUsage` aggregates actual token consumption directly from session stream events (`assistant/message`, `assistant/chunk` usage, and `assistant/attempt`), accounting for uncached input, cached reads, output tokens, and paid failed attempts across retries.
+- **Burn Guard (Rolling 24h Cost Ledger, #221)**: Implemented an independent rolling 24-hour cost ledger (`task.costLedger`) persisted in `store.json`. Expenses remain fully counted across archive rotations (even when history exceeds the 100-run active display window) and survive daemon restarts.
+- **Scheduler (Context-Preserving Queues, #216)**: Both the global concurrency queue and task overlap queue retain full immutable execution options (`chainDepth`, `prevOutput`, `prevTaskId`, `prevStatus`, `prevCostUsd`). When queued runs drain, options are forwarded to preserve chaining context.
+- **Scheduler (Croner Overlap Policy Delegation, #218)**: Removed `protect: true` from Croner instantiation so scheduled cron ticks fire into scheduler's `beginRun` overlap policy (`skip` with history logging, `queue` with delayed execution, `replace` with clean abort).
+- **Automation (Recursion-Bounded Structured LLM Actions, #230)**: `trigger_task` action directives enforce a unified recursion ceiling (`chainDepth < 4`, maximum 5 chain links), preventing unbounded loops from self-triggering tasks or cyclical directive chains, with rejections recorded in execution history.
+- **Test**: Added `test/agent-accounting-pack3.test.mjs` (7 unit tests covering all 6 audit issues). Total 346/346 tests passing (0 failures).
+
 ## 0.2.35 (2026-10-02)
 
 - **Durability (State Consistency, #215)**: `finishRun` now refetches live task records from store before updating completion state, preventing resurrection of deleted tasks and preserving concurrent user edits made during execution.
