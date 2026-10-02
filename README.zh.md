@@ -186,8 +186,11 @@ cron({
 ### 7. 成本控制：回退模型与支出保护（Burn Guard）
 * **回退模型** —— 任务可以默认使用便宜模型，失败时改用更强模型完成：设置 `fallbackModel`（可选 `fallbackProvider`），失败（`error` 或 `timeout`）的运行会在该模型上重试一次，之后才进入常规重试退避。历史记录会标明最终产出结果的模型以及是否使用了回退，两次尝试的用量与成本都会累计，模板变量 `{model}` 渲染完成运行的模型。回退仅适用于智能体类型（`llm`、`skill`、`workflow`）。
 * **Token 与成本支出保护（Burn Guard）** —— 为任务配置严格预算上限：`costLimitUsd`（总支出美元上限）、`dailyCostLimitUsd`（24小时滚动支出上限）和 `tokenLimit`（Token总数上限）。一旦达到任一阈值，任务将自动暂停并记录 `pausedReason`（`cost_limit_exceeded`、`daily_cost_limit_exceeded` 或 `token_limit_exceeded`），同时向所有配置的通知渠道发送报警通知。
+* **基于会话事件的 Token 与成本统计** —— 直接从 DSH 会话流式事件（`assistant/message`、`assistant/chunk` usage、`assistant/attempt`）中提取实际 Token 消耗，精确计入未命中输入、命中缓存读取、生成输出及重试过程中已计费的失败尝试。
+* **滑动 24 小时成本账本（24h Cost Ledger）** —— 日耗保护（`dailyCostLimitUsd`）在 `store.json` 中为每个任务维护独立的滑动 24 小时成本记录。即使历史记录超过 100 条触发归档，24 小时内的所有花费依然完整保留并能跨服务重启持续生效。
 
 ### 8. 会话集成与权限
+* **真实智能体输出与终端状态捕获** —— 隔离当前轮次的会话事件，提取最终真实的智能体回复文本（持久会话中自动排除以往历史轮次），并严格校验轮次终止状态（带有错误或中断的 `turn/end`），确保任务失败能准确反映到执行历史、链路调用及结构化指令中。
 * **按任务的权限预设** —— `default`、`read-only`、`workspace-write` 或 `full` 在提示词执行前应用于任务会话。
 * **会话自动归档** —— 隔离的 cron 会话在运行后自动归档（尽力而为），不干扰聊天列表。
 * **历史 → 会话** —— 每次 LLM 运行都会记录会话，可直接从历史记录打开对话。
@@ -226,6 +229,8 @@ cron({
   * **`skip`**（默认）：丢弃重叠的运行，在历史中记录 `skipped`；
   * **`queue`**：将下一次运行排队，当前任务完成后自动开始；
   * **`replace`**：通过 `AbortController` 中止当前运行并启动新的执行。
+* **调度器重叠策略直达** —— Croner 定时触发不再在上游被静默抑制（`Croner protect: false`），确保定时触发的重叠事件能够完整传递至调度器，严格执行 `skip`（记录历史）、`queue`（延迟排队）与 `replace`（优雅终止）。
+* **队列上下文与链路深度延续** —— 全局并发限制队列与任务重叠队列均完整保留不可变执行参数（`chainDepth`、`prevOutput`、`prevTaskId`、`prevStatus`、`prevCostUsd`），防止高负载或排队时任务链路数据丢失。
 
 如果守护进程在计划时刻处于离线状态，启动时该次运行会被记录为 `missed`，历史空档始终可见。
 
@@ -363,7 +368,7 @@ bash deploy.sh verify [exact-version]
 ### 22. 自动化、任务链与可观测性包（v0.2.10，#137）
 - **Telegram 双向交互控制**：任务通知附带内嵌操作按钮（`🚀 立即运行`、`⏸️ 暂停/恢复`、`📋 最新日志`）。由 `POST /dsh-cron/telegram/webhook` 处理，严格鉴权 Chat ID 并调用 `answerCallbackQuery` 反馈。
 - **任务链上下文与动态变量插值**：配置 `onSuccess` 与 `onFailure` 下游触发器。父任务的执行结果与元数据自动传递给子任务，在 Shell 任务中提供 `$DSH_PREV_OUTPUT`、`$DSH_PREV_TASK_ID`、`$DSH_PREV_STATUS` 环境变量，在 LLM Prompt 中支持 `{{prev.output}}`（或 `{{prevOutput}}`）、`{{prev.taskId}}`、`{{prev.status}}` 占位符插值。Prompt 额外支持动态运行时时间与元数据变量：`{{date}}`、`{{time}}`、`{{datetime}}`、`{{timestamp}}`、`{{year}}`、`{{month}}`、`{{day}}`、`{{taskId}}`、`{{taskName}}`、`{{runCount}}`。内置最大 5 级深度递归防护，杜绝死循环。
-- **模型结构化动作指令**：自主分析任务可输出 JSON 指令触发级联任务（`trigger_task`）、定向告警（`notify`）或创建 Issue。受 `llmActionsEnabled: false` 严格保护。
+- **模型结构化动作指令**：自主分析任务可输出 JSON 指令触发级联任务（`trigger_task`）、定向告警（`notify`）或创建 Issue。受 `llmActionsEnabled: false` 严格保护。`trigger_task` 指令共享全局链路深度上限（`chainDepth < 4`，最大 5 层调用），彻底阻断自调用死循环与 A → B → A 循环递归，拒绝原因完整记入历史与操作日志中。
 - **历史归档与延迟洞察**：REST 接口 `GET /dsh-cron/tasks/:id/archive`（支持分页）与 `GET /dsh-cron/tasks/:id/stats`；UI 任务卡片展示耗时彩色徽章（<5s 绿，<30s 黄，≥30s 红）。
 - **Prometheus 监控增强**：`/dsh-cron/metrics` 导出当前活动并发量 `dsh_cron_concurrent_running`、各任务 Token 计数器及成本预估指标。
 
