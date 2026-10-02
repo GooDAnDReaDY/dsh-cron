@@ -245,6 +245,7 @@ If the daemon was offline at a scheduled time, the run is recorded as `missed` o
 ### 14. Heartbeat Monitoring (#16-style dead man's switch)
 * Set `heartbeatUrl` and `heartbeatIntervalSec` in the plugin settings and the scheduler pings that URL on schedule — an external monitor alerts when the pings stop.
 * A built-in `GET /dsh-cron/heartbeat` endpoint reports liveness, active task count and the last run time for your own watchdogs.
+* **Missed Heartbeat Alerts in `onlyOnFailure` Mode** — Missed heartbeats (`status === 'missed'`) are recognized as active failure events across all channel delivery predicates (`channels.js`, `telegram.js`, `integrations.js`), guaranteeing that Telegram, Discord, Webhook, and Kanban integrations alert immediately when an external process fails to report.
 
 ### 15. Declarative Jobs From the Profile Config (#50)
 Long-lived operational jobs can be declared in the profile configuration instead of being recreated by hand in the UI. The config file owns the jobs it declares: at every plugin start they are created or updated, and a job that disappears from the file is removed.
@@ -294,6 +295,7 @@ Set the token as the plugin setting `apiToken` (masked like every secret). Auth 
 | `POST` | `/dsh-cron/api/tasks/:id/run` | Force an immediate run |
 
 The operations reuse the panel handlers, so the `x-dsh-cron-confirm: script` gate for code-executing types and the `409` refusals for config-owned tasks behave exactly as in the UI.
+* **Bearer-Guarded Remote Access** — Remote clients can create and update tasks, ping heartbeats (`/dsh-cron/api/heartbeat/:id`), and preview schedules (`/dsh-cron/api/schedule/preview`) with valid `Authorization: Bearer <token>` credentials without loopback IP restrictions.
 
 ```bash
 BASE="http://127.0.0.1:3080"
@@ -387,6 +389,8 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 - **Priority Queues & Concurrency Pools**: When the concurrent run limit is reached, queued tasks are ordered by `priority` (1 = highest, 10 = lowest) to ensure critical system alerts execute ahead of bulk background jobs.
 - **Self-Healing Runbooks & Auto-Diagnosis**: Failed tasks automatically execute an optional compensatory `selfHealingCommand` (e.g. system service restart or temp cleanup). Model failures can trigger `autoDiagnose: true` to append an instant root-cause diagnosis.
 - **Web UI Archive & Pipeline Visualization**: Interactive archive drawer with pagination and full log viewing; visual indicators for `➜ onSuccess` and `↳ onFailure` task connections.
+- **Shell & Disk Pre-flight Gate Hardening**: Supports both `command` and `shell` types with fail-closed semantics for invalid syntax, unknown types, or inspection failures. Disk space checks support exact path and threshold syntax (e.g. `/:10%`, `/data:500MB`).
+- **Complete Reliability Field Persistence**: HTTP POST task creation/editing and `cron_create_task` tool fully preserve and store all 13 reliability and session configuration fields (`agentPreset`, `targetSessionId`, `targetSessionReset`, `onSuccess`, `onFailure`, `heartbeatIntervalSeconds`, `gracePeriodSeconds`, `preflightType`, `preflightTarget`, `priority`, `concurrencyGroup`, `selfHealingCommand`, `autoDiagnose`, `fallbackProvider`, `fallbackModel`, `silentRule`, `inspectOnFailure`).
 
 ---
 
