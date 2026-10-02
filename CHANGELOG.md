@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.35 (2026-10-02)
+
+- **Durability (State Consistency, #215)**: `finishRun` now refetches live task records from store before updating completion state, preventing resurrection of deleted tasks and preserving concurrent user edits made during execution.
+- **Durability (Shutdown Execution Guarantees, #217)**: `stopAll` drains and empties the concurrency queue immediately, marks scheduler stopped, and clears pending retry timers to guarantee no jobs or retries execute after shutdown.
+- **Durability (Atomic Persistence & Rollback, #223)**: `TaskStore.save()` re-throws disk write failures (ENOSPC, EACCES, EIO); in-memory task, settings, and heartbeat mutations rollback on save errors; REST API endpoints return HTTP 500 with rollback details.
+- **Durability (Shutdown Debounce Flush, #243)**: `scheduler.stopAll()` and plugin lifecycle disposal hook synchronously invoke `store.flushSync()`, guaranteeing pending run history, costs, and token counters are persisted to disk before process exit or reload.
+- **Test**: Added `test/state-durability-pack2.test.mjs` (11 unit tests covering all 4 durability and shutdown vectors). Total 339/339 tests passing (0 failures).
+
 ## 0.2.34 (2026-10-02)
 
 - **Release**: Version bump to 0.2.34 for public release.
