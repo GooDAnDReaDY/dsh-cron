@@ -237,6 +237,7 @@ cron({
 ### 14. 心跳监控（Dead man's switch）
 * 在插件设置中配置 `heartbeatUrl` 与 `heartbeatIntervalSec`，调度器会按间隔 GET 该地址 —— 外部监控可在心跳停止时告警。
 * 内置 `GET /dsh-cron/heartbeat` 端点返回存活状态、活跃任务数与最近运行时间，便于自建看门狗。
+* **`onlyOnFailure` 模式支持心跳超时告警** — 遗漏心跳（`status === 'missed'`）在各通知渠道过滤判定（`channels.js`、`telegram.js`、`integrations.js`）中被统一视作失败状态，确保外部守护进程中断时 Telegram、Discord、Webhook 与看板即刻告警。
 
 ### 15. 来自配置的声明式任务（#50）
 长期运行的任务可以直接声明在配置文件里，而无需在界面中手工重建。配置文件拥有这些任务：每次插件启动时会创建或更新它们，从文件中消失的任务会被删除。
@@ -286,6 +287,7 @@ dsh-cron:
 | `POST` | `/dsh-cron/api/tasks/:id/run` | 强制执行一次 |
 
 这些操作复用面板处理器，因此对会执行代码类型的 `x-dsh-cron-confirm: script` 门禁以及对配置任务的 `409` 拒绝与 UI 完全一致。
+* **Bearer Token 远程访问支持** — 远程客户端凭有效 `Authorization: Bearer <token>` 凭据可直接创建/修改任务、打卡心跳（`/dsh-cron/api/heartbeat/:id`）及预览调度（`/dsh-cron/api/schedule/preview`），解除非本机限制。
 
 ```bash
 BASE="http://127.0.0.1:3080"
@@ -379,6 +381,8 @@ bash deploy.sh verify [exact-version]
 - **优先级队列与并发池（Priority Queues）**：并发满载时，等待队列严格依据任务 `priority`（1 最高，10 最低）调度。
 - **自愈脚本与 AI 根因诊断（Self-Healing）**：任务失败后自动执行补偿指令 `selfHealingCommand`（例如重启服务或清理临时空间）；`autoDiagnose` 自动生成 AI 故障根因摘要。
 - **UI 交互式归档与管道全景**：支持分页浏览任务历史运行全量输出，直观展示 `➜ 成功触发` 与 `↳ 失败触发` 关联关系。
+- **Shell 与磁盘前置检查强化**：前置检查统一支持 `command` 与 `shell` 类型，未知类型或异常格式一律安全关闭（fail-closed）；磁盘检查支持完整路径与阈值（如 `/:10%`、`/data:500MB`）。
+- **可靠性与会话字段完整持久化**：HTTP POST 任务创建/修改接口与 `cron_create_task` 智能体工具完整保留并存储全部 13 个可靠性与会话高级字段（`agentPreset`、`targetSessionId`、`targetSessionReset`、`onSuccess`、`onFailure`、`heartbeatIntervalSeconds`、`gracePeriodSeconds`、`preflightType`、`preflightTarget`、`priority`、`concurrencyGroup`、`selfHealingCommand`、`autoDiagnose`、`fallbackProvider`、`fallbackModel`、`silentRule`、`inspectOnFailure`）。
 
 ---
 
