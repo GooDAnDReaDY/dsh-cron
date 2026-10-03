@@ -478,7 +478,7 @@ dsh-cron:
   onlyOnFailure: false         # 仅失败时投递报告
   kanbanBaseUrl: "http://127.0.0.1:3000"  # dsh-kanban HTTP API 基础地址
   defaultTimezone: ""          # 默认 IANA 时区（空 = 服务器本地）
-  maxConcurrent: 0             # 最大并行运行数（0 = 不限）
+  maxConcurrent: 2             # 最大并行运行数（默认 2，0 = 不限）
   heartbeatUrl: ""             # 心跳上报 URL（dead man's snitch）
   heartbeatIntervalSec: 0      # 心跳间隔秒数（0 = 关闭）
   # --- 投递渠道 ---
@@ -513,7 +513,7 @@ dsh-cron:
 | `onlyOnFailure` | `boolean` | `false` | 全局开关：仅对 `error`/`timeout` 运行投递报告 |
 | `kanbanBaseUrl` | `string` | `"http://127.0.0.1:3000"` | 用于自动卡片的 `dsh-kanban` HTTP API 基础地址 |
 | `defaultTimezone` | `string` | `""` | 任务调度的默认 IANA 时区；空 = 服务器本地时间 |
-| `maxConcurrent` | `number` | `0` | 并行运行上限；超出的运行记录为 `skipped`（0 = 不限） |
+| `maxConcurrent` | `number` | `2` | 并行运行上限；超出的运行记录为 `skipped`（默认 2，0 = 不限） |
 | `heartbeatUrl` | `string` | `""` | 心跳上报 URL，调度器存活期间按 `heartbeatIntervalSec` 间隔 GET |
 | `heartbeatIntervalSec` | `number` | `0` | 心跳间隔秒数（0 = 关闭） |
 | `botTokenRef` | `string` | `""` | 保存 Telegram bot token 的 DSH 凭据名称；发送时解析（回退顺序：`botToken` → messenger-gateway 设置 → 环境变量 `CRON_TELEGRAM_BOT_TOKEN`） |
@@ -591,3 +591,12 @@ node scripts/ci-preflight.mjs
 ## 📄 许可证
 
 MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
+
+### 定时器、间隔与并发分组精度强化 (0.2.39)
+
+- **32位定时器溢出防护**：计划在 24.85 天以后的单次任务（超出 Node.js `setTimeout` 32位有符号整数上限 2,147,483,647 毫秒）通过分段定时器安全挂起，杜绝立即误触发。
+- **相对单次任务持久截止时间**：相对单次任务（如 `in 30m`、`in 2h`）在服务重启、存储重载、暂停/恢复以及修改元数据时完整保留初始目标绝对时间戳，仅在显式修改调度表达式时重新计算。
+- **严格的时间间隔校验与转换**：对于无法用标准 Cron 分钟步进表示的超限分钟间隔（如 `every 90m`），在持久化前返回 HTTP 400 拦截；规整整倍数（如 `every 120m` -> `every 2h`、`every 24h` -> `every 1d`）自动转为合法 Cron 表达式。
+- **统一安全并发默认值**：配置规范（Config）与调度器（TaskScheduler）全面对齐默认并发上限 `maxConcurrent = 2`（0 仅作为显式无限制选项）。
+- **并发分组隔离调度**：任务的 `concurrencyGroup` 属性全面接入调度仲裁与队列排队（同名分组默认限流 1 个并发执行），不同分组可并发运行直至 `maxConcurrent`，队列任务随所属分组资源释放立即触发。
+

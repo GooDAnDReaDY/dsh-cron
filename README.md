@@ -488,7 +488,7 @@ dsh-cron:
   onlyOnFailure: false         # deliver reports only for failed runs
   kanbanBaseUrl: "http://127.0.0.1:3000"  # dsh-kanban HTTP API base URL
   defaultTimezone: ""          # default IANA time zone for schedules (empty = server local)
-  maxConcurrent: 0             # max parallel task runs (0 = unlimited)
+  maxConcurrent: 2             # max parallel task runs (default 2, 0 = unlimited)
   heartbeatUrl: ""             # dead man's snitch URL pinged on the heartbeat interval
   heartbeatIntervalSec: 0      # heartbeat ping interval in seconds (0 = off)
   # --- delivery channels ---
@@ -513,7 +513,15 @@ dsh-cron:
   apiToken: ""                 # bearer token for the external /dsh-cron/api/* surface (masked; empty = 503)
 ```
 
-### Configuration Parameters
+#### Timers, Intervals & Concurrency Groups Hardening (0.2.39)
+
+- **32-Bit Timer Overflow Protection**: One-shot tasks scheduled >24.85 days in the future (exceeding Node's 32-bit signed integer `setTimeout` limit of 2,147,483,647 ms) are safely executed via bounded timer chunking, preventing immediate misfires.
+- **Persistent Relative One-Shot Deadlines**: Relative one-shot tasks (`in 30m`, `in 2h`) maintain their absolute target timestamp across daemon restarts, store reloads, pause/resume, and metadata edits. Deadlines are only recalculated upon explicit schedule modifications.
+- **Strict Interval Validation & Normalization**: Unsupported irregular intervals exceeding 59 minutes (e.g. `every 90m`) are validated and rejected upfront with HTTP 400 before persisting. Clean hourly multiples (e.g. `every 120m` -> `every 2h`, `every 24h` -> `every 1d`) are automatically converted to valid cron patterns.
+- **Unified Safe Concurrency Defaults**: The Config schema and TaskScheduler now uniformly default `maxConcurrent` to safe cap `2` (0 explicitly denotes unlimited).
+- **Concurrency Group Pool Isolation**: Tasks configured with `concurrencyGroup` have per-group execution limits enforced during admission and queue draining (default 1 concurrent run per named group). Tasks in separate groups run concurrently up to `maxConcurrent`, while queued tasks drain as soon as group capacity becomes available.
+
+## Configuration Parameters
 
 | Parameter | Type | Default | Description |
 |:---|:---|:---|:---|
@@ -523,7 +531,7 @@ dsh-cron:
 | `onlyOnFailure` | `boolean` | `false` | Global switch: deliver reports only for `error`/`timeout` runs |
 | `kanbanBaseUrl` | `string` | `"http://127.0.0.1:3000"` | Base URL of the `dsh-kanban` HTTP API used for automatic card creation |
 | `defaultTimezone` | `string` | `""` | Default IANA time zone for task schedules; empty = server local time |
-| `maxConcurrent` | `number` | `0` | Cap on parallel task runs; extra runs are recorded as `skipped` (0 = unlimited) |
+| `maxConcurrent` | `number` | `2` | Cap on parallel task runs; extra runs are recorded as `skipped` (default 2, 0 = unlimited) |
 | `heartbeatUrl` | `string` | `""` | Dead man's snitch URL pinged every `heartbeatIntervalSec` while the scheduler is alive |
 | `heartbeatIntervalSec` | `number` | `0` | Heartbeat ping interval in seconds (0 = disabled) |
 | `botTokenRef` | `string` | `""` | Name of the DSH credential holding the Telegram bot token; resolved at send time (falls back to `botToken`, then the messenger-gateway settings, then the `CRON_TELEGRAM_BOT_TOKEN` environment variable) |
