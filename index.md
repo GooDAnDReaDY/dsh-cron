@@ -70,7 +70,7 @@
 
 ## Команды
 
-- Тесты (в worktree): `npm install --no-save --no-audit --no-fund croner@9.1.0 @deepseek-ai/dsh-tools@0.1.2-rc.1 @deepseek-ai/schemastery@3.18.1 && npm test`
+- Тесты (в worktree): `npm install --no-save --no-audit --no-fund croner@^10.0.1 @deepseek-ai/dsh-tools@0.1.2-rc.1 @deepseek-ai/schemastery@3.18.1 && npm test`
 - Проверка состава пакета: `npm pack --dry-run --json`
 - Deploy-подготовка и проверка: `bash deploy.sh check`
 

@@ -10,3 +10,4 @@ docs/adr/        export-ignore
 docs/design/     export-ignore
 .planning/       export-ignore
 .worktrees/      export-ignore
+.gitea/          export-ignore

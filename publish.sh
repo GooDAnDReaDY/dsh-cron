@@ -35,6 +35,7 @@ EXCLUDED_PATHS=(
   "index.md"
   "deploy.sh"
   "publish.sh"
+  ".gitea"
   "docs/plans"
   "docs/adr"
   "docs/design"

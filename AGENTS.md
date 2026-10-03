@@ -82,7 +82,7 @@
 ## Build And Run
 
 - Установка зависимостей для тестов (в worktree):
-  `npm install --no-save --no-audit --no-fund croner@9.1.0 @deepseek-ai/dsh-tools@0.1.2-rc.1 @deepseek-ai/schemastery@3.18.1`
+  `npm install --no-save --no-audit --no-fund croner@^10.0.1 @deepseek-ai/dsh-tools@0.1.2-rc.1 @deepseek-ai/schemastery@3.18.1`
 - Тесты: `npm test` (= `node --test test/*.test.mjs`).
 - Сборка не требуется (пакет поставляется как есть); проверка состава:
   `npm pack --dry-run --json` (файлы пакета ≤ 256 KiB).
@@ -127,7 +127,7 @@
 ## Commits, Versions And Releases
 
 - Формат: `<type>(<scope>): <summary>` + body «почему», footer `Refs: #<n>`.
-- Текущая версия: `0.2.8` (package.json). Обычный релиз меняет только `z`;
+- Текущая версия: `0.2.39` (package.json). Обычный релиз меняет только `z`;
   переход `y` (например `0.3.0`) — только по прямой просьбе владельца.
 - Публикация: только после test server + production-приёмки кандидата и
   явного «Публикуем релиз?» / «ок».
