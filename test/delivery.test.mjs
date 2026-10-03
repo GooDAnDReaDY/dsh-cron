@@ -261,13 +261,24 @@ test('#22: push builders validate their configuration', () => {
   assert.equal(selfHosted.url, 'http://127.0.0.1:3099/pp', 'endpoint is overridable for self-hosted proxies');
 });
 
-test('#28: gitea issue payload marks failures with alert labels', () => {
-  const failed = buildGiteaIssuePayload({ task, runInfo: failRun });
+test('#28, #224: gitea issue payload sends integer label IDs per Swagger', () => {
+  // 1. With configured label map
+  const settings = { giteaLabelIds: { cron: 1, bug: 2, alert: 3, auto: 4 } };
+  const failed = buildGiteaIssuePayload({ task, runInfo: failRun, settings });
   assert.match(failed.title, /^\[Cron failure\]/);
-  assert.deepEqual(failed.labels, ['cron', 'bug', 'alert']);
-  const ok = buildGiteaIssuePayload({ task, runInfo: okRun });
+  assert.deepEqual(failed.labels, [1, 2, 3]);
+  const ok = buildGiteaIssuePayload({ task, runInfo: okRun, settings });
   assert.match(ok.title, /^\[Cron run\]/);
-  assert.deepEqual(ok.labels, ['cron', 'auto']);
+  assert.deepEqual(ok.labels, [1, 4]);
+
+  // 2. Direct integer label IDs on task
+  const taskWithNumericLabels = { ...task, giteaLabelIds: [10, 20] };
+  const custom = buildGiteaIssuePayload({ task: taskWithNumericLabels, runInfo: failRun });
+  assert.deepEqual(custom.labels, [10, 20]);
+
+  // 3. Unmapped string labels are safely omitted to prevent 422 Unprocessable Entity
+  const unmapped = buildGiteaIssuePayload({ task, runInfo: failRun, settings: {} });
+  assert.deepEqual(unmapped.labels, []);
 });
 
 // ---------------------------------------------------------------- senders
