@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.40 (2026-10-03)
+
+- **Security (Safe File Permissions, #222)**: Storage files (`tasks.json`, `.bak`, `.tmp`, `tasks-history-archive.json`) are strictly written with `0600` mode (`-rw-------`), and storage directory with `0700` mode (`drwx------`). Pre-existing loose permissions are automatically remediated during initialization and saves.
+- **Performance & Tech-Debt (Non-Blocking Async Persistence, #244)**: `TaskStore.scheduleSave()` now persists via an asynchronous serialization queue (`fs.promises`) with snapshot versioning (`_saveVersion`, `_lastWrittenVersion`) and atomic rename, eliminating main-thread event loop blocks (~100ms) on large historical stores (~21MB). Synchronous `save()` and `flushSync()` remain available for transaction rollbacks and shutdown guarantees.
+- **Security & UI (Honest Transfer Disclosures & Sanitized Export, #240)**: `GET /dsh-cron/tasks/export?sanitize=true` provides a sanitized configuration export that strips secret-bearing fields (`env`, `httpHeaders`, `httpBody`). UI prompts in EN/ZH clearly distinguish between sanitized and raw exports. `validateImportDocument` now strips dummy mask placeholders (`••••••••`) to prevent them from becoming literal secrets.
+- **WebUI (Dry-Run & Archive Modal Field Alignment, #241)**: Dry-run modal now directly reads top-level HTTP response fields (`status`, `output`, `durationMs`, `preflight`, `error`). Archive modal now appends newly loaded runs on pagination (`offset > 0`) instead of replacing the page.
+- **WebUI (Action Error Handling & Fetch Race Prevention, #242)**: `handleToggleTask` and `handleRunNow` verify HTTP response status codes and display user-visible alerts on 403, 409, and 500 errors. Added optimistic state rollback if a run trigger fails. Implemented a generation counter (`fetchGenRef`) in `fetchTasks` to prevent stale search/filter responses from overwriting current data.
+- **Hygiene (Clean Public GitHub Mirror Trees, #246)**: Added `.gitea` to `publish.sh` exclusions and `.gitattributes` export-ignore, guaranteeing that internal Gitea CI workflow files never leak into public GitHub mirror trees.
+- **Documentation (Test Environment Sync, #245)**: Updated `index.md` and `AGENTS.md` clean worktree setup commands to use `croner@^10.0.1`.
+- **Test**: Added `test/pack6-ui-storage.test.mjs` (8 unit tests covering all 7 issues). Total 373/373 tests passing (0 failures).
+
 ## 0.2.36 (2026-10-02)
 
 - **Agent Runner (Real Turn Output & Terminal Status, #227)**: `_executeAgentTurn` now captures the session sequence boundary (`startSeq`), extracts true assistant message text from turn events (`assistant/message`) while isolating previous turns in persistent sessions, and validates terminal turn status (`turn/end` errors or interruptions) to fail the run accordingly.
