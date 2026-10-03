@@ -1,6 +1,6 @@
 {
   "name": "@goodandready/dsh-cron",
-  "version": "0.2.40",
+  "version": "0.2.41",
   "description": "Background automation runner for DSH: isolated agent runs, script/HTTP/SSH/Docker runtimes, cost guard, notifications, heartbeats.",
   "type": "module",
   "main": "lib/index.js",
