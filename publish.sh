@@ -17,10 +17,7 @@ case "$MODE" in
   publish)
     [ "${DSH_CRON_PUBLISH:-}" = "yes" ] || { echo "ERROR: publication requires DSH_CRON_PUBLISH=yes" >&2; exit 1; }
     [ -n "$VERSION" ] || { echo "ERROR: usage: DSH_CRON_PUBLISH=yes bash publish.sh publish <ref> <version>" >&2; exit 1; }
-    bash "$SCRIPT_DIR/scripts/publish-github.sh" --push "$REF"
-    if [ -n "$VERSION" ]; then
-      git -c credential.helper='!gh auth git-credential' push "https://github.com/GooDAnDReaDY/dsh-cron.git" "refs/tags/v$VERSION" || true
-    fi
+    bash "$SCRIPT_DIR/scripts/publish-github.sh" --push "$REF" --tag "v$VERSION"
     ;;
   *)
     echo "usage: bash publish.sh plan [ref] | DSH_CRON_PUBLISH=yes bash publish.sh publish <ref> <version>" >&2

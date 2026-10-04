@@ -62,12 +62,23 @@ FORBIDDEN=(
 
 mode=""
 gitea_ref=""
-for arg in "$@"; do
-  case "$arg" in
-    --check) mode="check" ;;
-    --push) mode="push" ;;
-    -*) echo "unknown option: $arg" >&2; exit 2 ;;
-    *) gitea_ref="$arg" ;;
+tag=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --check) mode="check"; shift ;;
+    --push) mode="push"; shift ;;
+    --tag) tag="$2"; shift 2 ;;
+    -*) echo "unknown option: $1" >&2; exit 2 ;;
+    *)
+      if [ -z "$gitea_ref" ]; then
+        gitea_ref="$1"
+      elif [ -z "$tag" ]; then
+        tag="$1"
+      else
+        echo "unexpected argument: $1" >&2; exit 2
+      fi
+      shift
+      ;;
   esac
 done
 
@@ -179,6 +190,11 @@ new_commit="$(git commit-tree "$new_tree" -p "$mirror_sha" -m "chore(publish): s
 echo "new mirror commit: $new_commit"
 
 git push "$MIRROR_REMOTE" "$new_commit:refs/heads/$MIRROR_BRANCH"
+
+if [ -n "$tag" ]; then
+  echo "pushing sanitized tag $tag pointing to $new_commit"
+  git push "$MIRROR_REMOTE" "$new_commit:refs/tags/$tag"
+fi
 
 echo
 echo "correspondence to record in the release notes:"

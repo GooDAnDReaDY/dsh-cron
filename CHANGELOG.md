@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.43 (2026-10-04)
+
+- **Storage & Test Isolation (Config cronDir & Store Isolation, #280)**: `apply(ctx, rawConfig)` passes `config.cronDir` / `config.storePath` directly to `TaskStore(storePath)` instead of falling back to default user data directory. Unit tests isolate `process.env.DSH_DATA_DIR = tmpDir` with automatic cleanup in `t.after`.
+- **Mirror & GitHub Packaging (Sanitized Commit Tagging, #246)**: `scripts/publish-github.sh` accepts `--tag` and pushes the tag referencing the sanitized mirror commit (`$new_commit:refs/tags/$tag`) directly to GitHub. `publish.sh` delegates tag creation without swallowing errors (`|| true`), guaranteeing public tags never point to internal Gitea repository commits.
+- **Documentation & History (AGENTS.md Version Traceability, #245)**: Restored historical release notes and PR tracking for `0.2.8` (2026-09-11, PR #132) while updating current active release status to `0.2.43`.
+- **Storage & Concurrency (Sync Save Unlink Race & Compact Serialization, #244)**: Synchronous `save()` records `_lastSyncVersion` and actively removes any in-flight asynchronous `.tmp` file using `bestEffort`. In-flight `saveAsync()` skips renaming if a newer synchronous save took place or ignores `ENOENT` on missing tmp. Switched `saveAsync()` to compact JSON serialization without indentation to eliminate main-thread event loop lag on large stores (~21MB).
+- **WebUI & Network Reliability (Complete Action Request Timeout Coverage, #242)**: Implemented `fetchJsonWithTimeout` wrapping both HTTP headers and `res.json()` stream reading within a strict 15s deadline and `AbortController`. Prevents pending toggle and run-now button locks from freezing the interface on hung server responses.
+- **Settings & Cordis Lifecycle (Plugin Loader Volatile Path Array Support, #235)**: Updated `syncVolatileConfig` in `lib/index.js` to recognize string arrays of modified property names emitted by `cordis-plugin-loader`, correctly pulling the live configuration from `ctx.config` and synchronizing scheduler and store settings without runtime errors.
+- **LLM Runner & Settlement (Quiescence Verification & Terminal Turn Enforcement, #227)**: Enhanced `_executeAgentTurn` to strictly require terminal turn events (`turn/end`) when session event logs are available. Turn quiescence with 0 events or incomplete event streams without terminal completion fails immediately with `turnFailed: true`.
+- **Test**: Added `test/pack9-verification.test.mjs` (8 unit tests). Total 400/400 tests passing (100% pass, 0 failures, clean preflight).
+
 ## 0.2.42 (2026-10-04)
 
 - **Lifecycle (BestEffort Disposer Resilience, #275)**: Imported `bestEffort` in `lib/index.js` lifecycle disposer, preventing `ReferenceError: bestEffort is not defined` during Cordis context disposal and plugin unmount.

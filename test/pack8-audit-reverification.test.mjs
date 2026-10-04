@@ -62,7 +62,13 @@ function createMockRes() {
 // =========================================================================
 test('Issue #275: Plugin lifecycle dispose executes bestEffort without ReferenceError', async (t) => {
   const tmpDir = makeTmpDir();
-  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+  const prevDataDir = process.env.DSH_DATA_DIR;
+  process.env.DSH_DATA_DIR = tmpDir;
+  t.after(() => {
+    if (prevDataDir !== undefined) process.env.DSH_DATA_DIR = prevDataDir;
+    else delete process.env.DSH_DATA_DIR;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
 
   const effects = [];
   const fakeCtx = {
@@ -284,8 +290,12 @@ test('Issue #228: _extractUsage sums assistant/attempt stream chunks and attache
 // =========================================================================
 test('Issue #235: loader/volatile-update updates active scheduler settings and store live', (t) => {
   const tmpDir = makeTmpDir();
+  const prevDataDir = process.env.DSH_DATA_DIR;
+  process.env.DSH_DATA_DIR = tmpDir;
   let cleanupLifecycle = null;
   t.after(() => {
+    if (prevDataDir !== undefined) process.env.DSH_DATA_DIR = prevDataDir;
+    else delete process.env.DSH_DATA_DIR;
     if (cleanupLifecycle) cleanupLifecycle();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
