@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.42 (2026-10-04)
+
+- **Lifecycle (BestEffort Disposer Resilience, #275)**: Imported `bestEffort` in `lib/index.js` lifecycle disposer, preventing `ReferenceError: bestEffort is not defined` during Cordis context disposal and plugin unmount.
+- **Settings & Schemas (Schemastery Volatile Ref Compatibility, #276)**: Enhanced configuration unwrapping and test assertions to transparently support Schemastery 3.18.4 cosmokit reactive volatile refs (`.get()`), preserving seamless compatibility across Schemastery minor versions.
+- **Runtimes & SSH (Remote Profile Resolution via Settings Inspection, #273)**: Resolved SSH task `sshProfileId` credentials by inspecting `settings.describe()` namespace records (`dsh-remote-workspace`) instead of invoking non-existent `settings.get()`, restoring remote execution capabilities.
+- **Security & Webhooks (Fail-Closed Telegram Webhook Authentication, #208)**: Enforced strict fail-closed rejection (HTTP 401 Unauthorized) when `webhookSecret` is not configured, eliminating unauthorized command execution risks on unconfigured instances.
+- **LLM Runner (Terminal Settlement & Blocked Turn Rejection, #227)**: Hardened agent turn settlement: turns concluding with `reason.kind === 'blocked'` or missing terminal completion events are rejected as failures with descriptive error states.
+- **Accounting & Cost Guard (Assistant Stream Record Ingestion & Failure Retention, #228)**: Ingested `assistant/attempt` stream chunk usage in `_extractUsage` and preserved token usage and dollar costs on failed turns, ensuring Burn Guard budgets accurately reflect model consumption.
+- **Settings & Live Sync (Volatile Config In-Memory & Store Sync, #235)**: Registered `loader/volatile-update` listener in `lib/index.js` to dynamically propagate volatile configuration updates to the active scheduler, heartbeat timers, and persistent settings.
+- **WebUI (Action Request Deadlines & Abort Safety, #242)**: Equipped `handleToggleTask` and `handleRunNow` with `AbortController` and a 15-second deadline, guaranteeing pending button states and optimistic UI locks cleanly resolve on slow or timed-out requests.
+- **Storage & Concurrency (Monotonic Save Ordering & Sync/Async Race Prevention, #244)**: Added monotonic disk version tracking (`_lastWrittenVersion`) to `TaskStore` to prevent stale asynchronous renames from overwriting newer synchronous saves during rapid store mutations.
+- **Documentation (Peer Dependencies & Environment Command Parity, #245)**: Synchronized version facts, peer dependency ranges (`^0.2.0 || ^0.3.0 || ^0.4.0`), client build commands (`node scripts/build-client.mjs`), and timezone resolution hierarchies across `README.md`, `AGENTS.md`, and `index.md`.
+- **Hygiene & Release Automation (Unified Mirror Packaging, #246)**: Delegated `publish.sh` to `scripts/publish-github.sh` allowlist builder with explicit `.gitea` exclusion, ensuring reproducible and clean GitHub mirror releases.
+- **Test**: Added `test/pack8-audit-reverification.test.mjs` (9 comprehensive unit tests). Total 392/392 tests passing (100% pass, 0 failures).
+
 ## 0.2.41 (2026-10-03)
 
 - **Channels (Explicit Priority & Event Decoupling, #219)**: Explicit per-task channel selection (`task.channels`) now takes strict precedence over legacy task flags. An explicitly chosen Telegram channel is never blocked by `task.notifyTelegram: false`, and an explicitly chosen Kanban channel is never blocked by `task.kanbanMode: 'none'`. Event filters (`onlyOnFailure`, or explicit `kanbanMode: 'on_failure'`) determine whether a run triggers notifications independently of channel choice.

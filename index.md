@@ -8,7 +8,7 @@
   python, http, ssh, docker, env и worktree; отчёты о запусках в Telegram,
   dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, dsh-tts и Gitea;
   учёт токенов и стоимости.
-- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.41` (см. `package.json`).
+- **Пакет**: `@goodandready/dsh-cron`, версия `0.2.42` (см. `package.json`).
 - **Статус**: active, релиз `0.2.8` выпускается 2026-09-11 — мажорный апгрейд
   ядра планирования croner `9.1.0 → 10.0.1` (#117): числовые шаги `0/N` из
   croner 9 поддержаны через `sloppyRanges`, регрессионный тест на вооружение
