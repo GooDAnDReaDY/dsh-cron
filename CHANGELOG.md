@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.45 (2026-10-04)
+
+- **Settings & Cordis Lifecycle (Native Context Configuration Access, #235)**: Added `getContextConfig(ctx, rawConfig)` helper in `lib/index.js` to safely query `ctx?.fiber?.config`, `ctx?.scope?.config`, `ctx?.runtime?.config`, or `rawConfig` without triggering `TypeError: cannot get property "config" without inject` in native Cordis Contexts. Live volatile updates from `loader/volatile-update` reliably synchronize to active scheduler and store settings.
+- **WebUI & Network Reliability (Polling Abort & Stale Response Prevention, #242)**: Equipped background polling `doPoll` in `lib/client-src/50-cron-screen-state.js` with an `AbortController` that aborts in-flight requests on effect cleanup, preventing stale poll responses from overriding fresh user searches or tab switches.
+- **Storage & Concurrency (Event Loop Yield on Large Store Saves, #244)**: Added `setImmediate` yields before and after `JSON.stringify(data)` in `TaskStore.saveAsync()` to preserve event loop responsiveness on multi-megabyte stores.
+- **Documentation (Complete Status Alignment Across Documentation, #245)**: Synchronized package version to `0.2.45` across `package.json`, `index.md`, and `AGENTS.md`, replacing obsolete historical status text in `index.md:12` with current active status.
+- **Test**: Added `test/pack11-verification.test.mjs` (4 unit tests). All tests passing.
+
 ## 0.2.44 (2026-10-04)
 
 - **Config & Declarative Jobs (Schemastery Volatile Box Deep Unwrap, #282)**: Added recursive `plainConfig()` export in `lib/settings.js` and `lib/index.js` to deeply unwrap Cosmokit/Schemastery Volatile boxes around `config.jobs`, `maxConcurrent`, `defaultTimezone`, and other profile fields. Guarantees declarative profile jobs are unwrapped into plain arrays and scheduled properly upon startup and volatile updates.
