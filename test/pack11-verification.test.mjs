@@ -180,21 +180,21 @@ test('Pack 11 verification suite: native Cordis, polling abort, store yield, doc
     // Assert pollController.abort() on cleanup
     assert.match(clientStateSrc, /if \(pollController\) pollController\.abort\(\)/);
     // Assert currentGen check protects state updates
-    assert.match(clientStateSrc, /if \(isDestroyed \|\| currentGen !== fetchGenRef\.current\) return;/);
+    assert.match(clientStateSrc, /if \(isDestroyed \|\| (?:currentGen|pollGen) !== fetchGenRef\.current\) return;/);
   });
 
   await t.test('5. Documentation and package version synchronization to 0.2.45 (#245)', async () => {
     const repoRoot = path.resolve(import.meta.dirname, '..');
     const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-    assert.equal(pkg.version, '0.2.45');
+    assert.match(pkg.version, /^0\.2\.(?:45|46)$/);
 
     const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
     assert.match(indexMd, /0\.2\.45/);
     assert.doesNotMatch(indexMd, /Статус\*\*:\s*active,\s*релиз\s*`0\.2\.8`/);
 
     const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-    assert.match(agentsMd, /Текущая версия:\s*`0\.2\.45`/);
-    assert.match(agentsMd, /Текущий статус:\s*active,\s*релиз\s*`0\.2\.45`/);
+    assert.match(agentsMd, /Текущая версия:\s*`0\.2\.(?:45|46)`/);
+    assert.match(agentsMd, /Текущий статус:\s*active,\s*релиз\s*`0\.2\.(?:45|46)`/);
 
     const changelog = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
     assert.match(changelog, /## 0\.2\.45 \(2026-10-04\)/);

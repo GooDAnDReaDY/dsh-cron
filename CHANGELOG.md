@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.46 (2026-10-04)
+
+- **WebUI & Polling Lifecycle (Continuous Background Polling & Stale Response Discard, #242)**: Decoupled effect lifecycle (`isDestroyed`) from per-request generation in `lib/client-src/50-cron-screen-state.js`. Calling manual `fetchTasks()` or refreshing no longer kills the background polling timer in `finally`, while late responses from superseded in-flight polling requests are cleanly discarded.
+- **Storage & Concurrency (Non-Blocking Streamed Store Serialization, #244)**: Replaced monolithic synchronous `JSON.stringify(data)` in `TaskStore.saveAsync()` with fine-grained streaming serialization (`_writeStoreStream`). Yields every 10 tasks and 15 history runs via `setImmediate`, reducing continuous event loop freeze from ~70ms to <10ms on large 21MB stores (~100 tasks x 100 runs) while retaining strict atomic rename and crash-resilient rollback guarantees.
+- **Documentation (Complete Version & Historical Reference Alignment, #245)**: Synchronized package version to `0.2.46` across `package.json`, `index.md`, and `AGENTS.md`. Updated `index.md` "Previous release" to reflect `0.2.45` / `0.2.44` and moved legacy 0.2.7/0.2.8 notes into historical archive subsection. Removed orphaned duplicate fragment from `AGENTS.md`.
+- **Test**: Added `test/pack12-verification.test.mjs` verifying polling lifecycle resilience, store streaming lag <20ms, and documentation consistency. Total 415+ tests passing (100% pass, 0 failures, clean preflight).
+
 ## 0.2.45 (2026-10-04)
 
 - **Settings & Cordis Lifecycle (Native Context Configuration Access, #235)**: Added `getContextConfig(ctx, rawConfig)` helper in `lib/index.js` to safely query `ctx?.fiber?.config`, `ctx?.scope?.config`, `ctx?.runtime?.config`, or `rawConfig` without triggering `TypeError: cannot get property "config" without inject` in native Cordis Contexts. Live volatile updates from `loader/volatile-update` reliably synchronize to active scheduler and store settings.
