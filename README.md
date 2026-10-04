@@ -550,7 +550,7 @@ dsh-cron:
 Notes:
 
 * Run history is capped at **50 entries per task** (fixed); each entry keeps up to 4000 characters of output.
-* Tasks run in the **server's local timezone**; cron expressions are evaluated by `croner` on the host clock.
+* Tasks run in their configured **timezone** (`task.timezone`, falling back to `settings.defaultTimezone` or server local timezone); cron expressions are evaluated by `croner` against the resolved timezone.
 * Tasks persist in the DSH data directory (`cron/tasks.json`) and survive restarts; missed one-shots are detected on startup.
 
 ---
