@@ -30,7 +30,7 @@ test('1. Telegram: inline keyboard formatting and callback query handling', asyn
   // Test webhook callback query
   const { store, tmpDir } = createTempStore();
   store.set(task);
-  store.saveSettings({ botToken: 'test-bot-token', chatId: 'user_1' });
+  store.saveSettings({ botToken: 'test-bot-token', chatId: 'user_1', webhookSecret: 'test-secret-token' });
 
   let runTriggered = false;
   const mockScheduler = {
@@ -63,7 +63,7 @@ test('1. Telegram: inline keyboard formatting and callback query handling', asyn
 
     const req = Readable.from([Buffer.from(payload)]);
     req.method = 'POST';
-    req.headers = { 'content-type': 'application/json' };
+    req.headers = { 'content-type': 'application/json', 'x-telegram-bot-api-secret-token': 'test-secret-token' };
 
     let statusCode = 0;
     let resBody = null;

@@ -137,7 +137,7 @@ test('4. handleTelegramWebhook enforces authorization for text commands', async 
   const store = new TaskStore(path.join(tmpDir, 'tasks.json'));
   const scheduler = new TaskScheduler(store);
 
-  store.saveSettings({ chatId: '99999', botToken: 'mock-token' });
+  store.saveSettings({ chatId: '99999', botToken: 'mock-token', webhookSecret: 'test-secret-token' });
 
   // Unauthorized chat
   let unauthCode = 0;
@@ -148,6 +148,7 @@ test('4. handleTelegramWebhook enforces authorization for text commands', async 
   };
   const unauthReq = {
     method: 'POST',
+    headers: { 'x-telegram-bot-api-secret-token': 'test-secret-token' },
     on: (evt, cb) => {
       if (evt === 'data') cb(Buffer.from(JSON.stringify({ message: { chat: { id: 11111 }, text: '/status' } })));
       if (evt === 'end') cb();
@@ -166,6 +167,7 @@ test('4. handleTelegramWebhook enforces authorization for text commands', async 
   };
   const authReq = {
     method: 'POST',
+    headers: { 'x-telegram-bot-api-secret-token': 'test-secret-token' },
     on: (evt, cb) => {
       if (evt === 'data') cb(Buffer.from(JSON.stringify({ message: { chat: { id: 99999 }, text: '/help' } })));
       if (evt === 'end') cb();

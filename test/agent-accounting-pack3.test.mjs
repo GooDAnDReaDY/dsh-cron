@@ -40,7 +40,8 @@ test("Issue #227: _executeAgentTurn extracts assistant output from turn events a
       // Simulate new events produced during this turn
       sessionEvents.push(
         { type: "assistant/chunk", data: { turn: 1, step: 0, chunk: { type: "text", text: "New " } } },
-        { type: "assistant/message", data: { turn: 1, step: 0, message: { content: [{ type: "text", text: "assistant response" }] }, usage: { inputTokens: 50, outputTokens: 25 } } }
+        { type: "assistant/message", data: { turn: 1, step: 0, message: { content: [{ type: "text", text: "assistant response" }] }, usage: { inputTokens: 50, outputTokens: 25 } } },
+        { type: "turn/end", data: { turn: 1, reason: { kind: "completed" } } }
       );
       seqCounter = sessionEvents.length;
     }

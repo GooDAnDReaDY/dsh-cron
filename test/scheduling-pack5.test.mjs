@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { TaskStore } from '../lib/store.js';
 import { TaskScheduler, parseScheduleExpression } from '../lib/scheduler.js';
-import { Config } from '../lib/settings.js';
+import { Config, unwrapConfig } from '../lib/settings.js';
 import { createCronApiHandler } from '../lib/api.js';
 import { applyTaskPatch } from '../lib/task-patch.js';
 
@@ -271,7 +271,12 @@ test('Issue #234: API returns 400 Bad Request on every 90m without saving active
 // ============================================================================
 test('Issue #236: Config and TaskScheduler default maxConcurrent to 2', () => {
   const resolved = Config(undefined);
-  assert.equal(resolved.maxConcurrent, 2, 'Config schema default must be 2');
+  const unwrapped = unwrapConfig(resolved);
+  const effectiveMax = (typeof resolved.maxConcurrent === 'object' && resolved.maxConcurrent !== null && typeof resolved.maxConcurrent.get === 'function')
+    ? resolved.maxConcurrent.get()
+    : unwrapped.maxConcurrent;
+  assert.equal(effectiveMax, 2, 'Config schema default must be 2');
+  assert.equal(unwrapped.maxConcurrent, 2, 'unwrapConfig default maxConcurrent must be 2');
   assert.equal(Config.dict.maxConcurrent?.meta?.default, 2, 'Config.dict default must be 2');
 
   const defaultScheduler = new TaskScheduler(null, async () => 'ok');

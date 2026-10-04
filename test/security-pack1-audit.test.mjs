@@ -94,13 +94,14 @@ test('Issue #208: webhook rejects requests when secret token is configured but m
 
 test('Issue #208: webhook fails closed when allowedChatId is empty or sender does not match', async () => {
   const store = {
-    getSettings: () => ({ chatId: '' }), // Empty allowlist
+    getSettings: () => ({ telegramWebhookSecret: 'test-secret', chatId: '' }), // Empty allowlist
     get: () => null,
   };
   const scheduler = {};
 
   // Empty allowlist must deny control (403 Forbidden)
   const req = createMockReq({
+    headers: { 'x-telegram-bot-api-secret-token': 'test-secret' },
     body: { message: { text: '/status', chat: { id: 12345 }, from: { id: 12345 } } }
   });
   const res = createMockRes();
@@ -113,7 +114,7 @@ test('Issue #208: callback query pause rejects modifying config-owned tasks', as
   let paused = false;
   const task = { id: 'cfg-1', title: 'Config Task', source: 'config', status: 'active' };
   const store = {
-    getSettings: () => ({ chatId: '12345' }),
+    getSettings: () => ({ telegramWebhookSecret: 'test-secret', chatId: '12345' }),
     get: (id) => (id === 'cfg-1' ? task : null),
   };
   const scheduler = {
@@ -121,6 +122,7 @@ test('Issue #208: callback query pause rejects modifying config-owned tasks', as
   };
 
   const req = createMockReq({
+    headers: { 'x-telegram-bot-api-secret-token': 'test-secret' },
     body: {
       callback_query: {
         id: 'cb-1',
@@ -165,12 +167,13 @@ test('Issue #208: text command /pause rejects modifying config-owned tasks', asy
 
 test('Issue #208: webhook deduplicates duplicate update_id', async () => {
   const store = {
-    getSettings: () => ({ chatId: '12345' }),
+    getSettings: () => ({ telegramWebhookSecret: 'test-secret', chatId: '12345' }),
     get: () => null,
   };
   const scheduler = {};
 
   const makeReq = () => createMockReq({
+    headers: { 'x-telegram-bot-api-secret-token': 'test-secret' },
     body: { update_id: 998877, message: { text: '/status', chat: { id: 12345 } } }
   });
 
@@ -312,4 +315,20 @@ test('Issue #231: SessionRunner._resolveRunContext rejects when worktree creatio
     async () => runner._resolveRunContext(task),
     /fatal: cannot create worktree/
   );
+});
+
+test('Issue #208: webhook fails closed when secret is not configured', async () => {
+  const store = {
+    getSettings: () => ({ chatId: '12345' }), // no webhookSecret
+    get: () => null,
+  };
+  const scheduler = {};
+  const req = createMockReq({
+    body: { message: { text: '/status', chat: { id: 12345 } } }
+  });
+  const res = createMockRes();
+  await handleTelegramWebhook({ store, scheduler, req, res });
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.payload.ok, false);
+  assert.match(res.payload.error, /secret is not configured/);
 });
