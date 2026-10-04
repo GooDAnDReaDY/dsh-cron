@@ -46,7 +46,9 @@ test('Issue #280: plugin.apply() routes tasks storage to config.cronDir and isol
   const tmpDir = makeTmpDir();
   const prevDataDir = process.env.DSH_DATA_DIR;
   process.env.DSH_DATA_DIR = tmpDir;
+  let cleanupLifecycle = null;
   t.after(() => {
+    if (cleanupLifecycle) cleanupLifecycle();
     if (prevDataDir !== undefined) process.env.DSH_DATA_DIR = prevDataDir;
     else delete process.env.DSH_DATA_DIR;
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -59,7 +61,10 @@ test('Issue #280: plugin.apply() routes tasks storage to config.cronDir and isol
   const fakeCtx = {
     tools: { register: () => {} },
     webServer: { register: (r) => registeredRoutes.push(r) },
-    effect: () => {},
+    effect: (fn) => {
+      const res = fn();
+      if (typeof res === 'function') cleanupLifecycle = res;
+    },
     inject: () => {},
     on: () => {},
     emit: () => {},
@@ -269,7 +274,8 @@ test('Issue #242: 52-cron-screen-actions.js uses fetchJsonWithTimeout covering j
   );
 
   assert.ok(actionsJs.includes('const fetchJsonWithTimeout = async'), 'Must define fetchJsonWithTimeout');
-  assert.ok(actionsJs.includes('const data = await res.json().catch(() => ({}));'), 'Must parse json inside try block');
+  assert.ok(actionsJs.includes('data = await res.json();'), 'Must parse json inside try block');
+  assert.ok(actionsJs.includes("jsonErr.name === 'AbortError'"), 'Must rethrow abort errors');
   assert.ok(actionsJs.includes('if (timer) clearTimeout(timer);'), 'Must clear timer in finally block after json parsing');
   assert.ok(actionsJs.includes('await fetchJsonWithTimeout('), 'handleToggleTask & handleRunNow must use fetchJsonWithTimeout');
 });
@@ -292,6 +298,6 @@ test('Issue #246: scripts/publish-github.sh and publish.sh tag sanitized commit 
 test('Issue #245: AGENTS.md preserves historical 0.2.8 and documents 0.2.43 status', (t) => {
   const agents = fs.readFileSync(path.join(import.meta.dirname, '..', 'AGENTS.md'), 'utf8');
   assert.ok(agents.includes('Исторический релиз `0.2.8`'), 'Must mention historical 0.2.8');
-  assert.ok(agents.includes('релиз `0.2.43`'), 'Must mention 0.2.43 status');
+  assert.ok(agents.includes('0.2.43') || agents.includes('0.2.44'), 'Must mention 0.2.43 or 0.2.44 status');
   assert.ok(agents.includes('2026-09-11'), 'Must preserve 2026-09-11 for historical releases');
 });

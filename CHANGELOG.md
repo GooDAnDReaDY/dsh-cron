@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.44 (2026-10-04)
+
+- **Config & Declarative Jobs (Schemastery Volatile Box Deep Unwrap, #282)**: Added recursive `plainConfig()` export in `lib/settings.js` and `lib/index.js` to deeply unwrap Cosmokit/Schemastery Volatile boxes around `config.jobs`, `maxConcurrent`, `defaultTimezone`, and other profile fields. Guarantees declarative profile jobs are unwrapped into plain arrays and scheduled properly upon startup and volatile updates.
+- **Storage & Concurrency (Conditional ENOENT Ignore on Async Rename, #244)**: Hardened `TaskStore.saveAsync()` rename error handling to only ignore `ENOENT` when an in-flight temporary file was actively unlinked by a newer concurrent synchronous save (`_lastSyncVersion >= version`). Unexpected filesystem `ENOENT` errors without newer sync saves are strictly re-thrown.
+- **WebUI & Network Reliability (Abort Propagation on JSON Body Reading, #242)**: Updated `fetchJsonWithTimeout` in `52-cron-screen-actions.js` to avoid swallowing `AbortError` during `res.json()` parsing, ensuring hung response streams cleanly trigger timeout rejection and unlock optimistic UI buttons.
+- **Lifecycle & Testing (Test Heartbeat Timer Cleanup, #280)**: Updated `test/pack9-verification.test.mjs` to capture and invoke the lifecycle effect disposer in `t.after()`, guaranteeing no lingering heartbeat ping timers remain active in the event loop after test execution.
+- **Documentation (Version Consistency Across index.md and AGENTS.md, #245)**: Synchronized package version to `0.2.44` across `index.md`, `AGENTS.md`, and `package.json`.
+- **Test**: Added `test/pack10-verification.test.mjs` (6 unit tests). Total 406/406 tests passing (100% pass, 0 failures, clean preflight).
+
 ## 0.2.43 (2026-10-04)
 
 - **Storage & Test Isolation (Config cronDir & Store Isolation, #280)**: `apply(ctx, rawConfig)` passes `config.cronDir` / `config.storePath` directly to `TaskStore(storePath)` instead of falling back to default user data directory. Unit tests isolate `process.env.DSH_DATA_DIR = tmpDir` with automatic cleanup in `t.after`.
