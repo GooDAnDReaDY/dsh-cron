@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.47 (2026-10-05)
+
+- **Storage & State Isolation (Immutable Snapshotting on Save, #301)**: Implemented isolated deep snapshotting (`_createSnapshot()`) for tasks, history, and settings during `saveAsync()`, combined with copy-on-write history run prepending and cost ledger updates in `TaskStore.recordRun()`. Completely eliminates race conditions where concurrent in-memory mutations during chunked streaming could shift array indices, corrupting serialized JSON snapshots or producing duplicate/skipped history records.
+- **Storage & Stream Resilience (Canonical Stream Pipeline & Error Handling, #303)**: Re-architected `_writeStoreStream` using Node's standard `node:stream/promises` `pipeline` and `AbortController`. Guarantees robust lifecycle management for file streams without removing error listeners prematurely, ensuring native open failures (e.g. `EISDIR`, access errors) cleanly reject promises without crashing the process (`Unhandled 'error' event`), and prevents false resolutions on write/end errors.
+- **Test Infrastructure & Teardown Hygiene (Execution Engine Retry Test Hardening, #302)**: Registered `t.after(() => scheduler.stopAll())` teardown hooks in `test/execution-engine.test.mjs` test environment, ensuring background timers and scheduler jobs are unconditionally cleared even upon assertion failures. Replaced fragile static sleep delays with dynamic polling conditions for retry completion.
+
 ## 0.2.46 (2026-10-04)
 
 - **WebUI & Polling Lifecycle (Continuous Background Polling & Stale Response Discard, #242)**: Decoupled effect lifecycle (`isDestroyed`) from per-request generation in `lib/client-src/50-cron-screen-state.js`. Calling manual `fetchTasks()` or refreshing no longer kills the background polling timer in `finally`, while late responses from superseded in-flight polling requests are cleanly discarded.
