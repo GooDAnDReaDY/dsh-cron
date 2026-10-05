@@ -10,8 +10,13 @@ import { SessionRunner } from '../lib/runner.js';
 function makeEnv(t, options = {}) {
   const filePath = path.join(os.tmpdir(), `dsh-cron-engine-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
   const store = new TaskStore(filePath);
-  t.after(() => { try { fs.rmSync(filePath, { force: true }); } catch {} });
   const scheduler = new TaskScheduler(store, options.executeFn || (async () => 'ok'), options);
+  if (t && typeof t.after === 'function') {
+    t.after(() => {
+      try { scheduler.stopAll(); } catch {}
+      try { fs.rmSync(filePath, { force: true }); } catch {}
+    });
+  }
   return { store, scheduler };
 }
 
@@ -105,12 +110,23 @@ test('#18: failed task retries once and then resets attempts on success', async 
     prompt: 'p',
     status: 'active',
     maxRetries: 2,
-    retryBackoffMs: 1000,
+    retryBackoffMs: 150,
   });
   scheduler.scheduleTask(task);
   scheduler.runTask(task.id); // first attempt fails
-  await new Promise((r) => setTimeout(r, 1300)); // backoff 1000ms
+
+  // Wait up to 3000ms for retry attempt to complete (#302)
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    const history = store.getHistory(task.id, 5);
+    if (history.length > 0 && history[0].status === 'success') {
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 20));
+  }
+
   const history = store.getHistory(task.id, 5);
+  assert.ok(history.length > 0, 'history record exists');
   assert.equal(history[0].status, 'success', 'second attempt succeeded');
   const updated = store.get(task.id);
   assert.equal(updated.attempts, 0, 'attempts reset after success');
