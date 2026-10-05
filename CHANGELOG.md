@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.48 (2026-10-05)
+
+### Bug Fixes & Code Hardening
+- **Cordis Context Integration (#288)**: `getContextConfig` in `lib/index.js` safely queries `ctx.fiber.config`, `ctx.scope.config`, and `ctx.runtime.config` without evaluating `'config' in ctx` or accessing `ctx.config`, eliminating Cordis proxy reflect errors when `config` is not in `inject`.
+- **Secrets Protection in Agent Tools (#289)**: `cronTool` (`get`, `update`) in `lib/cron-tool.js` and `executeCreateTask` in `lib/task-create.js` now redact task secrets (`env`, `httpHeaders`, `httpBody`) with `redactTaskSecrets`, preventing leakage of sensitive credentials into LLM conversation logs and tool responses.
+- **Dynamic Settings Synchronization (#290)**: `syncVolatileConfig` and `GET /dsh-cron/settings` in `lib/index.js` now synchronize all keys declared in `SETTINGS_SYNC_KEYS` (including `apiToken` and notification channels), ensuring live settings updates apply immediately without requiring a harness restart.
+- **Scheduler Interval Simplification (#291)**: Cleaned up minute-to-hour interval step parsing in `lib/scheduler.js`, eliminating the redundant/unreachable `else if (hours > 23)` branch in `@every <num>m` expressions.
+- **Preflight Timer Leak Prevention (#292)**: Moved `clearTimeout(timeout)` to a `finally` block in `executePreflightCheck` (`lib/scheduler-execution.js`), guaranteeing timer clearance if `fetch` throws a network or timeout error.
+- **Queue Drain Control Flow (#293)**: Replaced single-pass `while (...) { ... break; }` construct in `handleCompleteRun` (`lib/scheduler-execution.js`) with an explicit `if`, clarifying the single-admission queue draining semantics.
+- **Declarative Job Logging (#294)**: `applyConfigSync` in `lib/config-jobs.js` now defaults to the plugin `logger` instead of `console`, and `lib/index.js` explicitly passes `log: logger` to ensure config sync messages follow unified logging routes.
+- **Fail-Closed HTTP Loopback Verification (#295)**: `isTrustedRequest` in `lib/http-utils.js` now strictly requires explicit token authentication when `remoteAddress` is absent, preventing fail-open bypasses on requests with stripped socket addresses.
+- **Task Patch Property Alignment (#296)**: `isCodeExecutionIntroduced` in `lib/task-patch.js` now correctly inspects `preflightTarget` instead of `preflightCommand` and removes the dead check against the non-existent `command` property.
+- **Gitea Settings Schema Compliance (#297)**: Added `giteaLabels` and `giteaLabelIds` to the `Config` schema in `lib/settings.js` and `SETTINGS_SYNC_KEYS`, and enhanced `buildGiteaIssuePayload` in `lib/channels.js` to parse comma-separated string labels.
+- **Unused Parameter Cleanup (#298)**: Removed unused destructuring of `getCronSettingsScope` in `lib/routes.js` and removed dead `apiToken` argument passed to `handleItemPost` in `lib/api.js`.
+
 ## 0.2.47 (2026-10-05)
 
 - **Storage & State Isolation (Immutable Snapshotting on Save, #301)**: Implemented isolated deep snapshotting (`_createSnapshot()`) for tasks, history, and settings during `saveAsync()`, combined with copy-on-write history run prepending and cost ledger updates in `TaskStore.recordRun()`. Completely eliminates race conditions where concurrent in-memory mutations during chunked streaming could shift array indices, corrupting serialized JSON snapshots or producing duplicate/skipped history records.
