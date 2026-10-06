@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.49 (2026-10-06)
+
+- **Lossless JSON Compliance & Execution Store Hygiene (GH #5, #310)**: Stripped `undefined` properties from task records in `TaskStore.set()` (`lib/store.js`), `redactTaskSecrets()` (`lib/http-utils.js`), `lib/task-create.js`, and `lib/task-patch.js`. Explicitly defaulted missing `provider` and `model` to `null` instead of undefined. Guarantees that Cosmokit / DSH harness `Reflect.ownKeys()` validation never throws `value is not lossless JSON` on `cron get` or `cron update` after a scheduler execution.
+- **Client Network Resiliency & Timeout Shielding (#307)**: Added unified `fetchWithTimeout` and `fetchJsonWithTimeout` helpers with caller AbortSignal chaining and default 15s timers in `lib/client-src/30-utils.js`. Converted all raw `fetch` calls across `50-cron-screen-state.js`, `52-cron-screen-actions.js`, `53-cron-screen-modal-actions.js`, `70-settings-card.js`, and `80-sidebar-jobs.js` to use signal/timeout protection, preventing frozen UI states on slow or stalled backend calls. Rebuilt `lib/client.js` with zero size regressions.
+- **Runtime Exports Hygiene (#308)**: Removed dead unexported constant `DOCKER_HOST_ENV_ALLOWLIST` from `lib/runtimes.js`.
+- **Repository Root Cleanliness (#309)**: Purged legacy root archive tarballs (`goodandready-dsh-cron-0.2.*.tgz`), preserving build outputs strictly within `dist/`.
+- **Test Infrastructure & Quality Gate**: Added `test/pack15-verification.test.mjs` verifying lossless JSON round-trips for the `cron` tool, absence of `undefined` properties on stored/redacted tasks, dead export removal, and client-src fetch signal coverage. Total 437/437 passing unit tests (100% PASS, 0 regressions, clean preflight).
+
 ## 0.2.48 (2026-10-05)
 
 ### Bug Fixes & Code Hardening
