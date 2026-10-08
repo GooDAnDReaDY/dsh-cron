@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.50 (2026-10-08)
+
+- **WebUI Permission Preset Gating (GH #6 / #312)**: Restricted the `permissionPreset` dropdown in the task creation and editing modal exclusively to agent-driven task types (`llm`, `skill`, `workflow`). For external execution runtimes (`script`, `node`, `python`, `http`, `ssh`, `docker`), where permission presets are not used by the worker runner, the dropdown is removed and `maxRetries` occupies the full row. Enforced backend sanitization in `executeCreateTask`, `applyTaskPatch`, and `buildTaskRecord`, ensuring `permissionPreset` is always normalized to `'default'` for external runtimes.
+- **WebUI Modal Backdrop Discard Guard (GH #7 / #313)**: Prevented accidental loss of unsaved task data when clicking the modal backdrop overlay (`.dsh-cron-modal-overlay`), pressing Escape, or clicking Cancel. Added comprehensive dirty state tracking (`isFormDirty` against `initialFormSnapshotRef` covering all 50 form fields); if the form is dirty, user confirmation (`modal.confirmDiscard`) is required before dismissing the modal. Added bilingual localization (`en`: "Discard unsaved changes?", `zh`: "放弃未保存的内容？").
+- **Quality & Verification Gate**: Added `test/pack16-verification.test.mjs` verifying backend runtime sanitization for `permissionPreset`, frontend gating in modal templates, locale strings, and form dirty guard logic. All 443 unit tests passing (100% PASS, 0 regressions, clean preflight).
+
 ## 0.2.49 (2026-10-06)
 
 - **Lossless JSON Compliance & Execution Store Hygiene (GH #5, #310)**: Stripped `undefined` properties from task records in `TaskStore.set()` (`lib/store.js`), `redactTaskSecrets()` (`lib/http-utils.js`), `lib/task-create.js`, and `lib/task-patch.js`. Explicitly defaulted missing `provider` and `model` to `null` instead of undefined. Guarantees that Cosmokit / DSH harness `Reflect.ownKeys()` validation never throws `value is not lossless JSON` on `cron get` or `cron update` after a scheduler execution.
