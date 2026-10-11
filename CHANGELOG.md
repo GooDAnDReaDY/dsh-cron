@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.51 (2026-10-11)
+
+- **Desktop TTS Dynamic Port Resolution (#323)**: In DSH Desktop, the web server binds to an OS-assigned ephemeral port rather than static 3080. Set `ttsBaseUrl` default to empty string `""` in `lib/settings.js` and updated `CHANNELS.tts` in `lib/channels.js` to dynamically resolve port from `settings._webServerPort` or fallback to 3080, allowing DSH Desktop users to use TTS announcements seamlessly out-of-the-box.
+- **Run Card with Execution Stages, Cost Classification & Decoupled Delivery Retry (#315)**: Enhanced run history items with persistent `runId`, structured pipeline `stages` (`queue`, `preflight`, `execution`, `validation`, `delivery`), `stoppedReason`, classified `cost` (`amount`, `currency`, `kind`), and decoupled notification `delivery` status. Added `POST /dsh-cron/tasks/:id/retry-delivery` endpoint allowing users to retry notifications without re-executing task side-effects. Updated WebUI with stages flow pills, stopped reason hint, and one-click delivery retry button. Preserved full backward compatibility with older history records without stages.
+- **Declarative Post-Execution Output Validators (#316)**: Added pure, deterministic output validation checks (`validators`) supporting `json`, `regex`, `text`, `exitCode`, and `file` with path-traversal protection. On validation failure, run transitions to `validation_failed`, populates `stoppedReason` and `validationError`, suppresses `onSuccess` chain triggers, activates `onFailure` triggers, and routes to notifications when `onlyOnFailure` is active.
+- **Test Infrastructure & Quality Gate**: Added `test/pack17-verification.test.mjs` verifying Desktop TTS port resolution, pure validator logic, lifecycle validation status transitions and chaining suppression, run stages tracking, and decoupled delivery retry. All 449 unit tests passing (100% PASS, 0 regressions, clean preflight).
+
 ## 0.2.50 (2026-10-08)
 
 - **WebUI Permission Preset Gating (GH #6 / #312)**: Restricted the `permissionPreset` dropdown in the task creation and editing modal exclusively to agent-driven task types (`llm`, `skill`, `workflow`). For external execution runtimes (`script`, `node`, `python`, `http`, `ssh`, `docker`), where permission presets are not used by the worker runner, the dropdown is removed and `maxRetries` occupies the full row. Enforced backend sanitization in `executeCreateTask`, `applyTaskPatch`, and `buildTaskRecord`, ensuring `permissionPreset` is always normalized to `'default'` for external runtimes.
