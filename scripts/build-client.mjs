@@ -16,5 +16,25 @@ for (const f of files) {
   out += await readFile(path.join(srcDir, f), 'utf8')
   if (!out.endsWith('\n')) out += '\n'
 }
-await writeFile(outFile, out, 'utf8')
-console.log(`built lib/client.js from ${files.length} fragments (${out.length} bytes)`)
+
+// Strip standalone single-line comments so bundle stays strictly under 256 KiB limit
+const lines = out.split('\n')
+const compactLines = []
+for (let i = 0; i < lines.length; i++) {
+  const line = lines[i]
+  const trimmed = line.trim()
+  if (trimmed.startsWith('//')) {
+    const prev = compactLines.length > 0 ? compactLines[compactLines.length - 1].trim() : ''
+    const next = (i + 1 < lines.length) ? lines[i + 1].trim() : ''
+    if (prev.endsWith('{') && next.startsWith('}')) {
+      compactLines.push('        void e;')
+      continue
+    }
+    continue
+  }
+  compactLines.push(line)
+}
+
+const compact = compactLines.join('\n')
+await writeFile(outFile, compact, 'utf8')
+console.log(`built lib/client.js from ${files.length} fragments (${compact.length} bytes)`)
