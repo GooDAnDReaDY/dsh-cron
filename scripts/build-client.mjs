@@ -17,6 +17,9 @@ for (const f of files) {
   if (!out.endsWith('\n')) out += '\n'
 }
 
+// Strip JSDoc comment blocks
+out = out.replace(/\/\*\*[\s\S]*?\*\//g, '')
+
 // Strip standalone single-line comments so bundle stays strictly under 256 KiB limit
 const lines = out.split('\n')
 const compactLines = []
@@ -32,9 +35,10 @@ for (let i = 0; i < lines.length; i++) {
     }
     continue
   }
-  compactLines.push(line)
+  compactLines.push(line.trimEnd())
 }
 
-const compact = compactLines.join('\n')
+// Collapse multiple consecutive blank lines
+let compact = compactLines.join('\n').replace(/\n{3,}/g, '\n\n')
 await writeFile(outFile, compact, 'utf8')
 console.log(`built lib/client.js from ${files.length} fragments (${compact.length} bytes)`)

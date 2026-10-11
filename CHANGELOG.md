@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 (2026-10-11)
+
+### Features & Resilience
+- **Durable Journal & Resilient Execution (#317)**: Pre-execution journal state tracking (`queued`, `running`, `completed`, `failed`, `cancelled`, `uncertain`), idempotency deduplication with cached response replay, restart recovery marking interrupted in-flight runs as `uncertain`, and manual operator resolution endpoint (`/dsh-cron/tasks/:id/resolve-uncertain`).
+- **Chain Checkpoints & Step Retry (#319)**: Granular step-level snapshot recording (`recordStepSnapshot`), intermediate state preservation, cycle and replay guard (`canRetryFromStep`), and single-step retry endpoint (`POST /dsh-cron/chains/:chainRunId/retry-from/:stepTaskId`) without re-executing successful upstream steps.
+- **Run Artifacts Management (#321)**: Sandboxed artifact storage (`ArtifactManager`) with strict path traversal prevention, safe MIME type sniffing, inline preview endpoint (`GET /dsh-cron/runs/:id/artifacts/:name/preview`), automatic retention cleanup, and storage quota enforcement.
+
 ## 0.2.52 (2026-10-11)
 
 - **Action Approval Gate / Human-in-the-Loop (#318)**: Introduced mandatory approval mechanism for high-risk or designated tasks (`requireApproval: true`). When triggered, task run pauses into `waiting_approval` with a unique proposal tracking summary, diff, timeout and caller metadata. Created endpoints `POST /dsh-cron/tasks/:id/approve` and `POST /dsh-cron/tasks/:id/reject` with replay attack protection, decision tracking, and automatic proposal resolution.

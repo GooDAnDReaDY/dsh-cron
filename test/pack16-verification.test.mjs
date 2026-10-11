@@ -141,14 +141,14 @@ test('Pack 16 verification suite: GH #6 (permission presets) and GH #7 (backdrop
 
   await t.test('6. Documentation and package version synchronization to 0.2.50 (#312, #313)', async () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-    assert.match(pkg.version, /^0\.2\.(?:50|51|52)$/, 'package.json version is 0.2.50 or newer');
+    assert.match(pkg.version, /^(?:0\.2\.(?:50|51|52)|0\.3\.0)$/, 'package.json version is 0.2.50 or newer');
 
     const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
     assert.match(indexMd, /0\.2\.50/, 'index.md references version 0.2.50');
     assert.match(indexMd, /0\.2\.49/, 'index.md references previous release 0.2.49');
 
     const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-    assert.match(agentsMd, /Текущая версия:\s*`0\.2\.(?:50|51|52)`/, 'AGENTS.md current version is 0.2.50');
+    assert.match(agentsMd, /Текущая версия:\s*`(?:0\.2\.(?:50|51|52)|0\.3\.0)`/, 'AGENTS.md current version is 0.2.50');
 
     const changelog = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
     assert.match(changelog, /## 0\.2\.50 \(2026-10-08\)/, 'CHANGELOG.md contains 0.2.50 section');

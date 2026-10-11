@@ -161,7 +161,7 @@ test('Pack 18: 4. Verified Recipes Catalog & Dependency Validation (#322)', () =
 test('Pack 18: 5. Documentation and package version synchronization to 0.2.52 (#318, #320, #322)', () => {
   const repoRoot = path.resolve(import.meta.dirname, '..');
   const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-  assert.equal(pkg.version, '0.2.52', 'package.json version is 0.2.52');
+  assert.match(pkg.version, /^(?:0\.2\.52|0\.3\.0)$/, 'package.json version is 0.2.52');
 
   const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
   assert.match(indexMd, /0\.2\.52/, 'index.md references version 0.2.52');
