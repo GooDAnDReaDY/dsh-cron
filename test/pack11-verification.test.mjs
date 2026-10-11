@@ -186,15 +186,15 @@ test('Pack 11 verification suite: native Cordis, polling abort, store yield, doc
   await t.test('5. Documentation and package version synchronization to 0.2.45 (#245)', async () => {
     const repoRoot = path.resolve(import.meta.dirname, '..');
     const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-    assert.match(pkg.version, /^0\.2\.(?:45|46|47|48|49|50|51)$/);
+    assert.match(pkg.version, /^0\.2\.(?:45|46|47|48|49|50|51|52)$/);
 
     const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
     assert.match(indexMd, /0\.2\.45/);
     assert.doesNotMatch(indexMd, /Статус\*\*:\s*active,\s*релиз\s*`0\.2\.8`/);
 
     const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-    assert.match(agentsMd, /Текущая версия:\s*`0\.2\.(?:45|46|47|48|49|50|51)`/);
-    assert.match(agentsMd, /Текущий статус:\s*active,\s*релиз\s*`0\.2\.(?:45|46|47|48|49|50|51)`/);
+    assert.match(agentsMd, /Текущая версия:\s*`0\.2\.(?:45|46|47|48|49|50|51|52)`/);
+    assert.match(agentsMd, /Текущий статус:\s*active,\s*релиз\s*`0\.2\.(?:45|46|47|48|49|50|51|52)`/);
 
     const changelog = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
     assert.match(changelog, /## 0\.2\.45 \(2026-10-04\)/);

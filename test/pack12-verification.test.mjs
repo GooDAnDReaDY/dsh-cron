@@ -161,7 +161,7 @@ test('Pack 12 verification suite: polling lifecycle, store streaming perf, doc a
   await t.test('3. Documentation and package version synchronization to 0.2.46 (#245)', async () => {
     const repoRoot = path.resolve(import.meta.dirname, '..');
     const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-    assert.match(pkg.version, /^0\.2\.(?:46|47|48|49|50|51)$/, 'package.json version is 0.2.46+');
+    assert.match(pkg.version, /^0\.2\.(?:46|47|48|49|50|51|52)$/, 'package.json version is 0.2.46+');
 
     const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
     assert.match(indexMd, /0\.2\.46/, 'index.md references version 0.2.46');
@@ -169,7 +169,7 @@ test('Pack 12 verification suite: polling lifecycle, store streaming perf, doc a
     assert.match(indexMd, /0\.2\.44/, 'index.md references previous release 0.2.44');
 
     const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-    assert.match(agentsMd, /Текущая версия:\s*`0\.2\.(?:46|47|48|49|50|51)`/, 'AGENTS.md current version is 0.2.46+');
+    assert.match(agentsMd, /Текущая версия:\s*`0\.2\.(?:46|47|48|49|50|51|52)`/, 'AGENTS.md current version is 0.2.46+');
     assert.doesNotMatch(agentsMd, /релиз 0\.2\.5.*Пакет 4/s, 'AGENTS.md does not contain orphaned duplicate fragment');
 
     const changelog = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');

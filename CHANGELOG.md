@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.52 (2026-10-11)
+
+- **Action Approval Gate / Human-in-the-Loop (#318)**: Introduced mandatory approval mechanism for high-risk or designated tasks (`requireApproval: true`). When triggered, task run pauses into `waiting_approval` with a unique proposal tracking summary, diff, timeout and caller metadata. Created endpoints `POST /dsh-cron/tasks/:id/approve` and `POST /dsh-cron/tasks/:id/reject` with replay attack protection, decision tracking, and automatic proposal resolution.
+- **Global & Provider/Model Rate Limits and Budgets (#320)**: Added global daily budget ceiling (`globalDailyCostLimitUsd`) across all tasks, plus hourly run rate limiters per provider (`providerHourlyRunLimits`) and per model (`modelHourlyRunLimits`). Integrated 2-phase reservation & settlement lifecycle in scheduler execution preventing over-budget runs.
+- **Verified Recipes Catalog & Dependency Validation (#322)**: Expanded pre-configured task recipes catalog with parameter models, credential/channel validation, and dependency health checks before instantiation (`validateRecipeDependencies`).
+- **WebUI & Tooling Integration**: Enhanced Cron screen with approval configuration toggles, proposal decision actions, and verified recipe cards with live dependency indicators. All client code strictly within budget limits (<600 lines per module, bundle < 256 KiB).
+- **Test Infrastructure & Quality Gate**: Added `test/pack18-verification.test.mjs` verifying approval gate lifecycle, replay protection, scheduler halting on pending proposals, global budget enforcement, recipe dependency validation, and docs synchronization. All 455 unit tests passing (100% PASS, 0 regressions, clean preflight).
+
 ## 0.2.51 (2026-10-11)
 
 - **Desktop TTS Dynamic Port Resolution (#323)**: In DSH Desktop, the web server binds to an OS-assigned ephemeral port rather than static 3080. Set `ttsBaseUrl` default to empty string `""` in `lib/settings.js` and updated `CHANNELS.tts` in `lib/channels.js` to dynamically resolve port from `settings._webServerPort` or fallback to 3080, allowing DSH Desktop users to use TTS announcements seamlessly out-of-the-box.

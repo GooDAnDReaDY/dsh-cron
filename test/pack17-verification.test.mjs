@@ -312,7 +312,7 @@ test('Pack 17 verification suite: #323 (Desktop TTS port), #316 (Declarative val
 
   await t.test('5. Documentation and package version synchronization to 0.2.51 (#315, #316, #323)', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-    assert.equal(pkg.version, '0.2.51', 'package.json version is 0.2.51');
+    assert.match(pkg.version, /^0\.2\.(?:51|52)$/, 'package.json version is 0.2.51');
 
     const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
     assert.match(indexMd, /0\.2\.51/, 'index.md references version 0.2.51');
