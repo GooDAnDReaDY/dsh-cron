@@ -1,3 +1,11 @@
+## 0.3.2 (2026-10-13)
+
+### Features & Orchestration
+- **DAG Fan-Out & Fan-In (#328)**: parallel branching steps and barrier synchronization (`dependsOn`, `joinPolicy: 'all_success' | 'any_success'`).
+- **Predecessor Output Interpolation**: bracket notation `{prevOutputs['stepTask']}` and `{{prevOutputs['stepTask']}}` for downstream tasks.
+- **Cycle Detection**: automatic DFS topological cycle validation preventing recursive deadlocks.
+- **Visual Chain Graph (#334)**: lightweight interactive graph inspector for chained runs with 1-click step retry (`retryChainFromStep`).
+
 ## 0.3.1 (2026-10-13)
 
 - **feat(triggers)**: файловый триггер (FS Watcher) для запуска задач по событиям в директории (`lib/watcher.js`, конфигурация `fileWatch`, безопасные пути, дебаунс, подстановка `{filePath}`, `{fileName}`, `{fileSize}`, `{fileEvent}`) (#327).
