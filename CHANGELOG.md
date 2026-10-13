@@ -1,3 +1,8 @@
+## 0.3.1 (2026-10-13)
+
+- **feat(triggers)**: файловый триггер (FS Watcher) для запуска задач по событиям в директории (`lib/watcher.js`, конфигурация `fileWatch`, безопасные пути, дебаунс, подстановка `{filePath}`, `{fileName}`, `{fileSize}`, `{fileEvent}`) (#327).
+- **feat(security)**: динамическое разрешение учетных данных по ссылкам `credential://dsh/...` в памяти (`lib/secrets.js`, опция `enableDynamicCredentials` в настройках, нулевая утечка в хранилище и логи) (#335).
+
 # Changelog
 
 ## 0.3.0 (2026-10-11)
