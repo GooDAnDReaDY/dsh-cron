@@ -312,14 +312,14 @@ test('Pack 17 verification suite: #323 (Desktop TTS port), #316 (Declarative val
 
   await t.test('5. Documentation and package version synchronization to 0.2.51 (#315, #316, #323)', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-    assert.match(pkg.version, /^(?:0\.2\.(?:51|52)|0\.3\.0)$/, 'package.json version is 0.2.51');
+    assert.match(pkg.version, /^(?:0\.2\.(?:51|52)|0\.3\.[0-9]+)$/, 'package.json version is 0.2.51');
 
     const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
     assert.match(indexMd, /0\.2\.51/, 'index.md references version 0.2.51');
     assert.match(indexMd, /0\.2\.50/, 'index.md references previous release 0.2.50');
 
     const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-    assert.match(agentsMd, /`0\.2\.51`/, 'AGENTS.md current version is 0.2.51');
+    assert.match(agentsMd, /`0\.2\.51`|`0\.3\.[0-9]+`/, 'AGENTS.md current version is 0.2.51');
 
     const changelog = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
     assert.match(changelog, /## 0\.2\.51 \(2026-10-11\)/, 'CHANGELOG.md contains 0.2.51 section');

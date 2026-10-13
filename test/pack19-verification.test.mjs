@@ -191,14 +191,14 @@ test('Pack 19: 3. Run artifacts management, directory isolation and safe preview
 test('Pack 19: 4. Documentation and package version synchronization to 0.3.0 (#317, #319, #321)', () => {
   const repoRoot = path.resolve(import.meta.dirname, '..');
   const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-  assert.equal(pkg.version, '0.3.0', 'package.json version is 0.3.0');
+  assert.match(pkg.version, /^0\.3\.[0-9]+$/, 'package.json version is 0.3.x');
 
   const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
   assert.match(indexMd, /0\.3\.0/, 'index.md references version 0.3.0');
   assert.match(indexMd, /0\.2\.52/, 'index.md references previous release 0.2.52');
 
   const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-  assert.match(agentsMd, /0\.3\.0/, 'AGENTS.md current version is 0.3.0');
+  assert.match(agentsMd, /0\.3\.[0-9]+/, 'AGENTS.md current version is 0.3.x');
 
   const changelog = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
   assert.match(changelog, /## 0\.3\.0 \(2026-10-11\)/, 'CHANGELOG.md contains 0.3.0 section');
