@@ -1,3 +1,12 @@
+## 0.3.6 (2026-10-14)
+
+- **fix(client)**: устранена ошибка ReferenceError при нажатии на кнопки «📊 Digest» (`openAnalyticsDigest`) и «⏱ Timeline» (`openTimelineModal`), приводившая к белому экрану панели (GH #8, Gitea #343).
+- **fix(client)**: подключены недостающие 11 реактивных состояний и рендеры модальных окон `renderAnalyticsDigestModal` и `renderTimelineHeatmapModal` в дереве диалогов (`lib/client-src/65-modal-dialogs.js`).
+- **fix(client)**: устранена ошибка `editingTask is not defined` в форме создания и редактирования задач (исправлено на `selectedTaskMeta`).
+- **fix(client)**: добавлен клиентский билдер графа `buildTaskGraphModel` в `lib/client-src/45-dag-graph-view.js` для предотвращения ReferenceError при переходе в граф задачи 🕸️.
+- **fix(api)**: подключен обработчик `handleScheduleTimeline` для маршрута `GET /dsh-cron/schedule/timeline-24h` (`lib/api-helpers.js`, `lib/api.js`).
+- **ci(preflight)**: добавлен автоматический гейт ESLint `no-undef: error` в `scripts/ci-preflight.mjs`, исключающий появление необъявленных переменных в клиентском бандле.
+
 ## 0.3.5 (2026-10-14)\n\n- **feat(ui)**: 24-часовой таймлайн расписаний и визуализация пиковых пересечений задач (Visual Timeline) (#332, #10).\n- **feat(analytics)**: аналитическая тепловая карта расходов и расхода токенов по часам и моделям (Cost Heatmap) (#333, #11).\n\n## 0.3.4 (2026-10-14)
 
 - **feat(llm)**: версионирование промптов и A/B тестирование с отслеживанием Success Rate (Prompt Auto-Evolver) (#331, #9).
