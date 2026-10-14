@@ -565,6 +565,7 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Endpoints are
 | `POST` | `/dsh-cron/tasks` | Create or update a task (`id` present → update). Requires `title`, `schedule`, `prompt` |
 | `GET` | `/dsh-cron/tasks/:id/history` | Run history, `?limit=20` |
 | `POST` | `/dsh-cron/tasks/:id/run` | Trigger an immediate manual run |
+| `GET` | `/dsh-cron/tasks/:id/stream` | Real-time Server-Sent Events (SSE) execution log streaming with ring buffer (#336) |
 | `POST` | `/dsh-cron/tasks/:id/pause` | Pause the schedule |
 | `POST` | `/dsh-cron/tasks/:id/resume` | Resume the schedule |
 | `POST` | `/dsh-cron/tasks/:id/toggle` | Toggle active/paused |
@@ -587,6 +588,28 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Endpoints are
 | `GET` / `POST` | `/dsh-cron/api/tasks` | External token-guarded surface: list / create-or-update (#54) |
 | `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | External token-guarded surface: read / delete (#54) |
 | `POST` | `/dsh-cron/api/tasks/:id/run` | External token-guarded surface: force a run (#54) |
+
+---
+
+### ⚡ Adaptive Polling & Exponential Backoff (#329)
+
+Save LLM tokens and API quotas on watcher tasks by dynamically slowing down execution when no changes occur:
+
+```json
+"adaptive": {
+  "enabled": true,
+  "minInterval": "5m",
+  "maxInterval": "2h",
+  "backoffFactor": 1.5,
+  "idleRunsThreshold": 3
+}
+```
+- Multiplies interval by `backoffFactor` up to `maxInterval` after `idleRunsThreshold` silent or unchanged runs.
+- Instantly resets to `minInterval` as soon as real changes or non-silent output are detected.
+
+### 📺 Real-Time Streaming Logs via SSE (#336)
+
+Connect to `GET /dsh-cron/tasks/:id/stream` using Server-Sent Events (SSE) to receive live stdout/stderr chunks and execution completion events with an automatic 500-line ring buffer.
 
 ---
 

@@ -44,11 +44,12 @@ const formattedLines = []
 for (const line of compactLines) {
   const countBt = (line.match(/`/g) || []).length
   if (!inTemplate && countBt % 2 === 0) {
+    if (!line.trim()) continue;
     const m = line.match(/^( +)(.*)$/)
-    formattedLines.push(m ? ' '.repeat(Math.floor(m[1].length / 2)) + m[2] : line)
+    formattedLines.push(m ? ' '.repeat(Math.floor(m[1].length / 4)) + m[2] : line)
   } else if (!inTemplate && countBt % 2 === 1) {
     const m = line.match(/^( +)(.*)$/)
-    formattedLines.push(m ? ' '.repeat(Math.floor(m[1].length / 2)) + m[2] : line)
+    formattedLines.push(m ? ' '.repeat(Math.floor(m[1].length / 4)) + m[2] : line)
     inTemplate = true
   } else if (inTemplate && countBt % 2 === 1) {
     formattedLines.push(line)
@@ -61,4 +62,4 @@ for (const line of compactLines) {
 // Collapse multiple consecutive blank lines
 let compact = formattedLines.join('\n').replace(/\n{3,}/g, '\n\n')
 await writeFile(outFile, compact, 'utf8')
-console.log(`built lib/client.js from ${files.length} fragments (${compact.length} bytes)`)
+console.log(`built lib/client.js from ${files.length} fragments (${Buffer.byteLength(compact, 'utf8')} bytes)`)
