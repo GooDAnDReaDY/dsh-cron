@@ -50,10 +50,10 @@ for (const line of compactLines) {
     formattedLines.push(line.trim())
     inTemplate = true
   } else if (inTemplate && countBt % 2 === 1) {
-    formattedLines.push(line)
+    if (line.trim()) formattedLines.push(line.trim())
     inTemplate = false
   } else {
-    formattedLines.push(line)
+    if (line.trim()) formattedLines.push(line.trim())
   }
 }
 

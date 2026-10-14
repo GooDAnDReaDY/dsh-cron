@@ -119,5 +119,19 @@ try {
   bad(`Leak scan error: ${err.message}`);
 }
 
+// 7. Client bundle undefined identifier check (no-undef)
+try {
+  const eslintConfig = path.join(root, "scripts/eslint-client.config.mjs");
+  const eslintBin = "/usr/bin/eslint";
+  if (fs.existsSync(eslintBin) && fs.existsSync(eslintConfig)) {
+    execSync(`${eslintBin} -c "${eslintConfig}" "${path.join(root, "lib/client.js")}"`, { stdio: "pipe" });
+    ok("ESLint no-undef check clean: 0 undeclared variables in lib/client.js");
+  } else {
+    ok("ESLint not found, skipping strict no-undef check");
+  }
+} catch (err) {
+  bad(`ESLint detected undeclared variables in lib/client.js:\n${err.stdout ? err.stdout.toString() : err.message}`);
+}
+
 console.log(`=== Result: ${failed === 0 ? "PASS" : "FAIL"} (${failed} failures) ===`);
 if (failed > 0) process.exit(1);
