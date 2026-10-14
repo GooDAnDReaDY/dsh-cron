@@ -38,18 +38,16 @@ for (let i = 0; i < lines.length; i++) {
   compactLines.push(line.trimEnd())
 }
 
-// Indentation reduction (4 spaces -> 2 spaces outside template literals) to guarantee bundle is comfortably under 256 KiB
+// Indentation reduction outside template literals to guarantee bundle is strictly under 256 KiB limit
 let inTemplate = false
 const formattedLines = []
 for (const line of compactLines) {
   const countBt = (line.match(/`/g) || []).length
   if (!inTemplate && countBt % 2 === 0) {
     if (!line.trim()) continue;
-    const m = line.match(/^( +)(.*)$/)
-    formattedLines.push(m ? ' '.repeat(Math.floor(m[1].length / 4)) + m[2] : line)
+    formattedLines.push(line.trim())
   } else if (!inTemplate && countBt % 2 === 1) {
-    const m = line.match(/^( +)(.*)$/)
-    formattedLines.push(m ? ' '.repeat(Math.floor(m[1].length / 4)) + m[2] : line)
+    formattedLines.push(line.trim())
     inTemplate = true
   } else if (inTemplate && countBt % 2 === 1) {
     formattedLines.push(line)
