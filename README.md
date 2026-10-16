@@ -607,6 +607,12 @@ Save LLM tokens and API quotas on watcher tasks by dynamically slowing down exec
 - Multiplies interval by `backoffFactor` up to `maxInterval` after `idleRunsThreshold` silent or unchanged runs.
 - Instantly resets to `minInterval` as soon as real changes or non-silent output are detected.
 
+### 🔄 Session Resumption & GUI Session Naming (#346, GH #9, Added in v0.3.8)
+
+- **Universal Host Resumption (`resumeSessionId`)**: DeepSeek Harness host `0.2.0-rc.2+` specifies `readonly resumeSessionId: SessionId` on `agents.resume()`. The runner now passes both `resumeSessionId` and `sessionId`, guaranteeing seamless session resumption across all DSH core versions without falling back to recreating sessions that already exist.
+- **Enhanced Diagnostics on Failure**: When an existing session cannot be resumed, `dsh-cron` logs an actionable warning and, if recreating the session fails, surfaces the underlying resume error in the task run output.
+- **Automatic GUI Session Naming (`sessionTitle`)**: Executed or resumed sessions now integrate with the host's `sessionTitle` service. Tasks can specify an explicit `sessionTitle` (or begin `task.title` with `[...]`) to automatically label the session in the DeepSeek Harness navigation sidebar instead of leaving it untitled (`cron-exec-...`).
+
 ### 📺 Real-Time Streaming Logs via SSE (#336)
 
 Connect to `GET /dsh-cron/tasks/:id/stream` using Server-Sent Events (SSE) to receive live stdout/stderr chunks and execution completion events with an automatic 500-line ring buffer.
