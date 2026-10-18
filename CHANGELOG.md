@@ -1,3 +1,8 @@
+## 0.3.11 (2026-10-18)
+
+- **feat(triggers)**: входящие HTTP Webhook триггеры с подстановкой JSON payload в переменные промпта и переменные окружения (`DSH_CRON_WEBHOOK_BODY`, `DSH_CRON_WEBHOOK_HEADERS`), поддержка проверки подписи HMAC SHA-256 (`x-hub-signature-256`, `x-signature-sha256`) и авторизации по токену (`x-dsh-cron-webhook-token`, Bearer), дебаунс (`webhookDebounceMs`) и защита секретов (#348).
+- **feat(llm)**: естественно-языковой парсер расписаний на русском и английском языках (`lib/nl-schedule.js`), трансляция интервалов, времени суток, будней/выходных, дней недели и относительных задержек в строгие Croner-паттерны и точные отложенные дедлайны (#349).
+
 ## 0.3.6 (2026-10-14)
 
 - **fix(client)**: устранена ошибка ReferenceError при нажатии на кнопки «📊 Digest» (`openAnalyticsDigest`) и «⏱ Timeline» (`openTimelineModal`), приводившая к белому экрану панели (GH #8, Gitea #343).
