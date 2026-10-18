@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
  * in the schedule parser (users may type "через 15 минут", "каждый день").
  */
 const CYRILLIC = /[\u0400-\u04FF]/;
-const ALIAS_PATTERN = /(через|каждый|будние|будням|минут|час)/;
+const ALIAS_PATTERN = /(через|кажды|будни|мин|сек|час|день|дня|дней|утра|вечера|ночи|пн|вт|ср|чт|пт|сб|вс|понедельник|вторник|сред|четверг|пятниц|суббот|воскресен|числ|месяц|выходн|полноч|полден|ежедневно)/;
 
 test('lib source strings are English-canonical (Cyrillic only in schedule input aliases)', () => {
   const libDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'lib');
@@ -25,7 +25,7 @@ test('lib source strings are English-canonical (Cyrillic only in schedule input 
     const lines = text.split('\n');
     lines.forEach((line, idx) => {
       if (!CYRILLIC.test(line)) return;
-      if (file === 'scheduler.js' && ALIAS_PATTERN.test(line)) return;
+      if ((file === 'scheduler.js' || file === 'nl-schedule.js') && ALIAS_PATTERN.test(line)) return;
       offenders.push(`${file}:${idx + 1}: ${line.trim().slice(0, 90)}`);
     });
   }

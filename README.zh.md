@@ -569,6 +569,8 @@ dsh-cron:
 | `GET` / `POST` | `/dsh-cron/api/tasks` | 令牌保护的外部接口：列表 / 创建或更新（#54） |
 | `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | 令牌保护的外部接口：读取 / 删除（#54） |
 | `POST` | `/dsh-cron/api/tasks/:id/run` | 令牌保护的外部接口：强制执行（#54） |
+| `POST` | `/dsh-cron/webhook/:id` | 入站 HTTP Webhook 触发器：支持 HMAC SHA-256 / 令牌鉴权、防抖与 JSON 负载提示词变量插值（#348） |
+| `POST` | `/dsh-cron/api/webhook/:id` | 令牌保护的入站 Webhook 外部接口（#348） |
 
 ---
 

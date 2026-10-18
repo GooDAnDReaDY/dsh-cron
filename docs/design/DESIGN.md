@@ -65,6 +65,10 @@
 4. Разбор инцидента: история запусков в карточке задачи → статус, длительность, вывод/ошибка.
 
 ## Locked Design Decisions
+- 2026-10-18 — Входящие Webhook триггеры и естественно-языковое расписание (#348, #349, 0.3.11):
+  1. Входящие Webhook триггеры (#348): эндпоинты `POST /dsh-cron/webhook/:taskId` и `POST /dsh-cron/api/webhook/:taskId`. Аутентификация по HMAC SHA-256 (`x-hub-signature-256`), per-task токену (`x-dsh-cron-webhook-token`, Bearer или `?token=`) или мастер-токену `apiToken` (fail-closed). Дебаунс входящих вызовов (`webhookDebounceMs`). Интерполяция JSON payload в промпты, команды, скрипты и url: `{webhook.body.path.to.key}`, `{webhook.headers.header_name}`, `{webhook.query.param}`, `{webhook.body}` и проброс в env (`DSH_CRON_WEBHOOK_BODY`, `DSH_CRON_WEBHOOK_HEADERS`). Секреты `webhookToken` и `webhookSecret` маскируются в `redactTaskSecrets` и восстанавливаются в `restoreTaskSecrets`.
+  2. Естественно-языковой транслятор расписаний (#349): модуль `lib/nl-schedule.js` детерминированно преобразует русские и английские формулировки времени («каждый день в 9:00», «по будням в 18:30», «every weekend at 10am», «каждые 15 минут», «каждые 2 часа», «через 15 минут», «каждое 1 число в 9:00») в строгий Croner-синтаксис и интервалы с расчетом `nextRun`. Интегрирован в `parseScheduleExpression`, тул агента `cron` (action: create/update) и форму превью расписаний.
+
 - 2026-09-12 — Пакет стабильности и производительности (#134):
   - Изоляция процессов: внешний запуск через spawn в отдельной группе процессов (detached на POSIX) с принудительным завершением всего дерева при аборте/таймауте (-child.pid SIGTERM -> SIGKILL).
   - Concurrency Throttling: безопасный дефолт maxConcurrent = 2 для предотвращения скачков ресурсов.
