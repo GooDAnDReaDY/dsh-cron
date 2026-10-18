@@ -588,6 +588,8 @@ All endpoints are served by the DSH web server under `/dsh-cron/`. Endpoints are
 | `GET` / `POST` | `/dsh-cron/api/tasks` | External token-guarded surface: list / create-or-update (#54) |
 | `GET` / `DELETE` | `/dsh-cron/api/tasks/:id` | External token-guarded surface: read / delete (#54) |
 | `POST` | `/dsh-cron/api/tasks/:id/run` | External token-guarded surface: force a run (#54) |
+| `POST` | `/dsh-cron/webhook/:id` | Incoming webhook trigger: trigger task with HMAC SHA-256 / Bearer token authentication, debouncing and JSON payload prompt interpolation (#348) |
+| `POST` | `/dsh-cron/api/webhook/:id` | External token-guarded incoming webhook trigger (#348) |
 
 ---
 
@@ -618,6 +620,27 @@ Save LLM tokens and API quotas on watcher tasks by dynamically slowing down exec
 ### 📺 Real-Time Streaming Logs via SSE (#336)
 
 Connect to `GET /dsh-cron/tasks/:id/stream` using Server-Sent Events (SSE) to receive live stdout/stderr chunks and execution completion events with an automatic 500-line ring buffer.
+
+### 🪝 Incoming HTTP Webhook Triggers (#348)
+
+Execute tasks instantaneously on external events via incoming HTTP POST requests with enterprise-grade security and dynamic template interpolation:
+
+- **Authentication & Verification**: Supports HMAC SHA-256 signatures (`x-hub-signature-256` or `x-signature-sha256`) using task-level `webhookSecret`, bearer tokens (`x-dsh-cron-webhook-token`, `Authorization: Bearer <token>`, or `?token=<token>`) against task `webhookToken` or master `apiToken`. Fail-closed security rejects unconfigured webhooks.
+- **Deep JSON Payload Interpolation**: Dynamic prompt variables resolve incoming payload fields using dot notation (`{webhook.body.repository.full_name}`, `{webhook.headers.x_github_event}`, `{webhook.query.ref}`, `{webhook.body}`).
+- **Script Environment Injection**: Script and shell tasks automatically receive the raw request body and headers in `DSH_CRON_WEBHOOK_BODY` and `DSH_CRON_WEBHOOK_HEADERS`.
+- **Anti-Spam Debouncing**: Configurable per-task `webhookDebounceMs` (default 500ms) guarantees protection against webhook storms and burst duplicate executions.
+
+### 🗣️ Multi-Lingual Natural Language Scheduling (#349)
+
+Define schedules naturally in conversation, tool calls, and API inputs in English and Russian without wrestling with cron syntax:
+
+- **Intervals**: `"every 15 minutes"`, `"каждые 30 минут"`, `"every 2 hours"`, `"каждые 4 часа"`.
+- **Daily & Time-of-Day**: `"every day at 9:00"`, `"каждый день в 18:30"`, `"every morning at 8am"`, `"каждый вечер в 21:00"`, `"at midnight"`, `"в полночь"`, `"at noon"`, `"в полдень"`.
+- **Weekdays & Weekends**: `"every weekday at 9:00"`, `"по будням в 10:00"`, `"on weekends at noon"`, `"по выходным в 12:00"`.
+- **Days of the Week**: `"every Monday at 10am"`, `"каждую пятницу в 17:00"`, `"every Tuesday and Thursday at 14:00"`.
+- **Relative One-Shots**: `"in 15 minutes"`, `"через 2 часа"`, `"in 3 days at 10:00"`, `"через 30 минут"`.
+
+The dedicated parser (`lib/nl-schedule.js`) translates expressions into strict Croner expressions or deterministic one-shot execution timestamps seamlessly.
 
 ---
 
