@@ -609,7 +609,7 @@ Save LLM tokens and API quotas on watcher tasks by dynamically slowing down exec
 
 ### 🔄 Session Resumption & GUI Session Naming (#346, GH #9, #354, GH #10, Added in v0.3.8, Patched in v0.3.9)
 
-- **HTTP API `sessionTitle` Persistence (v0.3.9, #354, GH #10, PR #11)**: Tasks created or updated via HTTP endpoints (`POST /dsh-cron/tasks` and `POST /dsh-cron/api/tasks`) now reliably forward and persist `sessionTitle` into the task store and runner, mirroring the agent-tool (`cron_create_task`) and PATCH pathways.
+- **HTTP API `sessionTitle` Persistence (v0.3.10, #354, GH #10, PR #11)**: Tasks created or updated via HTTP endpoints (`POST /dsh-cron/tasks` and `POST /dsh-cron/api/tasks`) now reliably forward and persist `sessionTitle` into the task store and runner, mirroring the agent-tool (`cron_create_task`) and PATCH pathways.
 
 - **Universal Host Resumption (`resumeSessionId`)**: DeepSeek Harness host `0.2.0-rc.2+` specifies `readonly resumeSessionId: SessionId` on `agents.resume()`. The runner now passes both `resumeSessionId` and `sessionId`, guaranteeing seamless session resumption across all DSH core versions without falling back to recreating sessions that already exist.
 - **Enhanced Diagnostics on Failure**: When an existing session cannot be resumed, `dsh-cron` logs an actionable warning and, if recreating the session fails, surfaces the underlying resume error in the task run output.

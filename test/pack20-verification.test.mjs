@@ -336,11 +336,11 @@ test('Pack 20 verification suite: #327 (FS Watcher trigger) & #335 (Dynamic cred
     assert.ok(pkg.version >= '0.3.1', 'package.json version is >= 0.3.1');
 
     const indexMd = fs.readFileSync(path.join(repoRoot, 'index.md'), 'utf8');
-    assert.match(indexMd, /версия `0\.3\.[1-9]`/, 'index.md states version');
+    assert.match(indexMd, /версия `0\.3\.[0-9]+`/, 'index.md states version');
     assert.match(indexMd, /0\.3\.[01]/, 'index.md states previous version');
 
     const agentsMd = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-    assert.match(agentsMd, /релиз `0\.3\.[1-9]`/, 'AGENTS.md states current release');
+    assert.match(agentsMd, /релиз `0\.3\.[0-9]+`/, 'AGENTS.md states current release');
     assert.match(agentsMd, /0\.3\.[01]/, 'AGENTS.md states previous release');
 
     const changelog = fs.readFileSync(path.join(repoRoot, 'CHANGELOG.md'), 'utf8');
