@@ -84,7 +84,7 @@ test('GH #8 / Gitea #343: Client runtime ReferenceError verification suite', asy
       end: (data) => { responseBody = JSON.parse(data); },
       setHeader: () => {}
     };
-    const req = { method: 'GET', headers: {} };
+    const req = { method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } };
     const url = new URL('http://localhost/dsh-cron/schedule/timeline-24h?hours=12');
 
     await handleScheduleTimeline({ req, res, url, store, scheduler: {} });

@@ -328,7 +328,7 @@ test('Issue #235: loader/volatile-update updates active scheduler settings and s
     llmActionsEnabled: true,
   });
 
-  const req = { method: 'GET' };
+  const req = { method: 'GET', socket: { remoteAddress: '127.0.0.1' } };
   const res = createMockRes();
   settingsRoute.handler(req, res);
   assert.equal(res.statusCode, 200);

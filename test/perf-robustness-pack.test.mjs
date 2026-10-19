@@ -115,7 +115,7 @@ test('#134 Area 4: ETag and 304 Not Modified support on /tasks', async (t) => {
 
   // First request without ETag
   const res1 = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: {} }, res1);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res1);
   assert.equal(res1.statusCode, 200);
   const etag = res1.headers['etag'];
   assert.ok(etag, 'ETag must be returned');
@@ -123,13 +123,13 @@ test('#134 Area 4: ETag and 304 Not Modified support on /tasks', async (t) => {
 
   // Second request with If-None-Match matching etag
   const res2 = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: { 'if-none-match': etag } }, res2);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: { 'if-none-match': etag }, socket: { remoteAddress: '127.0.0.1' } }, res2);
   assert.equal(res2.statusCode, 304);
   assert.equal(res2.payload, null, '304 must not send body');
 
   // Request with mismatched etag returns 200
   const res3 = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: { 'if-none-match': 'W/"stale123"' } }, res3);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: { 'if-none-match': 'W/"stale123"' }, socket: { remoteAddress: '127.0.0.1' } }, res3);
   assert.equal(res3.statusCode, 200);
   assert.equal(res3.payload.tasks.length, 1);
 });

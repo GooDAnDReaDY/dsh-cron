@@ -10,6 +10,7 @@ import {
 
 function mockReq(chunks) {
   const req = new EventEmitter();
+  req.socket = { remoteAddress: '127.0.0.1' };
   process.nextTick(() => {
     for (const chunk of chunks) req.emit('data', chunk);
     req.emit('end');

@@ -18,6 +18,7 @@ import {
 
 function mockReq(chunks) {
   const req = new EventEmitter();
+  req.socket = { remoteAddress: '127.0.0.1' };
   process.nextTick(() => {
     for (const chunk of chunks) req.emit('data', chunk);
     req.emit('end');
@@ -59,7 +60,7 @@ test('POST run on a missing task id answers 404 (#97 follow-up)', async (t) => {
   const { store, scheduler } = makeEnv(t);
   const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
   const res = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_missing/run', headers: {} }, res);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_missing/run', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
   assert.equal(res.statusCode, 404);
   assert.equal(res.payload.ok, false);
   assert.equal(res.payload.error, 'Task not found');
@@ -69,7 +70,7 @@ test('createCronApiHandler collection endpoints keep working', async (t) => {
   const { store, scheduler } = makeEnv(t);
   const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
   const res = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/tasks', headers: {} }, res);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.ok, true);
   assert.deepEqual(res.payload.tasks, []);

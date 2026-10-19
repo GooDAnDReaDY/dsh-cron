@@ -66,7 +66,7 @@ test('updater: registerPluginUpdater registers GET and POST handlers and rejects
     end: (body) => { resBody = body; }
   };
 
-  await registeredRoute.handler({ method: 'GET' }, mockRes);
+  await registeredRoute.handler({ method: 'GET', socket: { remoteAddress: '127.0.0.1' } }, mockRes);
   assert.equal(resStatus, 200);
   const statusData = JSON.parse(resBody);
   assert.equal(statusData.packageName, '@goodandready/dsh-cron');

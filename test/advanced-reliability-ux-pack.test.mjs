@@ -42,7 +42,7 @@ test('1. Heartbeat monitoring: recording pings and detecting missed deadlines', 
       writeHead: (code) => { statusCode = code; },
       end: (data) => { resBody = JSON.parse(data || '{}'); },
     };
-    handleHeartbeatPing({ store, req: { method: 'POST' }, res, taskId: 'cron_heartbeat_1' });
+    handleHeartbeatPing({ store, req: { method: 'POST', socket: { remoteAddress: '127.0.0.1' } }, res, taskId: 'cron_heartbeat_1' });
     assert.equal(statusCode, 200);
     assert.equal(resBody.ok, true);
     assert.equal(resBody.taskId, 'cron_heartbeat_1');
@@ -189,7 +189,7 @@ test('3. Dry-Run execution: runs without recording history or sending notificati
       writeHead: (code) => { resCode = code; },
       end: (data) => { resData = JSON.parse(data || '{}'); },
     };
-    await handleDryRunTask({ store, scheduler, req: { method: 'POST' }, res, id: 'cron_dryrun_test' });
+    await handleDryRunTask({ store, scheduler, req: { method: 'POST', socket: { remoteAddress: '127.0.0.1' } }, res, id: 'cron_dryrun_test' });
     assert.equal(resCode, 200);
     assert.equal(resData.dryRun, true);
     assert.equal(resData.output, 'computed result: 42');

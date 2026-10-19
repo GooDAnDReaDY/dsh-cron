@@ -10,6 +10,7 @@ import { createCronApiHandler, buildDuplicateTask, buildTaskExport, validateImpo
 
 function mockReq(chunks) {
   const req = new EventEmitter();
+  req.socket = { remoteAddress: '127.0.0.1' };
   process.nextTick(() => {
     for (const chunk of chunks) req.emit('data', chunk);
     req.emit('end');
@@ -131,7 +132,7 @@ test('#41: POST duplicate creates a paused copy with empty history and leaves th
   const beforeCopy = { ...store.get('cron_orig') };
 
   const res = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_orig/duplicate', headers: {} }, res);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_orig/duplicate', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.ok, true);
@@ -158,7 +159,7 @@ test('#41: duplicating a missing task answers 404', async (t) => {
   const { store, scheduler } = makeEnv(t);
   const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
   const res = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_nope/duplicate', headers: {} }, res);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_nope/duplicate', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
   assert.equal(res.statusCode, 404);
   assert.equal(res.payload.error, 'Task not found');
 });
@@ -257,7 +258,7 @@ test('#42: export and import round-trip through the API', async (t) => {
   store.recordRun('cron_a', { at: Date.now(), status: 'success', durationMs: 5, output: 'ok' });
 
   const exportRes = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/tasks/export', headers: {} }, exportRes);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks/export', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, exportRes);
   assert.equal(exportRes.statusCode, 200);
   assert.equal(exportRes.payload.count, 1);
   const document_ = exportRes.payload.document;
@@ -440,14 +441,14 @@ test('#97: the item routes keep their contracts after the handler split', async 
 
   // GET list
   const listRes = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: {} }, listRes);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks?status=all', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, listRes);
   assert.equal(listRes.statusCode, 200);
   assert.equal(listRes.payload.tasks.length, 1);
   assert.equal(listRes.payload.tasks[0].running, false);
 
   // GET history
   const histRes = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/tasks/cron_a/history', headers: {} }, histRes);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks/cron_a/history', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, histRes);
   assert.equal(histRes.statusCode, 200);
   assert.deepEqual(histRes.payload.history, []);
 
@@ -463,14 +464,14 @@ test('#97: the item routes keep their contracts after the handler split', async 
 
   // DELETE removes it and disarms
   const delRes = mockRes();
-  await handler({ method: 'DELETE', url: '/dsh-cron/tasks/cron_a', headers: {} }, delRes);
+  await handler({ method: 'DELETE', url: '/dsh-cron/tasks/cron_a', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, delRes);
   assert.equal(delRes.statusCode, 200);
   assert.equal(store.get('cron_a'), undefined);
   assert.equal(scheduler.jobs.has('cron_a'), false);
 
   // Unknown action falls through to 405
   const unknownRes = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_x/nonsense', headers: {} }, unknownRes);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_x/nonsense', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, unknownRes);
   assert.equal(unknownRes.statusCode, 405);
   assert.equal(unknownRes.payload.error, 'Method not allowed');
 });

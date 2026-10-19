@@ -127,7 +127,7 @@ test('Issue #235: syncVolatileConfig handles array of changed paths from cordis-
   bus.emit('loader/volatile-update', ['maxConcurrent', 'defaultTimezone']);
 
   const res = createMockRes();
-  settingsRoute.handler({ method: 'GET' }, res);
+  settingsRoute.handler({ method: 'GET', socket: { remoteAddress: '127.0.0.1' } }, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.settings.maxConcurrent, 8);

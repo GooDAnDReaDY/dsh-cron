@@ -242,6 +242,7 @@ test('Issue #234: API returns 400 Bad Request on every 90m without saving active
   const mockReq = {
     method: 'POST',
     url: '/dsh-cron/tasks',
+    socket: { remoteAddress: '127.0.0.1' },
     headers: {
       host: '127.0.0.1:3000',
       origin: 'http://127.0.0.1:3000',

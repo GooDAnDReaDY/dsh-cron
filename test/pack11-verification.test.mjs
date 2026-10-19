@@ -78,7 +78,7 @@ test('Pack 11 verification suite: native Cordis, polling abort, store yield, doc
 
     let responsePayload = null;
     let responseStatus = 0;
-    const req = { method: 'GET' };
+    const req = { method: 'GET', socket: { remoteAddress: '127.0.0.1' } };
     const res = {
       writeHead: (status) => { responseStatus = status; },
       end: (data) => { responsePayload = JSON.parse(data); }

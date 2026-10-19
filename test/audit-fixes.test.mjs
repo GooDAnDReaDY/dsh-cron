@@ -176,13 +176,13 @@ test('Audit #201: /tasks/export and /tasks/import reject wrong methods with 405,
   };
 
   // POST /dsh-cron/tasks/export must answer 405 Method Not Allowed
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/export', headers: {} }, mockRes);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/export', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, mockRes);
   assert.equal(status, 405);
   assert.equal(bodyData?.ok, false);
   assert.equal(bodyData?.error, 'Method not allowed');
 
   // GET /dsh-cron/tasks/import must answer 405 Method Not Allowed
-  await handler({ method: 'GET', url: '/dsh-cron/tasks/import', headers: {} }, mockRes);
+  await handler({ method: 'GET', url: '/dsh-cron/tasks/import', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, mockRes);
   assert.equal(status, 405);
   assert.equal(bodyData?.ok, false);
   assert.equal(bodyData?.error, 'Method not allowed');

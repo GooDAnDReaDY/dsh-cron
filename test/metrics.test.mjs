@@ -70,7 +70,7 @@ test('#53: the endpoint answers GET and refuses writes', async (t) => {
   const handler = createMetricsHandler({ store, scheduler });
 
   const ok = mockRes();
-  await handler({ method: 'GET', url: '/dsh-cron/metrics', headers: {} }, ok);
+  await handler({ method: 'GET', url: '/dsh-cron/metrics', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, ok);
   assert.equal(ok.statusCode, 200);
   assert.equal(ok.headers['Content-Type'], METRICS_CONTENT_TYPE);
   assert.ok(ok.body.includes('dsh_cron_tasks_total{status=' + Q + 'active' + Q + '} 1'));
@@ -78,11 +78,11 @@ test('#53: the endpoint answers GET and refuses writes', async (t) => {
   assert.ok(!ok.body.includes('echo g'), 'run output and prompts never reach the metrics');
 
   const denied = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/metrics', headers: {} }, denied);
+  await handler({ method: 'POST', url: '/dsh-cron/metrics', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, denied);
   assert.equal(denied.statusCode, 405);
 
   const head = mockRes();
-  await handler({ method: 'HEAD', url: '/dsh-cron/metrics', headers: {} }, head);
+  await handler({ method: 'HEAD', url: '/dsh-cron/metrics', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, head);
   assert.equal(head.statusCode, 200);
   assert.equal(head.body, null, 'HEAD answers without a body');
 });
