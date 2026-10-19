@@ -148,6 +148,10 @@
   2. Декларативные валидаторы результатов (#316): поле `validators` (`json`, `regex`, `text`, `exitCode`, `file`) без динамического eval. При непрохождении валидатора запуск переходит в статус `validation_failed`, подавляются цепочки `onSuccess`, инициируются `onFailure` и отправляются уведомления при `onlyOnFailure`.
   3. Карточка запуска и этапы (#315): история запусков расширена стабильным `runId`, этапами `stages` (`queue`, `preflight`, `execution`, `validation`, `delivery`), `stoppedReason`, классификацией `cost` (`amount`, `currency`, `kind`) и отвязанным статусом доставки `delivery`. Реализован эндпоинт `POST /dsh-cron/tasks/:id/retry-delivery` для повторной отправки уведомлений без повторного выполнения тела задачи.
 
+- 2026-10-19 — Решающие узлы IF/ELSE и автономный Self-Healing Doctor (#352, #353, 0.3.13):
+  - `lib/branching.js`: `evaluateBranchRules`, `evaluateCondition`, `resolveBranchTargets`.
+  - Предотвращение дедлоков в барьерах: невыбранные ветви автоматически получают `skipped: condition not met`.
+  - `lib/doctor.js`: 8 категорий сбоев, diff, 1-Click apply/revert, авто-лечение с 24h rate limit и хранением 10 ревизий.
 - 2026-10-19 — Усиление аутентификации API и устранение утечки Webhook-токенов (#357, #358, 0.3.12):
   1. Fail-closed аутентификация API и устранение обхода авторизации (#357):
      - В `lib/http-utils.js` добавлена интеграция с сервисом соединений DSH `ctx.connection.requestRejection(req)`: запросы активной браузерной сессии DSH и авторизованные Peer-клиенты допускаются штатно.
