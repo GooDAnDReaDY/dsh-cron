@@ -90,6 +90,18 @@ graph TD
 
 ## ✨ Features & Capabilities
 
+### 🐝 Swarm Delegation & Parallel Multi-Agent Execution (#350)
+- **Controlled Worker Pool**: Configure `concurrencyLimit` (1..10, default 3) to execute independent subtasks in parallel without overloading system resources.
+- **Fault-Tolerant Decomposition**: Subtask failures are isolated; the swarm aggregates all successful results and flags partial errors gracefully.
+- **Automated Synthesis**: Aggregates worker outputs into a structured Markdown digest or delegates synthesis to a designated synthesizer model.
+- **Swarm Metrics & History**: Run history records total, succeeded, failed counts, and duration alongside detailed per-worker execution logs.
+
+### 🔍 Git Diff & Interactive Patch Review (#351)
+- **Automatic Diff Capture**: Tasks running in Git worktrees capture modified files, stat summary, and unified diffs (up to 256 KiB) automatically.
+- **1-Click Discard**: Revert uncommitted working directory changes safely with a single click (`git reset --hard HEAD && git clean -fd`).
+- **1-Click Apply**: Re-apply previously captured diffs directly to the repository (`git apply --whitespace=fix`).
+- **Interactive Run Preview**: Color-coded diff inspector embedded directly into the execution history drawer.
+
 ### 🔀 Decision Nodes & Conditional IF/ELSE Branching (#352)
 - **Conditional Routing**: Tasks can define `branchRules` evaluating execution outcomes (`exitCode`, `output`, `output.json.<path>`, `status`) with operators (`equals`, `notequals`, `contains`, `gt`, `gte`, `lt`, `lte`, `regex`, `exists`).
 - **Fallback Else**: Optional `elseTask` triggers when no branch condition matches.

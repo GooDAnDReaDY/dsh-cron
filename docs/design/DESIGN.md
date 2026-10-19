@@ -148,6 +148,17 @@
   2. Декларативные валидаторы результатов (#316): поле `validators` (`json`, `regex`, `text`, `exitCode`, `file`) без динамического eval. При непрохождении валидатора запуск переходит в статус `validation_failed`, подавляются цепочки `onSuccess`, инициируются `onFailure` и отправляются уведомления при `onlyOnFailure`.
   3. Карточка запуска и этапы (#315): история запусков расширена стабильным `runId`, этапами `stages` (`queue`, `preflight`, `execution`, `validation`, `delivery`), `stoppedReason`, классификацией `cost` (`amount`, `currency`, `kind`) и отвязанным статусом доставки `delivery`. Реализован эндпоинт `POST /dsh-cron/tasks/:id/retry-delivery` для повторной отправки уведомлений без повторного выполнения тела задачи.
 
+- 2026-10-19 — Роевая декомпозиция Swarm Delegation и ревью Git Diff патчей (#350, #351, 0.3.14):
+  1. Роевая декомпозиция задач (#350):
+     - Модуль `lib/swarm.js`: класс/методы `sanitizeSwarmConfig`, `executeWorkerPool`, `synthesizeSwarmResults`, `executeSwarmTask`.
+     - Тип задачи `type: 'swarm'`, параллельное выполнение подзадач с пулом воркеров (`concurrencyLimit` 1..10, по умолчанию 3).
+     - Отказоустойчивость: падение отдельного воркера изолировано, рой собирает успешные результаты, формируя итоговый статус.
+     - Сохранение метрик роя в `run.swarmStats` (`total`, `succeeded`, `failed`, `durationMs`) и результатов каждого воркера в `run.subtaskRuns`.
+  2. Инспекция Git Diff и интерактивное подтверждение патчей (#351):
+     - Модуль `lib/git-diff.js`: методы `isGitRepository`, `parsePorcelainStatus`, `parseGitStatSummary`, `captureGitDiff`, `discardGitChanges`, `applyGitDiff`.
+     - Автоматический сбор `git status`, `git diff --stat` и унифицированного диффа (с лимитом 256 KiB) после выполнения задач с Git-директорией.
+     - Эндпоинты `/dsh-cron/tasks/:id/git-diff`, `/git-diff/discard`, `/git-diff/apply`.
+     - Интерактивный компонент в истории запусков UI с кнопками 1-Click Discard и Apply.
 - 2026-10-19 — Решающие узлы IF/ELSE и автономный Self-Healing Doctor (#352, #353, 0.3.13):
   - `lib/branching.js`: `evaluateBranchRules`, `evaluateCondition`, `resolveBranchTargets`.
   - Предотвращение дедлоков в барьерах: невыбранные ветви автоматически получают `skipped: condition not met`.
