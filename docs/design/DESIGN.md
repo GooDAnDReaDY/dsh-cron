@@ -5,6 +5,30 @@
 - Аудитория: Пользователи и операторы DeepSeek Harness, автоматизирующие периодические процессы (утренние сводки, проверка тикетов, мониторинг серверов).
 - Статус: Active, публичный npm-пакет @goodandready/dsh-cron (линия 0.3.x).
 
+
+### Decision Nodes & Conditional Branching (IF/ELSE) (#352)
+- **Цель**: Поддержка условных развилок в цепочках DAG на основе кода завершения (`exitCode`), содержимого вывода (`output`), JSON-полей (`output.json.field`), ошибок (`error`) или статуса предыдущей задачи.
+- **Модель данных задачи**:
+  - `branchRules`: массив правил `[{ field, operator, value, targetTask, label }]`. Поддерживаемые операторы: `equals` (`==`), `notequals` (`!=`), `contains`, `notcontains`, `gt` (`>`), `gte` (`>=`), `lt` (`<`), `lte` (`<=`), `regex`, `exists`, `notexists`.
+  - `elseTask`: строковый ID резервной задачи, запускаемой при отсутствии совпадений в `branchRules`.
+- **DAG валидация и топология**: `getTaskOutgoingTargets` собирает цели из `branchRules` и `elseTask`; `validateDAG` проверяет отсутствие циклов; `topologicalSort` упорядочивает дерево с учётом развилок.
+- **Предотвращение взаимных блокировок (Deadlock Prevention)**: В `scheduler-execution.js` при выполнении развилки все невыбранные альтернативные ветви автоматически помечаются как `skipped` с причиной `'condition not met'` в `chainCheckpointManager`, гарантируя разблокировку барьеров объединения (`joinPolicy: 'all_success'`).
+- **Визуализация в графе**: Билдер `buildTaskGraphModel` помечает узел бейджем `decision` и количеством правил, рендерит ветки с условиями `[if: field op value]` и `[else]`.
+
+### Autonomous Self-Healing Doctor (#353)
+- **Цель**: Автономная диагностика сбоев и 1-Click исправление/откат скриптов, команд и промптов без ручного разбора логов.
+- **Классификация сбоев**: `classifyFailure` автоматически распознаёт категории: `syntax_error`, `dependency_missing`, `rate_limit`, `auth_failed`, `schema_change`, `timeout`, `network_error`, `runtime_error`.
+- **Генерация Diff и предложений**: `generateUnifiedDiff` строит унифицированный git-подобный diff изменений.
+- **Безопасность и Guardrails**:
+  - `autoHeal` / `selfHealing.autoApply`: автоматическое применение патча только при высокой уверенности модели (`confidence: 'high'`).
+  - Ограничение частоты: не чаще 1 раза в 24 часа (`lastPatchedAt`) для предотвращения зацикливания автопочинки.
+  - Сохранение истории ревизий: до 10 снимков (`task.revisions`), `task.previousPrompt` для мгновенного отката (`revertDoctorFix`).
+- **API**:
+  - `GET /dsh-cron/tasks/:id/doctor` — текущий отчет диагностики, история ревизий и предыдущий код.
+  - `POST /dsh-cron/tasks/:id/doctor/apply` — 1-Click применение исправления с сохранением ревизии.
+  - `POST /dsh-cron/tasks/:id/doctor/revert` — 1-Click откат к предыдущей рабочей версии.
+  - `POST /dsh-cron/tasks/:id/doctor/diagnose` — принудительный запуск диагностики сбоя.
+
 ## User Surfaces
 - Web/UI:
   - Экран «Запланированные задачи» (полноэкранный оверлей в центральной колонке интерфейса DSH, аналогично dsh-kanban).
