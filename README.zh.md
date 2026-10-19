@@ -574,6 +574,17 @@ dsh-cron:
 
 ---
 
+### 32. 入站 HTTP Webhook 与接口鉴权加固 (v0.3.12, #348, #357, #358)
+
+- **入站 HTTP Webhook 触发器 (`/dsh-cron/webhook/:id`)**：外部事件（GitHub、Gitea、CI/CD 及第三方服务）实时触发任务执行。
+  - **安全鉴权**：支持基于任务级 `webhookSecret` 的 HMAC SHA-256 签名（`x-hub-signature-256`、`x-signature-sha256`）、任务级 `webhookToken`（仅限标头：`x-dsh-cron-webhook-token`、`x-webhook-token`、`Authorization: Bearer`）以及全局 `apiToken` 鉴权。严格禁止从 URL 查询参数（`?token=`）传递令牌以防止日志泄露（#358）。
+  - **深度 JSON 负载插值**：提示词中通过 `{webhook.body.path.to.key}`、`{webhook.headers.key}`、`{webhook.query.param}` 及 `{webhook.body}` 自动解构提取入站数据。
+  - **环境注入**：脚本与 shell 任务自动注入 `DSH_CRON_WEBHOOK_BODY` 和 `DSH_CRON_WEBHOOK_HEADERS` 环境变量。
+  - **防抖保护**：可配置 `webhookDebounceMs`（默认 500ms）有效防止 Webhook 事件风暴与瞬态重复触发。
+- **Fail-Closed 接口鉴权与 RCE 防御（#357）**：所有 REST 端点通过 DSH `ctx.connection.requestRejection(req)` 校验会话权限，并对无有效令牌及非本地回环地址的请求实行 Fail-closed 严格拦截（401/403），杜绝未授权远程任务创建与代码执行。
+
+---
+
 ## 🧪 测试与预检门禁 (Preflight)
 
 运行全套自动化测试（调度表达式解析、调度器引擎、原子存储、HTTP 辅助函数、通知与工具契约）：
