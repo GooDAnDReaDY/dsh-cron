@@ -1,3 +1,18 @@
+## 0.3.13 (2026-10-19)
+
+- **feat(dag)**: условные развилки и решающие узлы IF/ELSE в цепочках задач (Decision Nodes) (#352).
+  - Поддержка конфигурации `branchRules` (field, operator, value, targetTask) и резервной ветки `elseTask`.
+  - Операторы: `equals`, `notequals`, `contains`, `notcontains`, `gt`, `gte`, `lt`, `lte`, `regex`, `exists`, `notexists`.
+  - Поддержка вложенных путей контекста и JSON extraction (`output.json.severity`, `exitCode`, `error`).
+  - Интеграция в планировщик с автоматической маркировкой невыбранных веток как `skipped: condition not met` для предотвращения дедлоков в барьерах синхронизации.
+  - Проверка циклов в `validateDAG` и отображение условий на рёбрах в DAG Graph View.
+- **feat(runner)**: автономная диагностика и авто-починка скриптов и промптов (Self-Healing Doctor) (#353).
+  - Автоматическая классификация сбоев: `syntax_error`, `dependency_missing`, `rate_limit`, `auth_failed`, `schema_change`, `timeout`, `network_error`, `runtime_error`.
+  - Генерация унифицированных Git-диффов изменений кода и рекомендаций по исправлению.
+  - Эндпоинты `/dsh-cron/tasks/:id/doctor` (GET), `/doctor/apply` (POST), `/doctor/revert` (POST), `/doctor/diagnose` (POST).
+  - Безопасное авто-лечение (`autoHeal: true`) с ограничением 1 патч в 24 часа и требованием `confidence: 'high'`.
+  - Ведение до 10 ревизий кода задачи (`task.revisions`) с возможностью 1-Click отката (`revertDoctorFix`).
+
 ## 0.3.12 (2026-10-19)
 
 - **fix(security)**: устранение обхода аутентификации API при отсутствии `socket.remoteAddress` на обёрнутых DSH-запросах, внедрение обязательной проверки DSH `ctx.connection.requestRejection(req)`, fail-closed отклонение неавторизованных удалённых запросов (401/403) для предотвращения несанкционированного доступа к задачам и удалённого выполнения кода (RCE) (#357).

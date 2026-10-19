@@ -90,6 +90,18 @@ graph TD
 
 ## ✨ Features & Capabilities
 
+### 🔀 Decision Nodes & Conditional IF/ELSE Branching (#352)
+- **Conditional Routing**: Tasks can define `branchRules` evaluating execution outcomes (`exitCode`, `output`, `output.json.<path>`, `status`) with operators (`equals`, `notequals`, `contains`, `gt`, `gte`, `lt`, `lte`, `regex`, `exists`).
+- **Fallback Else**: Optional `elseTask` triggers when no branch condition matches.
+- **Deadlock-Free Synchronization**: Untriggered branch tasks are safely recorded with `status: 'skipped'`, unblocking downstream join barriers (`joinPolicy: 'all_success'`).
+- **Graph Visualization**: DAG Graph View displays decision badges (`🔀 Decision`) and condition labels on connecting edges.
+
+### 🩺 Autonomous Self-Healing Doctor (#353)
+- **Failure Classification**: Automatic detection of 8 failure categories: `syntax_error`, `dependency_missing`, `rate_limit`, `auth_failed`, `schema_change`, `timeout`, `network_error`, `runtime_error`.
+- **Unified Diff**: Clean line-by-line diff preview of proposed fixes before application.
+- **1-Click Apply & Revert**: Dedicated `/doctor/apply` and `/doctor/revert` endpoints with full revision backup (up to 10 versions preserved in `task.revisions`).
+- **Guarded Autonomous Auto-Healing**: When `autoHeal: true`, high-confidence fixes are applied automatically with a strict 24-hour rate limit to prevent repair loops.
+
 ### 1. Visual Task Manager & Sidebar Action
 Click the clock icon in the DSH sidebar (positioned next to the new-session button) to open the management panel:
 * **Status Filter Tabs**: toggle between **All**, **Active**, **Paused**, and **Completed** tasks.
