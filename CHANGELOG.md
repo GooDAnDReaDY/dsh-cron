@@ -1,3 +1,8 @@
+## 0.3.12 (2026-10-19)
+
+- **fix(security)**: устранение обхода аутентификации API при отсутствии `socket.remoteAddress` на обёрнутых DSH-запросах, внедрение обязательной проверки DSH `ctx.connection.requestRejection(req)`, fail-closed отклонение неавторизованных удалённых запросов (401/403) для предотвращения несанкционированного доступа к задачам и удалённого выполнения кода (RCE) (#357).
+- **fix(security)**: исключение приёма токенов вебхуков и мастер-токена `apiToken` из URL query-параметров (`?token=`), строгий приём токенов только через защищённые заголовки (`x-dsh-cron-webhook-token`, `x-webhook-token`, `Authorization: Bearer <token>`) для предотвращения утечки учётных данных в логи прокси и историю браузера (#358).
+
 ## 0.3.11 (2026-10-18)
 
 - **feat(triggers)**: входящие HTTP Webhook триггеры с подстановкой JSON payload в переменные промпта и переменные окружения (`DSH_CRON_WEBHOOK_BODY`, `DSH_CRON_WEBHOOK_HEADERS`), поддержка проверки подписи HMAC SHA-256 (`x-hub-signature-256`, `x-signature-sha256`) и авторизации по токену (`x-dsh-cron-webhook-token`, Bearer), дебаунс (`webhookDebounceMs`) и защита секретов (#348).

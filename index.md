@@ -8,7 +8,7 @@
   python, http, ssh, docker, env и worktree; отчёты о запусках в Telegram,
   dsh-kanban, Discord, Slack, ntfy, Bark, PushPlus, dsh-tts и Gitea;
   учёт токенов и стоимости.
-- **Пакет**: `@goodandready/dsh-cron`, версия `0.3.11` (см. `package.json`).
+- **Пакет**: `@goodandready/dsh-cron`, версия `0.3.12` (см. `package.json`).
 - **Статус**: active, текущий релиз `0.3.1` — файловый триггер (FS Watcher) (#327), динамическое разрешение учетных данных credential://... (#335). Предыдущий релиз `0.3.0` (PR #326), `0.2.52`, `0.2.51`. 455+ тестов, CI preflight PASS, deploy.sh verify PASS.
 - **Предыдущий релиз**: `0.2.52` выпущен 2026-10-11 (PR #325);
 - **Предыдущий релиз**: `0.2.51` выпущен 2026-10-11 (PR #324); `0.2.50` выпущен 2026-10-08 (PR #314); `0.2.49` выпущен 2026-10-06 (PR #311);
