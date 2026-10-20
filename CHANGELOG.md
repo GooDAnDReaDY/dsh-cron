@@ -1,3 +1,11 @@
+## 0.3.15 (2026-10-20)
+
+- **fix(runner)**: корректное разрешение `workspaceId` через службу хоста `workspaceRegistry` DeepSeek Harness (#363, GH #12).
+  - Внедрение сервиса `'workspaceRegistry'` в список `inject` плагина в `lib/index.js` для легитимного доступа в контексте Cordis.
+  - Исправление резолвера `resolveCwd` в `lib/runner-worktree.js`: обращение к `ctx.workspaceRegistry` / `ctx.get('workspaceRegistry')` с извлечением `.path` сущности `Workspace`.
+  - Поддержка разрешения по пути через `registry.list()` и fallback на существующую директорию на диске при передаче абсолютного пути ("Workspace id or path").
+  - Сохранение обратной совместимости с `workspaces` и строгой fail-closed семантики (#231).
+
 ## 0.3.14 (2026-10-19)
 
 - **feat(runner)**: параллельный мультиагентный запуск задач и роевая декомпозиция (Swarm Delegation) (#350).

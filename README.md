@@ -205,7 +205,7 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 * **SSH** (`ssh`) — execute a command on a remote host through a `dsh-remote-workspace` profile (`sshProfileId`) or standalone host/key fields.
 * **Docker** (`docker`) — run the command in a container image (`dockerImage`).
 * **Environment variables** — a per-task `env` map (KEY VALUE per line in the UI) applied to external runtimes; secrets do not belong here.
-* **Workspaces and worktrees** — bind a task to a harness workspace (`workspaceId`) and, for code-modifying agent tasks, run it in an isolated git worktree (`worktree`, `keepWorktree`).
+* **Workspaces and worktrees** — bind a task to a harness workspace (`workspaceId`, resolved through host `workspaceRegistry`) or path, and run code-modifying agent tasks in an isolated git worktree (`worktree`, `keepWorktree`).
 
 ### 7. Cost Control: Fallback Model & Burn Guard
 * **Fallback Model** — A task can run on the cheap model by default and still finish on the strong one: set `fallbackModel` (and optionally `fallbackProvider`) and a failed run — `error` or `timeout` — is retried **once** on that model before the ordinary retry backoff applies. History records which model produced the result and whether the fallback was used, usage and cost of both attempts are summed, and the `{model}` template variable renders the model that finished the run. Only agent-mediated tasks (`llm`, `skill`, `workflow`) can use a fallback.
