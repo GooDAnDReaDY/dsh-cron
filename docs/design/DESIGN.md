@@ -148,6 +148,11 @@
   2. Декларативные валидаторы результатов (#316): поле `validators` (`json`, `regex`, `text`, `exitCode`, `file`) без динамического eval. При непрохождении валидатора запуск переходит в статус `validation_failed`, подавляются цепочки `onSuccess`, инициируются `onFailure` и отправляются уведомления при `onlyOnFailure`.
   3. Карточка запуска и этапы (#315): история запусков расширена стабильным `runId`, этапами `stages` (`queue`, `preflight`, `execution`, `validation`, `delivery`), `stoppedReason`, классификацией `cost` (`amount`, `currency`, `kind`) и отвязанным статусом доставки `delivery`. Реализован эндпоинт `POST /dsh-cron/tasks/:id/retry-delivery` для повторной отправки уведомлений без повторного выполнения тела задачи.
 
+- 2026-10-20 — Разрешение workspaceId через хост-сервис workspaceRegistry (#363, GH #12, 0.3.15):
+  1. Внедрение сервиса `workspaceRegistry` в `export const inject` плагина (`lib/index.js`).
+  2. Разрешение путей рабочих пространств в `lib/runner-worktree.js`: обращение к `ctx.workspaceRegistry` / `ctx.get('workspaceRegistry')` с извлечением `.path`.
+  3. Поддержка поиска по путям в `registry.list()` и fallback на существующую директорию на диске при передаче абсолютного пути.
+  4. Сохранение обратной совместимости с `workspaces` и строгой fail-closed семантики (#231).
 - 2026-10-19 — Роевая декомпозиция Swarm Delegation и ревью Git Diff патчей (#350, #351, 0.3.14):
   1. Роевая декомпозиция задач (#350):
      - Модуль `lib/swarm.js`: класс/методы `sanitizeSwarmConfig`, `executeWorkerPool`, `synthesizeSwarmResults`, `executeSwarmTask`.
