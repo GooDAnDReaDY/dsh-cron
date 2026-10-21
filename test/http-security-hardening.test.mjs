@@ -5,6 +5,8 @@ import {
   isTrustedRequest,
   isCrossOrigin,
   rejectCrossOrigin,
+  getConnection,
+  getDshConnection,
   redactTaskSecrets,
   restoreTaskSecrets,
   REDACTED_SECRET,
@@ -368,4 +370,59 @@ test('HTTP Security Hardening (#86): createCronApiHandler protects GET tasks and
   assert.equal(stored.env.DB_PASS, 'top-secret');
   assert.equal(stored.httpHeaders.Authorization, 'Bearer secret-auth');
   assert.equal(stored.httpBody, 'confidential payload');
+});
+
+
+test('Issue #366 (GH #13): getConnection safely degrades when host context throws without inject', () => {
+  // Simulate Cordis Context proxy throwing Error: cannot get property "connection" without inject
+  const cordisHostCtx = new Proxy({}, {
+    get(_target, prop) {
+      if (prop === 'connection') {
+        throw new Error('cannot get property "connection" without inject');
+      }
+      return undefined;
+    },
+  });
+
+  // 1. getConnection returns null instead of throwing
+  assert.equal(getConnection(cordisHostCtx), null);
+  assert.equal(getConnection(null), null);
+  assert.equal(getConnection(undefined), null);
+
+  // 2. getDshConnection returns null instead of throwing
+  assert.equal(getDshConnection(null, { ctx: cordisHostCtx }), null);
+  assert.equal(getDshConnection({ ctx: cordisHostCtx }, {}), null);
+
+  // 3. rejectCrossOrigin does not throw 500 when host ctx is passed
+  const loopbackReq = {
+    method: 'GET',
+    url: '/dsh-cron/tasks',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { host: '127.0.0.1:3080' },
+  };
+  const admittedRes = mockRes();
+  assert.doesNotThrow(() => {
+    const rejected = rejectCrossOrigin(loopbackReq, admittedRes, { ctx: cordisHostCtx });
+    assert.equal(rejected, false);
+  });
+  assert.equal(admittedRes.statusCode, null);
+
+  // 4. Remote untrusted caller is still rejected cleanly without throwing 500
+  const remoteReq = {
+    method: 'GET',
+    url: '/dsh-cron/tasks',
+    socket: { remoteAddress: '203.0.113.10' },
+    headers: { host: 'example.com' },
+  };
+  const rejectedRes = mockRes();
+  assert.doesNotThrow(() => {
+    const rejected = rejectCrossOrigin(remoteReq, rejectedRes, { ctx: cordisHostCtx });
+    assert.equal(rejected, true);
+  });
+  assert.equal(rejectedRes.statusCode, 403);
+
+  // 5. Normal context with connection service continues to work as expected
+  const mockConn = { requestRejection: () => undefined };
+  assert.equal(getConnection({ connection: mockConn }), mockConn);
+  assert.equal(getDshConnection(null, { connection: mockConn }), mockConn);
 });
