@@ -20,12 +20,23 @@ for (const f of files) {
 // Strip JSDoc comment blocks
 out = out.replace(/\/\*\*[\s\S]*?\*\//g, '');
 
-// Alias React.createElement to h across all calls to save ~12 KiB and stay under 256 KiB
-out = out.replace(/\bReact\.createElement\b/g, 'h');
+// Alias React.createElement to _h across all calls to save ~12 KiB and stay under 256 KiB (#368, GH #14)
+// Guard against shadowing _h in client-src callbacks/locals
+const shadowMatch = out.match(/(\((?:[^)]*,\s*)?_h(?:\s*[,)])|\b_h\s*=>|\b(?:const|let|var)\s+_h\b)/);
+if (shadowMatch) {
+  throw new Error("Build error: Identifier '_h' shadows React createElement alias in client-src: " + shadowMatch[0]);
+}
+
+out = out.replace(/\bReact\.createElement\b/g, '_h');
 out = out.replace(
   "const React = window.React || require('react');",
-  "const React = window.React || require('react');\n    const h = (...args) => (React && React.createElement ? React.createElement(...args) : null);"
+  "const React = window.React || require('react');\n    const _h = (...args) => (React && React.createElement ? React.createElement(...args) : null);"
 );
+
+// Verify no callback parameter shadows the _h call
+if (/\((?:[^)]*,\s*)?_?h(?:\s*[,)])\s*=>\s*_?h\(/.test(out)) {
+  throw new Error("Build error: Parameter shadows createElement alias call!");
+}
 
 // Strip standalone single-line comments so bundle stays strictly under 256 KiB limit
 const lines = out.split('\n');

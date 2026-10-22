@@ -137,7 +137,7 @@ test('GH #9: _nameSession assigns sessionTitle via ctx.sessionTitle service', as
   await runner.execute(task2);
   assert.equal(renamedTitle, '[W] 常驻工人');
 
-  // 3. Unnamed task does not rename session
+  // 3. Task without sessionTitle gains <YYYY-MM-DD> <title> (#369, GH #15)
   renamedTitle = null;
   const task3 = {
     id: 'task-gh9-5',
@@ -146,6 +146,19 @@ test('GH #9: _nameSession assigns sessionTitle via ctx.sessionTitle service', as
     type: 'llm',
   };
   await runner.execute(task3);
+  const now = new Date();
+  const nowYmd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  assert.equal(renamedTitle, `${nowYmd} Plain Task`);
+
+  // 4. Truly empty task title does not rename session
+  renamedTitle = null;
+  const task4 = {
+    id: 'task-gh9-6',
+    title: '',
+    prompt: 'hello',
+    type: 'llm',
+  };
+  await runner.execute(task4);
   assert.equal(renamedTitle, null);
 });
 
