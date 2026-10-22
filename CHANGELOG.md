@@ -1,3 +1,17 @@
+## 0.3.19 (2026-10-22)
+
+- **security**: fail-closed защита источников и аутентификация API (#371).
+  - Строгая проверка заголовков `Origin` и `Referer` на всех пишущих маршрутах (`/tasks`, `/action`, `/settings`, `/schedule`, `/chains`, `/runs`, `/chat/start`, `/telegram/test`, `/kanban/test`, `/heartbeat`) и при чтении `/tasks` с внешних/LAN хостов, устраняющая обход авторизации через мост `dsh-lanmode` поверх loopback.
+  - В `/chat/start` неразбираемое тело JSON теперь отвечает `400 Bad Request` вместо 500.
+- **fix(store)**: асинхронный барьер записи на диск `saveAsync` (#372).
+  - Гарантированное ожидание завершения сброса целевой версии на диск через `_waitForDiskVersion` при перебивании отложенным сохранением.
+- **chore(ci)**: добавление `devDependencies` ядра для чистого клонирования и тестирования (#373).
+- **perf(client)**: декомпозиция бандла и контроль размера (#374).
+  - Вынос CSS в `lib/client.css` и словарей локалей в `lib/locales.json`, отдающихся через маршруты `/dsh-cron/client.css` и `/dsh-cron/locales.json`.
+  - Уменьшение размера `lib/client.js` до 214.5 КБ (запас более 47 КиБ до лимита).
+  - Встроенный гейт размера `scripts/check-pack-size.mjs` в `npm test` (FAIL > 262,144 B).
+- **refactor(hygiene)**: удаление мёртвого псевдонима `formatDigestTelegram` и подключение экспортов к продакшн путям (#375).
+
 ## 0.3.15 (2026-10-20)
 
 - **fix(runner)**: корректное разрешение `workspaceId` через службу хоста `workspaceRegistry` DeepSeek Harness (#363, GH #12).
