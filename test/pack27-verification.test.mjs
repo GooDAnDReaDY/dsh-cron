@@ -131,7 +131,7 @@ test('Pack 27 Integration - Swarm Delegation & Git Diff Patch Review (#350, #351
   const discardReq = {
     method: 'POST',
     url: `/dsh-cron/tasks/${codeTask.id}/git-diff/discard`,
-    headers: { host: 'localhost', 'content-type': 'application/json' },
+    headers: { host: 'localhost', origin: 'http://localhost', 'content-type': 'application/json' },
     socket: { remoteAddress: '127.0.0.1' },
     async *[Symbol.asyncIterator]() { yield Buffer.from('{}'); },
   };
@@ -149,7 +149,7 @@ test('Pack 27 Integration - Swarm Delegation & Git Diff Patch Review (#350, #351
   const applyReq = {
     method: 'POST',
     url: `/dsh-cron/tasks/${codeTask.id}/git-diff/apply`,
-    headers: { host: 'localhost', 'content-type': 'application/json' },
+    headers: { host: 'localhost', origin: 'http://localhost', 'content-type': 'application/json' },
     socket: { remoteAddress: '127.0.0.1' },
     async *[Symbol.asyncIterator]() { yield Buffer.from(JSON.stringify({ diff: patchToApply })); },
   };

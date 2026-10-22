@@ -11,6 +11,11 @@ import {
   restoreTaskSecrets,
   REDACTED_SECRET,
 } from '../lib/http-utils.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
+import { TaskStore } from '../lib/store.js';
+import { TaskScheduler } from '../lib/scheduler.js';
 import { handleHeartbeatPing } from '../lib/api-helpers.js';
 import { createCronApiHandler } from '../lib/api.js';
 
@@ -246,7 +251,7 @@ test('HTTP Security Hardening (#86): handleHeartbeatPing enforces POST method an
   const postReq = {
     method: 'POST',
     socket: { remoteAddress: '127.0.0.1' },
-    headers: { host: '127.0.0.1:3080' },
+    headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080' },
   };
   const postRes = mockRes();
   handleHeartbeatPing({ store: mockStore, req: postReq, res: postRes, taskId: 'task-1' });
@@ -350,7 +355,7 @@ test('HTTP Security Hardening (#86): createCronApiHandler protects GET tasks and
     method: 'POST',
     url: '/dsh-cron/tasks',
     remoteAddress: '127.0.0.1',
-    headers: { host: '127.0.0.1:3080', 'content-type': 'application/json' },
+    headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080', 'content-type': 'application/json' },
     body: {
       id: 't-123',
       title: 'Updated Title',
@@ -425,4 +430,120 @@ test('Issue #366 (GH #13): getConnection safely degrades when host context throw
   const mockConn = { requestRejection: () => undefined };
   assert.equal(getConnection({ connection: mockConn }), mockConn);
   assert.equal(getDshConnection(null, { connection: mockConn }), mockConn);
+});
+
+test('Issue #371: mutating requests without Origin/Referer are rejected (fail-closed, 403)', async (t) => {
+  const tmpDir = path.join(os.tmpdir(), `dsh-cron-sec371-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {} });
+  const store = new TaskStore(path.join(tmpDir, 'tasks.json'));
+  const scheduler = new TaskScheduler(store);
+  t.after(() => scheduler.stopAll());
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+
+  // 1. POST /dsh-cron/tasks with loopback socket but NO Origin or Referer -> 403 Forbidden
+  const noOriginReq = mockReq({
+    method: 'POST',
+    url: '/dsh-cron/tasks',
+    remoteAddress: '127.0.0.1',
+    headers: { host: '192.168.1.111:3080', 'content-type': 'application/json' },
+    body: { title: 'Attacker Task', prompt: 'rm -rf /', schedule: '0 0 * * *' },
+  });
+  const noOriginRes = mockRes();
+  await handler(noOriginReq, noOriginRes);
+  assert.equal(noOriginRes.statusCode, 403);
+
+  // 2. POST /dsh-cron/tasks with matching Origin -> admitted (200)
+  const validOriginReq = mockReq({
+    method: 'POST',
+    url: '/dsh-cron/tasks',
+    remoteAddress: '127.0.0.1',
+    headers: {
+      host: '192.168.1.111:3080',
+      origin: 'https://192.168.1.111:3080',
+      'content-type': 'application/json',
+    },
+    body: { title: 'Admitted Task', prompt: 'echo ok', schedule: '0 0 * * *' },
+  });
+  const validOriginRes = mockRes();
+  await handler(validOriginReq, validOriginRes);
+  assert.equal(validOriginRes.statusCode, 200);
+
+  // 3. POST /dsh-cron/tasks with matching Referer -> admitted (200)
+  const validRefererReq = mockReq({
+    method: 'POST',
+    url: '/dsh-cron/tasks',
+    remoteAddress: '127.0.0.1',
+    headers: {
+      host: '192.168.1.111:3080',
+      referer: 'https://192.168.1.111:3080/settings/cron',
+      'content-type': 'application/json',
+    },
+    body: { title: 'Admitted Task 2', prompt: 'echo ok 2', schedule: '0 0 * * *' },
+  });
+  const validRefererRes = mockRes();
+  await handler(validRefererReq, validRefererRes);
+  assert.equal(validRefererRes.statusCode, 200);
+});
+
+test('Issue #371: GET /tasks from LAN/external Host requires browser source (403 without Origin/Referer)', async (t) => {
+  const tmpDir = path.join(os.tmpdir(), `dsh-cron-sec371-get-${Date.now()}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {} });
+  const store = new TaskStore(path.join(tmpDir, 'tasks.json'));
+  const scheduler = new TaskScheduler(store);
+  t.after(() => scheduler.stopAll());
+  store.set({ id: 'secret-t1', title: 'Task with secret prompt', prompt: 'cat /etc/shadow', schedule: '0 0 * * *' });
+  const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
+
+  // 1. GET /dsh-cron/tasks from LAN Host (192.168.1.111:3080) without Origin/Referer -> 403
+  const lanGetReq = mockReq({
+    method: 'GET',
+    url: '/dsh-cron/tasks',
+    remoteAddress: '127.0.0.1', // Bridged via dsh-lanmode
+    headers: { host: '192.168.1.111:3080' },
+  });
+  const lanGetRes = mockRes();
+  await handler(lanGetReq, lanGetRes);
+  assert.equal(lanGetRes.statusCode, 403);
+
+  // 2. GET /dsh-cron/tasks from LAN Host with matching Referer -> admitted (200)
+  const lanBrowserReq = mockReq({
+    method: 'GET',
+    url: '/dsh-cron/tasks',
+    remoteAddress: '127.0.0.1',
+    headers: { host: '192.168.1.111:3080', referer: 'https://192.168.1.111:3080/panel' },
+  });
+  const lanBrowserRes = mockRes();
+  await handler(lanBrowserReq, lanBrowserRes);
+  assert.equal(lanBrowserRes.statusCode, 200);
+});
+
+test('Issue #371: chatStartHandler answers 400 on malformed JSON body', async () => {
+  const { chatStartHandler } = await import('../lib/chat-start.js');
+  const mockCtx = {
+    agents: { create: async () => ({ agent: { whenIdle: async () => {}, followup: () => {}, session: { id: 's1' } } }) },
+    get: () => null,
+  };
+
+  const malformedReq = {
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' },
+  };
+  const parseBadJson = async () => {
+    const err = new SyntaxError("Unexpected token 'x' ... is not valid JSON");
+    err.statusCode = 400;
+    throw err;
+  };
+
+  const res = mockRes();
+  const sendJson = (r, status, payload) => {
+    r.writeHead(status);
+    r.end(JSON.stringify(payload));
+  };
+  await chatStartHandler(mockCtx, malformedReq, res, parseBadJson, sendJson, () => 'uuid');
+  assert.equal(res.statusCode, 400);
+  const data = JSON.parse(res.body);
+  assert.equal(data.ok, false);
 });

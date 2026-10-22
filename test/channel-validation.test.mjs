@@ -33,7 +33,7 @@ function mockBody(method, url, body, headers = {}) {
   const req = mockReq([Buffer.from(JSON.stringify(body), 'utf8')]);
   req.method = method;
   req.url = url;
-  req.headers = headers;
+  req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000', ...headers };
   return req;
 }
 

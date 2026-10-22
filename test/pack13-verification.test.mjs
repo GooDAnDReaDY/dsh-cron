@@ -207,3 +207,41 @@ test('#302: scheduler timers are guaranteed to stop via makeEnv t.after teardown
   scheduler.stopAll();
   assert.equal(scheduler.jobs.size, 0, 'all scheduler jobs stopped');
 });
+
+test('#372: await saveAsync() guarantees data on disk even when interrupted by concurrent or debounced saves', async (t) => {
+  const filePath = path.join(os.tmpdir(), `dsh-cron-test372-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+  const store = new TaskStore(filePath);
+  t.after(() => {
+    try { fs.rmSync(filePath, { force: true }); } catch {}
+  });
+
+  const task = store.set({
+    title: 'Initial Task',
+    schedule: '0 0 * * *',
+    prompt: 'initial prompt',
+    status: 'active',
+  });
+
+  // Start first async save
+  const p1 = store.saveAsync();
+
+  // Immediately mutate store and schedule another save that increments version
+  store.set({
+    id: task.id,
+    title: 'Updated Task In Flight',
+    schedule: '0 0 * * *',
+    prompt: 'updated prompt',
+    status: 'active',
+  });
+  const p2 = store.saveAsync();
+
+  // Both should resolve cleanly
+  await Promise.all([p1, p2]);
+
+  // Disk must exist and have the latest state (not an unlinked / stale file)
+  assert.ok(fs.existsSync(filePath), 'store file exists on disk');
+  const diskData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const diskTask = diskData.tasks.find((x) => x.id === task.id);
+  assert.equal(diskTask.title, 'Updated Task In Flight');
+  assert.equal(diskTask.prompt, 'updated prompt');
+});

@@ -200,7 +200,7 @@ test('Self-Healing Doctor (#353) - REST API /doctor/apply, /doctor/revert, and /
   const applyReq = {
     method: 'POST',
     url: `/dsh-cron/tasks/${task.id}/doctor/apply`,
-    headers: { host: 'localhost', 'content-type': 'application/json' },
+    headers: { host: 'localhost', origin: 'http://localhost', 'content-type': 'application/json' },
     socket: { remoteAddress: '127.0.0.1' },
     async *[Symbol.asyncIterator]() {
       yield Buffer.from(JSON.stringify({ user: 'admin_test' }));
@@ -217,7 +217,7 @@ test('Self-Healing Doctor (#353) - REST API /doctor/apply, /doctor/revert, and /
   const revertReq = {
     method: 'POST',
     url: `/dsh-cron/tasks/${task.id}/doctor/revert`,
-    headers: { host: 'localhost', 'content-type': 'application/json' },
+    headers: { host: 'localhost', origin: 'http://localhost', 'content-type': 'application/json' },
     socket: { remoteAddress: '127.0.0.1' },
     async *[Symbol.asyncIterator]() {
       yield Buffer.from('{}');

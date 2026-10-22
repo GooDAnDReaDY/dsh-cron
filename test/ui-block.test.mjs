@@ -23,7 +23,7 @@ function mockPost(url, body, headers = {}) {
   const req = mockReq([Buffer.from(JSON.stringify(body), 'utf8')]);
   req.method = 'POST';
   req.url = url;
-  req.headers = headers;
+  req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000', ...headers };
   return req;
 }
 
@@ -132,7 +132,7 @@ test('#41: POST duplicate creates a paused copy with empty history and leaves th
   const beforeCopy = { ...store.get('cron_orig') };
 
   const res = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_orig/duplicate', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_orig/duplicate', headers: { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }, socket: { remoteAddress: '127.0.0.1' } }, res);
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.ok, true);
@@ -159,7 +159,7 @@ test('#41: duplicating a missing task answers 404', async (t) => {
   const { store, scheduler } = makeEnv(t);
   const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
   const res = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_nope/duplicate', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_nope/duplicate', headers: { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }, socket: { remoteAddress: '127.0.0.1' } }, res);
   assert.equal(res.statusCode, 404);
   assert.equal(res.payload.error, 'Task not found');
 });
@@ -464,14 +464,14 @@ test('#97: the item routes keep their contracts after the handler split', async 
 
   // DELETE removes it and disarms
   const delRes = mockRes();
-  await handler({ method: 'DELETE', url: '/dsh-cron/tasks/cron_a', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, delRes);
+  await handler({ method: 'DELETE', url: '/dsh-cron/tasks/cron_a', headers: { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }, socket: { remoteAddress: '127.0.0.1' } }, delRes);
   assert.equal(delRes.statusCode, 200);
   assert.equal(store.get('cron_a'), undefined);
   assert.equal(scheduler.jobs.has('cron_a'), false);
 
   // Unknown action falls through to 405
   const unknownRes = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_x/nonsense', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, unknownRes);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_x/nonsense', headers: { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }, socket: { remoteAddress: '127.0.0.1' } }, unknownRes);
   assert.equal(unknownRes.statusCode, 405);
   assert.equal(unknownRes.payload.error, 'Method not allowed');
 });

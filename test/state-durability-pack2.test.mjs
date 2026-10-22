@@ -23,7 +23,7 @@ function mockPost(url, body, headers = {}) {
   const req = mockReq([Buffer.from(JSON.stringify(body), "utf8")]);
   req.method = "POST";
   req.url = url;
-  req.headers = headers;
+  req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000', ...headers };
   return req;
 }
 
@@ -31,7 +31,7 @@ function mockPatch(url, body, headers = {}) {
   const req = mockReq([Buffer.from(JSON.stringify(body), "utf8")]);
   req.method = "PATCH";
   req.url = url;
-  req.headers = headers;
+  req.headers = { host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000", ...headers };
   return req;
 }
 
@@ -39,7 +39,7 @@ function mockDelete(url, headers = {}) {
   const req = mockReq([]);
   req.method = "DELETE";
   req.url = url;
-  req.headers = headers;
+  req.headers = { host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000", ...headers };
   return req;
 }
 

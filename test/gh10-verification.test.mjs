@@ -13,7 +13,7 @@ function mockReq({ method = 'GET', url = '/', headers = {}, body = null } = {}) 
   const req = new EventEmitter();
   req.method = method;
   req.url = url;
-  req.headers = { host: '127.0.0.1:3080', ...headers };
+  req.headers = { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080', ...headers };
   req.connection = { remoteAddress: '127.0.0.1' };
   req.socket = { remoteAddress: '127.0.0.1' };
 

@@ -60,7 +60,7 @@ test('POST run on a missing task id answers 404 (#97 follow-up)', async (t) => {
   const { store, scheduler } = makeEnv(t);
   const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
   const res = mockRes();
-  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_missing/run', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res);
+  await handler({ method: 'POST', url: '/dsh-cron/tasks/cron_missing/run', headers: { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }, socket: { remoteAddress: '127.0.0.1' } }, res);
   assert.equal(res.statusCode, 404);
   assert.equal(res.payload.ok, false);
   assert.equal(res.payload.error, 'Task not found');

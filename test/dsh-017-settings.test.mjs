@@ -22,7 +22,7 @@ function mockPost(url, body, headers = {}) {
   const req = mockReq([Buffer.from(JSON.stringify(body), 'utf8')]);
   req.method = 'POST';
   req.url = url;
-  req.headers = { 'content-type': 'application/json', ...headers };
+  req.headers = { 'content-type': 'application/json', host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000', ...headers };
   return req;
 }
 

@@ -114,6 +114,8 @@ test('#25/#26: the UI offers every delivery channel and never drifts from the se
 
 test('#40/#41/#42: the list offers filters, duplication and transfer controls', () => {
   const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  const css = fs.readFileSync(new URL('../lib/client.css', import.meta.url), 'utf-8');
+  const fullCode = code + css;
 
   // #40 — facet filters applied client-side over the loaded list.
   assert.ok(code.includes('const visibleTasks = React.useMemo('), 'the list renders a derived, filtered view');
@@ -177,11 +179,11 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes("setFormFallbackModel(task.fallbackModel || '')"), 'the field loads the stored value');
 
   // #39 — responsive rules stay layout-only.
-  assert.ok(code.includes('@media (max-width: 900px)'), 'tablet breakpoint present');
-  assert.ok(code.includes('@media (max-width: 640px)'), 'phone breakpoint present');
-  assert.ok(code.includes('.dsh-cron-form-row { grid-template-columns: 1fr; }'), 'forms collapse to one column');
-  assert.ok(code.includes('.dsh-cron-modal-foot { flex-direction: column-reverse; }'), 'modal actions stack on phones');
-  assert.ok(code.includes('.dsh-cron-tabs { flex-wrap: nowrap; overflow-x: auto;'), 'tabs scroll instead of wrapping into a block');
+  assert.ok(fullCode.includes('@media (max-width: 900px)'), 'tablet breakpoint present');
+  assert.ok(fullCode.includes('@media (max-width: 640px)'), 'phone breakpoint present');
+  assert.ok(fullCode.includes('.dsh-cron-form-row { grid-template-columns: 1fr; }'), 'forms collapse to one column');
+  assert.ok(fullCode.includes('.dsh-cron-modal-foot { flex-direction: column-reverse; }'), 'modal actions stack on phones');
+  assert.ok(fullCode.includes('.dsh-cron-tabs { flex-wrap: nowrap; overflow-x: auto;'), 'tabs scroll instead of wrapping into a block');
 
   // #34 — sidebar accordion: collapsed by default, persisted, capped, keyboard-safe.
   assert.ok(code.includes('function mountSidebarJobs('), 'sidebar job list exists');
@@ -224,10 +226,12 @@ test('#51: settings UI stores credential names, never secret values', () => {
 
 test('#153: modal dialogs are bounded to viewport height with scroll and sticky action footer', () => {
   const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
-  assert.ok(code.includes('max-height: min(90vh, calc(100vh - 36px))'), 'modal is bounded to viewport height');
-  assert.ok(code.includes('overflow-y: auto'), 'modal has internal scroll');
-  assert.ok(code.includes('position: sticky; bottom: -24px'), 'modal footer is sticky');
-  assert.ok(code.includes('.dsh-cron-modal-overlay { position: fixed; inset: 0; background: var(--dsw-alias-bg-mask, color-mix(in srgb, #000 75%, transparent)); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; box-sizing: border-box; overflow-y: auto; }'), 'overlay allows outer scroll on overflow');
+  const css = fs.readFileSync(new URL('../lib/client.css', import.meta.url), 'utf-8');
+  const fullCode = code + css;
+  assert.ok(fullCode.includes('max-height: min(90vh, calc(100vh - 36px))'), 'modal is bounded to viewport height');
+  assert.ok(fullCode.includes('overflow-y: auto'), 'modal has internal scroll');
+  assert.ok(fullCode.includes('position: sticky; bottom: -24px'), 'modal footer is sticky');
+  assert.ok(fullCode.includes('.dsh-cron-modal-overlay { position: fixed; inset: 0; background: var(--dsw-alias-bg-mask, color-mix(in srgb, #000 75%, transparent)); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; box-sizing: border-box; overflow-y: auto; }'), 'overlay allows outer scroll on overflow');
 });
 
 test('#148, #152: package manifest drops duplicate docs and declares client injects', () => {
@@ -238,13 +242,15 @@ test('#148, #152: package manifest drops duplicate docs and declares client inje
 
 test('#149: task tags and pulse animations use CSS classes and theme variables without inline hardcoded colors', () => {
   const code = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf-8');
+  const css = fs.readFileSync(new URL('../lib/client.css', import.meta.url), 'utf-8');
+  const fullCode = code + css;
 
   // Verify dedicated CSS classes exist in styles
-  assert.ok(code.includes('.dsh-cron-tag-success { background: var(--dsh-cron-info-bg); color: var(--dsh-cron-info);'), 'tag-success class present');
-  assert.ok(code.includes('.dsh-cron-tag-failure { background: var(--dsh-cron-danger-bg); color: var(--dsh-cron-danger);'), 'tag-failure class present');
-  assert.ok(code.includes('.dsh-cron-tag-heartbeat { background: var(--dsh-cron-accent-bg); color: var(--dsh-cron-accent);'), 'tag-heartbeat class present');
-  assert.ok(code.includes('.dsh-cron-tag-session { background: var(--dsh-cron-info-bg); color: var(--dsh-cron-info);'), 'tag-session class present');
-  assert.ok(code.includes('.dsh-cron-tag-preflight { background: var(--dsh-cron-warning-bg); color: var(--dsh-cron-warning);'), 'tag-preflight class present');
+  assert.ok(fullCode.includes('.dsh-cron-tag-success { background: var(--dsh-cron-info-bg); color: var(--dsh-cron-info);'), 'tag-success class present');
+  assert.ok(fullCode.includes('.dsh-cron-tag-failure { background: var(--dsh-cron-danger-bg); color: var(--dsh-cron-danger);'), 'tag-failure class present');
+  assert.ok(fullCode.includes('.dsh-cron-tag-heartbeat { background: var(--dsh-cron-accent-bg); color: var(--dsh-cron-accent);'), 'tag-heartbeat class present');
+  assert.ok(fullCode.includes('.dsh-cron-tag-session { background: var(--dsh-cron-info-bg); color: var(--dsh-cron-info);'), 'tag-session class present');
+  assert.ok(fullCode.includes('.dsh-cron-tag-preflight { background: var(--dsh-cron-warning-bg); color: var(--dsh-cron-warning);'), 'tag-preflight class present');
 
   // Verify tag elements use classes instead of inline style objects
   assert.ok(code.includes("className: 'dsh-cron-type-tag dsh-cron-tag-success'"), 'onSuccess tag uses CSS class');
@@ -254,8 +260,8 @@ test('#149: task tags and pulse animations use CSS classes and theme variables w
   assert.ok(code.includes("className: 'dsh-cron-type-tag dsh-cron-tag-preflight'"), 'preflight tag uses CSS class');
 
   // Verify no hardcoded hex or rgba in keyframes
-  assert.ok(code.includes('@keyframes dsh-cron-pulse-ring { 0% { box-shadow: 0 0 0 0 var(--dsh-cron-success-bg);'), 'keyframes use theme variable');
-  assert.ok(!code.includes('rgba(16, 185, 129, 0.5)'), 'no hardcoded rgba in pulse keyframes');
+  assert.ok(fullCode.includes('@keyframes dsh-cron-pulse-ring { 0% { box-shadow: 0 0 0 0 var(--dsh-cron-success-bg);'), 'keyframes use theme variable');
+  assert.ok(!fullCode.includes('rgba(16, 185, 129, 0.5)'), 'no hardcoded rgba in pulse keyframes');
 });
 
 test('#150: client.js is decomposed into lib/client-src/ fragments with no file exceeding 600 lines', async () => {
@@ -361,7 +367,9 @@ test('GH-4 / #263: client style self-healing on dynamic DOM sweeps, head re-rend
         id: '',
         dataset: {},
         textContent: '',
-        setAttribute: () => {},
+        href: '',
+        setAttribute: (k, v) => { el[k] = v; if (k === 'href') el.href = v; },
+        getAttribute: (k) => el[k] || null,
         appendChild: () => {}
       };
       return el;
@@ -419,12 +427,12 @@ test('GH-4 / #263: client style self-healing on dynamic DOM sweeps, head re-rend
     effect: (fn) => { effectCleanup = fn(); }
   };
 
-  // 1. apply mounts plugin and injects styles
+  // 1. apply mounts plugin and injects styles as stylesheet link (#374)
   clientPlugin.apply(mockCtx);
   const styleEl = elements.get('dsh-cron-styles');
   assert.ok(styleEl, 'style tag injected');
   assert.equal(styleEl.dataset.dshPlugin, 'dsh-cron');
-  assert.ok(styleEl.textContent.length > 100);
+  assert.equal(styleEl.href, '/dsh-cron/client.css');
   assert.equal(typeof context.window.__dshCronStyleHeal, 'function', 'watcher registered globally on window');
 
   // 2. Host drops the style node (e.g. head re-render or neighbor cleanup)
@@ -436,18 +444,20 @@ test('GH-4 / #263: client style self-healing on dynamic DOM sweeps, head re-rend
   observers[0].trigger();
   const healedEl = elements.get('dsh-cron-styles');
   assert.ok(healedEl, 'style tag re-attached by self-healing');
-  assert.ok(healedEl.textContent.length > 100);
+  assert.equal(healedEl.href, '/dsh-cron/client.css');
 
-  // 4. Corrupted style text is healed
-  healedEl.textContent = 'corrupted';
+  // 4. Corrupted style href is healed
+  healedEl.href = '/corrupted.css';
+  healedEl.setAttribute('href', '/corrupted.css');
   observers[0].trigger();
-  assert.ok(healedEl.textContent.length > 100, 'corrupted text restored');
+  assert.equal(healedEl.href, '/dsh-cron/client.css', 'corrupted href restored');
 
   // 5. Interval backstop also heals
   elements.delete('dsh-cron-styles');
   assert.ok(intervals.length > 0, 'Interval backstop is active');
   intervals[0].fn();
   assert.ok(elements.get('dsh-cron-styles'), 'healed via interval backstop');
+  assert.equal(elements.get('dsh-cron-styles').href, '/dsh-cron/client.css');
 
   // 6. Cleanup disposes watcher and stops observers + timer
   assert.ok(typeof effectCleanup === 'function', 'effect cleanup returned');
@@ -455,4 +465,13 @@ test('GH-4 / #263: client style self-healing on dynamic DOM sweeps, head re-rend
   assert.equal(context.window.__dshCronStyleHeal, undefined, 'global watcher cleaned up');
   assert.equal(observers.length, 0, 'MutationObserver disconnected');
   assert.equal(intervals.length, 0, 'Interval cleared');
+});
+
+test('client.css and locales.json are packaged and served as dedicated assets (#374)', () => {
+  assert.ok(fs.existsSync(new URL('../lib/client.css', import.meta.url)));
+  assert.ok(fs.existsSync(new URL('../lib/locales.json', import.meta.url)));
+  const css = fs.readFileSync(new URL('../lib/client.css', import.meta.url), 'utf-8');
+  assert.ok(css.includes('--dsh-cron-success'));
+  const locales = JSON.parse(fs.readFileSync(new URL('../lib/locales.json', import.meta.url), 'utf-8'));
+  assert.ok(locales.zh);
 });

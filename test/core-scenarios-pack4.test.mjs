@@ -50,7 +50,7 @@ function mockReq({ method = 'GET', url = '/', headers = {}, body = null, remoteA
   });
   req.method = method;
   req.url = url;
-  req.headers = { host: '127.0.0.1', ...headers };
+  req.headers = { host: '127.0.0.1', origin: 'http://127.0.0.1', ...headers };
   req.socket = { remoteAddress };
   return req;
 }
