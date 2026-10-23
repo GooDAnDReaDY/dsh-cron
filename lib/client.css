@@ -13,18 +13,18 @@
       [data-pane=conversation], [class*=centerCol] {
         position: relative !important;
       }
-      [${VIEW_ATTR}] {
+      [data-dsh-cron-view] {
         z-index: 60;
         background: var(--dsw-alias-bg-base);
         display: none;
         position: absolute;
         inset: 0;
       }
-      html[${ACTIVE_ATTR}] [${VIEW_ATTR}] {
+      html[data-dsh-cron-active] [data-dsh-cron-view] {
         display: block !important;
       }
-      html[${ACTIVE_ATTR}] [data-pane=conversation] > *:not([${VIEW_ATTR}]),
-      html[${ACTIVE_ATTR}] [class*=centerCol] > *:not([${VIEW_ATTR}]) {
+      html[data-dsh-cron-active] [data-pane=conversation] > *:not([data-dsh-cron-view]),
+      html[data-dsh-cron-active] [class*=centerCol] > *:not([data-dsh-cron-view]) {
         display: none !important;
       }
 
