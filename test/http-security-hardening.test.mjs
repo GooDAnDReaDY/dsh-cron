@@ -446,7 +446,7 @@ test('Issue #371: mutating requests without Origin/Referer are rejected (fail-cl
     method: 'POST',
     url: '/dsh-cron/tasks',
     remoteAddress: '127.0.0.1',
-    headers: { host: '192.168.1.111:3080', 'content-type': 'application/json' },
+    headers: { host: '198.51.100.22:3080', 'content-type': 'application/json' },
     body: { title: 'Attacker Task', prompt: 'rm -rf /', schedule: '0 0 * * *' },
   });
   const noOriginRes = mockRes();
@@ -459,8 +459,8 @@ test('Issue #371: mutating requests without Origin/Referer are rejected (fail-cl
     url: '/dsh-cron/tasks',
     remoteAddress: '127.0.0.1',
     headers: {
-      host: '192.168.1.111:3080',
-      origin: 'https://192.168.1.111:3080',
+      host: '198.51.100.22:3080',
+      origin: 'https://198.51.100.22:3080',
       'content-type': 'application/json',
     },
     body: { title: 'Admitted Task', prompt: 'echo ok', schedule: '0 0 * * *' },
@@ -475,8 +475,8 @@ test('Issue #371: mutating requests without Origin/Referer are rejected (fail-cl
     url: '/dsh-cron/tasks',
     remoteAddress: '127.0.0.1',
     headers: {
-      host: '192.168.1.111:3080',
-      referer: 'https://192.168.1.111:3080/settings/cron',
+      host: '198.51.100.22:3080',
+      referer: 'https://198.51.100.22:3080/settings/cron',
       'content-type': 'application/json',
     },
     body: { title: 'Admitted Task 2', prompt: 'echo ok 2', schedule: '0 0 * * *' },
@@ -496,12 +496,12 @@ test('Issue #371: GET /tasks from LAN/external Host requires browser source (403
   store.set({ id: 'secret-t1', title: 'Task with secret prompt', prompt: 'cat /etc/shadow', schedule: '0 0 * * *' });
   const handler = createCronApiHandler(store, scheduler, { recommendations: [] });
 
-  // 1. GET /dsh-cron/tasks from LAN Host (192.168.1.111:3080) without Origin/Referer -> 403
+  // 1. GET /dsh-cron/tasks from LAN Host (198.51.100.22:3080) without Origin/Referer -> 403
   const lanGetReq = mockReq({
     method: 'GET',
     url: '/dsh-cron/tasks',
     remoteAddress: '127.0.0.1', // Bridged via dsh-lanmode
-    headers: { host: '192.168.1.111:3080' },
+    headers: { host: '198.51.100.22:3080' },
   });
   const lanGetRes = mockRes();
   await handler(lanGetReq, lanGetRes);
@@ -512,7 +512,7 @@ test('Issue #371: GET /tasks from LAN/external Host requires browser source (403
     method: 'GET',
     url: '/dsh-cron/tasks',
     remoteAddress: '127.0.0.1',
-    headers: { host: '192.168.1.111:3080', referer: 'https://192.168.1.111:3080/panel' },
+    headers: { host: '198.51.100.22:3080', referer: 'https://198.51.100.22:3080/panel' },
   });
   const lanBrowserRes = mockRes();
   await handler(lanBrowserReq, lanBrowserRes);
