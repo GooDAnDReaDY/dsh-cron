@@ -91,6 +91,7 @@ test('Pack 27 Integration - Swarm Delegation & Git Diff Patch Review (#350, #351
     title: 'Refactor Port',
     type: 'script',
     cwd: tmpDir,
+    captureGitDiff: true,
     schedule: '0 * * * *',
     status: 'paused',
   };
