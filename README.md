@@ -96,8 +96,9 @@ graph TD
 - **Automated Synthesis**: Aggregates worker outputs into a structured Markdown digest or delegates synthesis to a designated synthesizer model.
 - **Swarm Metrics & History**: Run history records total, succeeded, failed counts, and duration alongside detailed per-worker execution logs.
 
-### 🔍 Git Diff & Interactive Patch Review (#351)
-- **Automatic Diff Capture**: Tasks running in Git worktrees capture modified files, stat summary, and unified diffs (up to 256 KiB) automatically.
+### 🔍 Git Diff & Interactive Patch Review (#351, #379)
+- **Scoped Diff Capture**: Tasks running in Git worktrees capture modified files, stat summary, and unified diffs (up to 256 KiB) automatically. Non-worktree tasks ignore repository diffs by default, avoiding storage bloat, but can opt in explicitly via `captureGitDiff: true`.
+- **Lightweight Archive Storage**: Historical run archives automatically strip heavy raw diff payloads into concise excerpts with byte-budget caps (max 15MB) and automatic cleanup of orphaned `.tmp.*` files.
 - **1-Click Discard**: Revert uncommitted working directory changes safely with a single click (`git reset --hard HEAD && git clean -fd`).
 - **1-Click Apply**: Re-apply previously captured diffs directly to the repository (`git apply --whitespace=fix`).
 - **Interactive Run Preview**: Color-coded diff inspector embedded directly into the execution history drawer.
@@ -215,7 +216,7 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 
 ### 8. Session Integration & Permissions
 * **Real Assistant Output & Terminal Status Extraction** — Isolates current turn session events, extracts the actual assistant message text (excluding previous turn history in persistent sessions), and validates terminal turn status (`turn/end` errors or interruptions) to guarantee accurate reporting, chaining, and structured action execution.
-* **Per-task permission presets** — `default`, `read-only`, `workspace-write`, or `full` are applied to the task's agent session before the prompt runs.
+* **Per-task permission presets & unattended approval** — `default`, `read-only`, `workspace-write`, or `danger-full-access` (aliased as `full`) are mapped directly to host `SandboxMode` and applied to the task's agent session before the prompt runs. For unattended background runs, approval policy is pinned to `never` via host `approval` service to eliminate interactive approval stalls.
 * **Session auto-archive** — isolated cron sessions are archived after each run (best-effort) so they do not clutter the chat list.
 * **History → session navigation** — every LLM run records its session; open it straight from the run history entry.
 
