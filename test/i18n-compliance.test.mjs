@@ -43,3 +43,32 @@ test('client locale dictionary registers English sources under the dsh-cron name
   assert.ok(clientSrc.includes("'sidebar.label': 'Scheduled tasks'"), 'canonical English dictionary present');
   assert.ok(!clientSrc.includes("ru: {"), 'no hardcoded Russian duplicate in the plugin package');
 });
+
+test('GH #19: Chinese (zh) dictionary in client-src and locales.json is complete and parity with en', () => {
+  const localesSrc = fs.readFileSync(new URL('../lib/client-src/10-locales.js', import.meta.url), 'utf-8');
+  const enMatch = localesSrc.match(/en:\s*\{([\s\S]*?)\},\s*zh:/);
+  const zhMatch = localesSrc.match(/zh:\s*\{([\s\S]*?)\}\s*\};/);
+  assert.ok(enMatch, 'en dictionary found');
+  assert.ok(zhMatch, 'zh dictionary found');
+
+  const enKeys = [...enMatch[1].matchAll(/'([^']+)':/g)].map(m => m[1]);
+  const zhKeys = [...zhMatch[1].matchAll(/'([^']+)':/g)].map(m => m[1]);
+  assert.ok(enKeys.length >= 390, `at least 390 keys in en (found ${enKeys.length})`);
+  assert.equal(zhKeys.length, enKeys.length, `zh has identical key count (${zhKeys.length} vs ${enKeys.length})`);
+
+  const enSet = new Set(enKeys);
+  const zhSet = new Set(zhKeys);
+  const missingInZh = enKeys.filter(k => !zhSet.has(k));
+  assert.deepEqual(missingInZh, [], 'no keys missing in zh dictionary');
+
+  // Verify locales.json matches en keys
+  const localesJson = JSON.parse(fs.readFileSync(new URL('../lib/locales.json', import.meta.url), 'utf-8'));
+  assert.ok(localesJson.zh, 'locales.json defines zh');
+  const localesZhKeys = Object.keys(localesJson.zh);
+  assert.equal(localesZhKeys.length, enKeys.length, 'locales.json zh matches en key count');
+
+  // Verify registration pattern uses ctx.effect with safe fallback in 90-close.js
+  const closeSrc = fs.readFileSync(new URL('../lib/client-src/90-close.js', import.meta.url), 'utf-8');
+  assert.ok(closeSrc.includes('ctx.effect(() => ctx.locale.register(NS, STRINGS)'), 'registers via ctx.effect');
+  assert.ok(closeSrc.includes('ctx.locale.register(NS, STRINGS)'), 'has fallback ctx.locale.register');
+});
