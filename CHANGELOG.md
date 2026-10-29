@@ -1,3 +1,10 @@
+## 0.3.23 (2026-10-29)
+
+- feat(core): declarative compatibility matrix `dsh.compatibility` for DSH `>=0.2.1-rc.2 <0.2.2-0` (#384)
+- feat(core): `/dsh-cron/health` endpoint and multi-version E2E runner `scripts/test-engines.mjs` (`npm run test:engine`) (#384)
+- refactor(cordis): minimal static `inject` (`['tools', 'webServer']`) with safe dynamic fallback for optional services (#385)
+- feat(schema): canonical Schemastery `TaskSchema = z.object({...})`, `validateTaskRecord`, and `validateTaskPatch` (#394)
+
 ## 0.3.22 (2026-10-27)
 
 - **fix(i18n)**: полная китайская локализация (zh) и регистрация через `ctx.effect` (#382, GH #19).
