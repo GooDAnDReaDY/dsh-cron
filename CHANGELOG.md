@@ -1,3 +1,9 @@
+## 0.3.26 (2026-10-29)
+
+- feat(tui): terminal UI settings section `ns: 'dsh-cron'` via host seam `tuiSettingsSections` with delivery credentials, timezones, concurrency, and daily cost budgets (#387)
+- feat(commands): native slash commands `/cron` (list, status, run, pause, resume) via `commands` service (#388)
+- refactor(lib): domain decomposition of backend modules into `lib/routes/`, `lib/scheduler/`, `lib/runtimes/`, and `lib/store/` with barrel `index.js` exports and 100% backward-compatible facades (#389)
+
 ## 0.3.25 (2026-10-29)
 
 - feat(ui): modular client bundle build via `esbuild`, structured component manifest `MODULES`, atomic file assembly, `--check` drift validation, and removal of legacy #150 line limit (#386)
