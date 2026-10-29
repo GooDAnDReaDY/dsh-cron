@@ -5,12 +5,11 @@ import path from 'node:path';
 import { resolveCwd } from '../lib/runner-worktree.js';
 import { inject } from '../lib/index.js';
 
-test('Issue #363 / GH #12: lib/index.js injects workspaceRegistry service', () => {
+test('Issue #385 / Issue #363: lib/index.js minimal inject only has critical tools and webServer, workspaceRegistry is dynamic', () => {
   assert.ok(Array.isArray(inject), 'inject should be an array');
-  assert.ok(
-    inject.includes('workspaceRegistry'),
-    'inject must include "workspaceRegistry" for Cordis to allow host service access'
-  );
+  assert.ok(inject.includes('tools'), 'inject must include tools');
+  assert.ok(inject.includes('webServer'), 'inject must include webServer');
+  assert.ok(!inject.includes('workspaceRegistry'), 'workspaceRegistry must be dynamic (Issue #385)');
 });
 
 test('Issue #363 / GH #12: resolveCwd resolves workspaceId via ctx.get("workspaceRegistry")', () => {

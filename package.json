@@ -22,7 +22,8 @@
     "test": "node --test test/*.test.mjs && node scripts/check-pack-size.mjs",
     "build:client": "node scripts/build-client.mjs",
     "pretest": "node scripts/build-client.mjs",
-    "preflight": "node scripts/ci-preflight.mjs"
+    "preflight": "node scripts/ci-preflight.mjs",
+    "test:engine": "node scripts/test-engines.mjs"
   },
   "keywords": [
     "dsh",
@@ -51,6 +52,14 @@
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-slots"
       ]
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.2.1-rc.2": "compatible",
+        "0.2.1-rc.3": "compatible",
+        "0.2.1-rc.4": "compatible"
+      },
+      "dsh": ">=0.2.1-rc.2 <0.2.2-0"
     }
   },
   "dependencies": {
