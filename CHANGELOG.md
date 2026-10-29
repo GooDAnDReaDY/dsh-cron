@@ -1,3 +1,8 @@
+## 0.3.25 (2026-10-29)
+
+- feat(ui): modular client bundle build via `esbuild`, structured component manifest `MODULES`, atomic file assembly, `--check` drift validation, and removal of legacy #150 line limit (#386)
+- feat(sse): realtime task execution log streaming via `GET /dsh-cron/tasks/:id/logs/stream`, W3C `Last-Event-ID` resumption in `LogStreamer`, and client modal EventSource with safe polling fallback (#392)
+
 ## 0.3.24 (2026-10-29)
 
 - feat(store): versioned store schema (`CURRENT_SCHEMA_VERSION = 2`) with `runStoreMigrations` and pre-migration backup (`.bak-v1-${Date.now()}`) (#390)
