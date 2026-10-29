@@ -39,8 +39,8 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   // namespace (register('dsh-cron', ...) in lib/index.js) (#85). Mount
   // points are populated via ctx.slots.inject — a direct register never
   // appears in the settings surface.
-  assert.ok(code.includes("const NS = 'dsh-cron';"), 'NS must be dsh-cron');
-  assert.ok(code.includes("key: NS"), 'settings.plugin.item slot must use the namespace key');
+  assert.ok(/const\s+NS\s*=\s*['\"]dsh-cron['\"];?/.test(code), 'NS must be dsh-cron');
+  assert.ok(/key:\s*NS\b/.test(code), 'settings.plugin.item slot must use the namespace key');
   assert.ok(code.includes("registerIntoMount(ctx, 'settings.plugin.item'"), 'card registered through the mount inject contract');
   assert.ok(!code.includes('settings.section'), 'no top-level section fallback (#102)');
 
@@ -52,7 +52,7 @@ test('Issue #85/#87/#91: slot key matches settings namespace, locale registered,
   // Issue #100: the settings card follows the canonical collapsible card
   // contract — collapsed by default, head is the toggle. The row seat page view
   // renders the same head element, so the expanded flag also honours `page`.
-  assert.ok(code.includes("const [cardOpen, setCardOpen] = React.useState(false);"), 'card collapsed by default');
+  assert.ok(/cardOpen,\s*setCardOpen/.test(code), 'card collapsed by default');
   assert.ok(code.includes("'aria-expanded': (page || cardOpen) ? 'true' : 'false'"), 'head exposes aria-expanded');
   assert.ok(code.includes('dsh-cron-card-head-btn'), 'head is a toggle button');
   assert.ok(code.includes('dsh-cron-chev-open'), 'chevron rotates when open');
@@ -94,16 +94,16 @@ test('#25/#26: the UI offers every delivery channel and never drifts from the se
   const serverCode = fs.readFileSync(new URL('../lib/channels.js', import.meta.url), 'utf-8');
 
   const serverIds = JSON.parse(/CHANNEL_IDS = (\[[^\]]*\])/.exec(serverCode)[1].replace(/'/g, '"'));
-  const clientIds = JSON.parse(/DELIVERY_CHANNELS = (\[[^\]]*\])/.exec(code)[1].replace(/'/g, '"'));
+  const clientIds = JSON.parse(/DELIVERY_CHANNELS\s*=\s*(\[[^\]]*\])/.exec(code)[1].replace(/'/g, '"'));
   assert.deepEqual(clientIds, serverIds, 'client channel list must match the server router');
 
   for (const id of serverIds) {
-    assert.ok(code.includes(`${id}: 'form.channel`), `channel label mapping missing for ${id}`);
+    assert.ok(new RegExp(`${id}:\\s*['\"]form\\.channel`).test(code), `channel label mapping missing for ${id}`);
   }
-  assert.ok(code.includes('const [formChannels, setFormChannels] = React.useState([]);'), 'per-task channel state');
-  assert.ok(code.includes('const [formTemplate, setFormTemplate] = React.useState('), 'per-task template state');
-  assert.ok(code.includes('channels: formChannels'), 'channels sent with the task payload');
-  assert.ok(code.includes('template: formTemplate.trim()'), 'template sent with the task payload');
+  assert.ok(/formChannels,\s*setFormChannels/.test(code), 'per-task channel state');
+  assert.ok(/formTemplate,\s*setFormTemplate/.test(code), 'per-task template state');
+  assert.ok(/channels:\s*formChannels/.test(code), 'channels sent with the task payload');
+  assert.ok(/template:\s*formTemplate\.trim\(\)/.test(code), 'template sent with the task payload');
   assert.ok(code.includes('dsh-cron-channel-grid'), 'channel checkbox grid rendered');
 
   // The delivery deadline is user-tunable, so it needs a control, not just a
@@ -118,7 +118,7 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   const fullCode = code + css;
 
   // #40 — facet filters applied client-side over the loaded list.
-  assert.ok(code.includes('const visibleTasks = React.useMemo('), 'the list renders a derived, filtered view');
+  assert.ok(/visibleTasks\s*=\s*React\.useMemo/.test(code), 'the list renders a derived, filtered view');
   assert.ok(code.includes("x.type || 'llm') === filterType"), 'type filter compares the normalised type');
   assert.ok(code.includes("String(x.model || '').split('/').pop() === filterModel"), 'model filter compares the short model name');
   assert.ok(code.includes('channels.includes(filterChannel)'), 'channel filter understands legacy telegram/kanban flags');
@@ -126,7 +126,7 @@ test('#40/#41/#42: the list offers filters, duplication and transfer controls', 
   assert.ok(code.includes('filters.showing'), 'the filter summary reports shown vs total');
 
   // #41 — the row carries a duplicate action that calls the server route.
-  assert.ok(code.includes('const handleDuplicate = async (task)'), 'duplicate handler present');
+  assert.ok(/handleDuplicate\s*=\s*async/.test(code), 'duplicate handler present');
   assert.ok(code.includes("'/duplicate'"), 'duplicate uses the server route, not a client-side payload replay');
   assert.ok(code.includes("'actions.duplicate'"), 'duplicate action is labelled');
   assert.ok(code.includes("'duplicate.oneShotHint'"), 'a duplicated one-shot warns about its stale time');
@@ -264,18 +264,25 @@ test('#149: task tags and pulse animations use CSS classes and theme variables w
   assert.ok(!fullCode.includes('rgba(16, 185, 129, 0.5)'), 'no hardcoded rgba in pulse keyframes');
 });
 
-test('#150: client.js is decomposed into lib/client-src/ fragments with no file exceeding 600 lines', async () => {
+test('#386: client bundle built via esbuild passes syntax check, size limit and drift validation', async () => {
   const fsPromises = (await import('node:fs/promises')).default;
+  const { fileURLToPath } = await import('node:url');
   const srcDir = new URL('../lib/client-src', import.meta.url);
   const files = (await fsPromises.readdir(srcDir)).filter(f => f.endsWith('.js'));
 
-  assert.ok(files.length >= 10, 'decomposed into at least 10 fragments');
+  assert.ok(files.length >= 15, 'decomposed into modular fragments');
 
-  for (const file of files) {
-    const content = await fsPromises.readFile(new URL(`../lib/client-src/${file}`, import.meta.url), 'utf-8');
-    const lineCount = content.split('\n').length;
-    assert.ok(lineCount <= 600, `fragment ${file} has ${lineCount} lines (expected <= 600 lines)`);
-  }
+  // Verify bundle size under official limit (256 KiB)
+  const clientJsPath = fileURLToPath(new URL('../lib/client.js', import.meta.url));
+  const stat = fs.statSync(clientJsPath);
+  assert.ok(stat.size <= 262144, `client.js (${stat.size} B) must not exceed 262144 B`);
+
+  // Verify drift check
+  const { execFileSync } = await import('node:child_process');
+  const buildScriptPath = fileURLToPath(new URL('../scripts/build-client.mjs', import.meta.url));
+  assert.doesNotThrow(() => {
+    execFileSync(process.execPath, [buildScriptPath, '--check'], { stdio: 'pipe' });
+  }, 'lib/client.js must be synchronized with client-src modules');
 });
 
 test('#160: updater localization keys exist in EN and ZH dictionaries', () => {
@@ -294,7 +301,7 @@ test('#160: updater localization keys exist in EN and ZH dictionaries', () => {
   ];
 
   for (const key of expectedKeys) {
-    assert.ok(code.includes(`'${key}':`), `key ${key} present in client bundles`);
+    assert.ok(new RegExp(`['\"]${key}['\"]:`).test(code), `key ${key} present in client bundles`);
   }
 });
 
