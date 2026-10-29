@@ -201,3 +201,18 @@
      - Создан модуль `lib/task-schema.js` с канонической Schemastery-схемой `TaskSchema = z.object({...})`.
      - Экспортированы функции `validateTaskRecord(data)`, `safeValidateTaskRecord(data)` и `validateTaskPatch(patch)`.
      - Схема интегрирована в создание задач (`executeCreateTask`), патчинг (`applyTaskPatch`) и реэкспортирована из корневого модуля `lib/index.js`.
+
+- 2026-10-29 — Release 2: Долговечность хранилища и защита ресурсов окружения (#390, #391, #393, 0.3.24):
+  1. Версионирование схемы хранилища и конвейер миграций (#390):
+     - В `lib/store.js` введена константа `CURRENT_SCHEMA_VERSION = 2` и функция `runStoreMigrations(data, fromVersion, toVersion)`.
+     - При запуске `TaskStore.init()` выполняется проверка версии: если версия хранилища < 2, автоматически создаётся несгораемый снимок `${filePath}.bak-v1-${Date.now()}` с правами `0600` перед любыми модификациями данных.
+     - Миграция штатно дополняет существующие записи задач полями ресурсоёмкости (`maxMemoryMb`, `executionTimeoutMs`, `maxLogBytesPerRun`, `cpus`, `maxArchiveMonths`) и выставляет `schemaVersion: 2`.
+     - В снепшотах и сериализации `_writeStoreStream` поле `schemaVersion` сохраняется гарантированно.
+  2. Помесячная ротация истории и потоковое Gzip-сжатие (#391):
+     - Ротация переполненной истории (>100 запусков на задачу) переведена на помесячные архивы `tasks-history-YYYY-MM.json.gz` с максимальным уровнем сжатия `node:zlib` (level 9), уменьшая объём истории на диске в 8-10 раз.
+     - Добавлены методы `store.listMonthlyArchives()`, `store.getMonthlyArchive(month)` и автоматическая очистка устаревших архивов `store._pruneOldMonthlyArchives(dir, maxMonths = 6)`.
+     - Зарегистрированы защищённые эндпоинты `GET /dsh-cron/history/archives` и `GET /dsh-cron/history/archive/:month`.
+  3. Защитные барьеры и изоляция внешних скриптов/рантаймов (#393):
+     - В `lib/runner-external.js` реализован принудительный сторожевой таймер выполнения (`executionTimeoutMs`, по умолчанию 15 минут) с двухфазной эскалацией завершения процессов (SIGTERM -> задержка 3с -> жесткий SIGKILL всего дерева процессов).
+     - Потоковое ограничение размера логов `maxLogBytesPerRun` (по умолчанию 5MB) с фиксацией маркера `[TRUNCATED: log output exceeded maxLogBytesPerRun]` и защитой от переполнения памяти Node.js.
+     - В рантаймы добавлены лимиты памяти: POSIX `ulimit -v` для shell, `--max-old-space-size` для Node.js, `--memory` и `--cpus` для Docker контейнеров.

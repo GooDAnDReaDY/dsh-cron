@@ -31,7 +31,12 @@ test('Issue #394: validateTaskRecord sets schema defaults on valid task record',
   assert.equal(record.status, 'active');
   assert.equal(record.type, 'llm');
   assert.equal(record.priority, 5);
-  assert.equal(record.schemaVersion, 1);
+  assert.equal(record.schemaVersion, 2);
+  assert.equal(record.maxMemoryMb, 0);
+  assert.equal(record.executionTimeoutMs, 900000);
+  assert.equal(record.maxLogBytesPerRun, 5242880);
+  assert.equal(record.cpus, 0);
+  assert.equal(record.maxArchiveMonths, 6);
   assert.equal(record.delivery, 'isolated');
   assert.equal(record.timeoutSeconds, 1800);
 });
