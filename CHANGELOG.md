@@ -1,4 +1,4 @@
-## 0.3.26 (2026-10-29)
+## 0.3.27 (2026-10-29)
 
 - feat(tui): terminal UI settings section `ns: 'dsh-cron'` via host seam `tuiSettingsSections` with delivery credentials, timezones, concurrency, and daily cost budgets (#387)
 - feat(commands): native slash commands `/cron` (list, status, run, pause, resume) via `commands` service (#388)
