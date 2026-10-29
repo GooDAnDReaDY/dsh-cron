@@ -1,3 +1,9 @@
+## 0.3.24 (2026-10-29)
+
+- feat(store): versioned store schema (`CURRENT_SCHEMA_VERSION = 2`) with `runStoreMigrations` and pre-migration backup (`.bak-v1-${Date.now()}`) (#390)
+- feat(store): monthly history archiving into `tasks-history-YYYY-MM.json.gz` using `node:zlib` (level 9), retention pruning and HTTP endpoints (`/dsh-cron/history/archives`, `/dsh-cron/history/archive/:month`) (#391)
+- feat(runtime): script execution guardrails: execution timeout (15m default) with SIGTERM/SIGKILL escalation, `maxLogBytesPerRun` stream truncation, and memory limits (ulimit, Node max-old-space-size, Docker flags) (#393)
+
 ## 0.3.23 (2026-10-29)
 
 - feat(core): declarative compatibility matrix `dsh.compatibility` for DSH `>=0.2.1-rc.2 <0.2.2-0` (#384)
