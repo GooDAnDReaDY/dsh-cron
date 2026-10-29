@@ -29,9 +29,8 @@ function getFiles(dir, ext = ".js") {
 console.log("=== dsh-cron CI preflight check ===");
 
 // 1. Syntax check on standalone lib JS files (excluding concatenated client-src fragments)
-const libRootFiles = fs.readdirSync(path.join(root, "lib"))
-  .filter((f) => f.endsWith(".js"))
-  .map((f) => path.join(root, "lib", f));
+const libRootFiles = getFiles(path.join(root, "lib"))
+  .filter((f) => !f.includes("client-src"));
 let syntaxErrors = 0;
 for (const f of libRootFiles) {
   try {

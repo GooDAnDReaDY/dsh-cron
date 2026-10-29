@@ -227,3 +227,18 @@
      - В `lib/api-item.js` зарегистрирован маршрут `GET /dsh-cron/tasks/:id/logs/stream` (и обратная совместимость с `/stream`).
      - В `lib/log-streamer.js` реализована последовательная нумерация событий (`item.id`) и полная поддержка протокола возобновления W3C Server-Sent Events через заголовок `Last-Event-ID`.
      - В клиентском компоненте `lib/client-src/53-cron-screen-modal-actions.js` реализовано подключение к `/logs/stream` через `EventSource` с автоматическим безопасным фоллбэком на защищённый опрос `fetchJsonWithTimeout` при обрыве или отсутствии поддержки SSE.
+
+- 2026-10-29 — Release 4: Экосистема и декомпозиция бэкенда (#387, #388, #389, 0.3.26):
+  1. Экран настроек TUI через tuiSettingsSections (#387):
+     - Модуль `lib/tui-settings.js` с функцией `buildTuiSection({ live, store })` и регистрацией `applyTuiSettings(ctx, deps)`.
+     - Секция `ns: 'dsh-cron'` с 3 группами настроек: `delivery` (Telegram token ref, chat ID, webhooks), `scheduler` (defaultTimezone, maxConcurrent), `budgets` (globalDailyCostLimitUsd).
+     - Регистрация через `ctx.inject(['tuiSettingsSections'], ...)` с очисткой через `ctx.effect`.
+  2. Слэш-команды /cron через экосистему dsh-commands (#388):
+     - Модуль `lib/commands.js` с регистрацией через `ctx.inject(['commands'], ...)`.
+     - Подкоманды `/cron list`, `/cron status`, `/cron run <id>`, `/cron pause <id>`, `/cron resume <id>`, `/cron help`.
+     - Безопасное форматирование статуса очереди, параллелизма и суточного расхода бюджета.
+  3. Декомпозиция модулей lib по доменным подкаталогам (#389):
+     - Модули разложены по доменным подкаталогам: `lib/routes/`, `lib/scheduler/`, `lib/runtimes/`, `lib/store/`.
+     - Каждый доменный подкаталог имеет собственный `index.js` для модульного импорта.
+     - Сохранены фасадные реэкспорты в корне `lib/*.js` для 100% обратной совместимости со всеми существующими тестами и внешними интеграциями.
+     - В `package.json` `files` включена маска `"lib/**/*.js"`.

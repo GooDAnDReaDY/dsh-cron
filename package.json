@@ -12,6 +12,7 @@
   },
   "files": [
     "lib/*.js",
+    "lib/**/*.js",
     "lib/client.css",
     "cordis.patch.yml",
     "README.md",
