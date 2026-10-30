@@ -242,3 +242,19 @@
      - Каждый доменный подкаталог имеет собственный `index.js` для модульного импорта.
      - Сохранены фасадные реэкспорты в корне `lib/*.js` для 100% обратной совместимости со всеми существующими тестами и внешними интеграциями.
      - В `package.json` `files` включена маска `"lib/**/*.js"`.
+
+- 2026-10-30 — Release v0.3.28: Паритет форков и доставка уведомлений Feishu (#399, #400, 0.3.28):
+  1. Закрытие панели задач по клику снаружи и фиксация места сайдбара (#399 / #266):
+     - В lib/client-src/00-open.js и lib/client-src/30-utils.js селектор SESSION_ROW_SELECTOR заменён универсальным правилом shouldDismissPanel(target) на базе PANEL_OWNED_SELECTOR = '[' + VIEW_ATTR + '], [data-dsh-plugin="dsh-cron"]'.
+     - Клик по любому внешнему элементу страницы (переключение рабочей области, открытие другого меню/панели, заголовок сценария) надёжно закрывает оверлей задач без зависания над колонкой диалога.
+     - Добавлен маркер data-dsh-plugin="dsh-cron" на кнопку CronChip в шапке сессии для предотвращения немедленного закрытия при открытии.
+     - В lib/client-src/80-sidebar-jobs.js реализована предикатная проверка sidebarJobsSeatIsCurrent(state, entry), гарантирующая сохранение и самовосстановление позиции списка задач в боковой панели непосредственно под якорным элементом [data-dsh-entry].
+     - Для тестирования экспортированы clientPlugin.panelDismissRule и clientPlugin.sidebarJobsSeatIsCurrent.
+  2. Канал доставки уведомлений Feishu (飞书 / Lark) с подписью HMAC-SHA256 (#400):
+     - В lib/channels.js добавлен канал доставки feishu с чистым построителем полезной нагрузки buildFeishuPayload({ text }) (msg_type: "text").
+     - Реализован алгоритм формирования подписи feishuSign(timestamp, secret) с использованием HMAC-SHA256 по спецификации Custom Bot Feishu/Lark (`${timestamp}
+${secret}`).
+     - Поддержка отправки как с подписью (при наличии feishuSecret / feishuSecretRef), так и без подписи (только по вебхуку).
+     - В lib/settings.js добавлены поля notifyFeishu, feishuWebhookUrl, feishuSecret, feishuSecretRef в схему, валидаторы и SETTINGS_SYNC_KEYS.
+     - В lib/tui-settings.js группа delivery расширена полями feishuWebhookUrl и feishuSecret.
+     - Добавлена полная локализация для английского и китайского языков в lib/locales.json и lib/client-src/10-locales.js.

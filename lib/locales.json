@@ -398,6 +398,13 @@
     "settings.templateLabel": "默认消息模板",
     "settings.templateHint": "作用于所有没有单独模板的渠道。留空用内置文案。",
     "settings.deliveryTimeoutMsLabel": "每个渠道的推送超时（毫秒）",
-    "settings.automationSection": "自动化模型"
+    "settings.automationSection": "自动化模型",
+    "form.channelFeishu": "飞书 (Feishu)",
+    "settings.feishuWebhookLabel": "飞书 Webhook 地址",
+    "settings.feishuWebhookPlaceholder": "https://open.feishu.cn/open-apis/bot/v2/hook/…",
+    "settings.feishuSecretLabel": "签名密钥（可选）",
+    "settings.feishuSecretPlaceholder": "SEC…",
+    "settings.feishuGlobalNotify": "所有任务的运行结果都推送到飞书",
+    "settings.feishuHint": "飞书群通知：在目标群里添加「自定义机器人」，把它的 Webhook 地址粘贴到下面；如果机器人开启了「签名校验」，再把签名密钥一并填入。"
   }
 }

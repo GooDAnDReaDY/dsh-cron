@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -12,6 +13,8 @@ import {
   CHANNEL_IDS,
   resolveChannels,
   shouldSendToChannel,
+  buildFeishuPayload,
+  feishuSign,
   buildDiscordPayload,
   buildSlackPayload,
   buildNtfyRequest,
@@ -36,6 +39,55 @@ function stubFetch(recorder) {
     return { ok: true, status: 200, json: async () => ({ provider: 'piper', tookMs: 42, number: 7 }) };
   };
 }
+
+// ------------------------------------------------------------------ Feishu
+test('the global Feishu switch routes every task to feishu', () => {
+  assert.deepEqual(resolveChannels({ id: 't' }, { notifyFeishu: true }), ['feishu']);
+  assert.deepEqual(resolveChannels({ id: 't', notifyFeishu: true }, {}), ['feishu']);
+  assert.deepEqual(resolveChannels({ id: 't', channels: ['feishu', 'slack'] }, {}), ['feishu', 'slack'],
+    'explicit task channels still win');
+});
+
+test('feishu builds a custom-bot text payload', () => {
+  assert.deepEqual(buildFeishuPayload({ text: 'nightly ok' }), {
+    msg_type: 'text',
+    content: { text: 'nightly ok' },
+  });
+});
+
+test('feishu truncates an oversized report instead of failing the webhook', () => {
+  const payload = buildFeishuPayload({ text: 'x'.repeat(9000) });
+  assert.ok(payload.content.text.length <= 4001, 'the payload stays inside the webhook-friendly bound');
+  assert.ok(payload.content.text.endsWith('…'), 'the truncation is visible');
+});
+
+test('feishu signature follows the custom-bot HMAC rule', () => {
+  const expected = createHmac('sha256', '1700000000\nSECtest').update('').digest('base64');
+  assert.equal(feishuSign('1700000000', 'SECtest'), expected);
+});
+
+test('feishu requires the webhook URL and posts text with a signature when configured', async () => {
+  const recorder = [];
+  const settings = { feishuWebhookUrl: 'https://open.feishu.cn/open-apis/bot/v2/hook/demo' };
+  await sendToChannel({ channelId: 'feishu', task, runInfo: okRun, settings, fetchFn: stubFetch(recorder) });
+  assert.equal(recorder.length, 1);
+  assert.equal(recorder[0].url, settings.feishuWebhookUrl);
+  const body = JSON.parse(recorder[0].body);
+  assert.equal(body.msg_type, 'text');
+  assert.ok(body.content.text.includes('Nightly'));
+  assert.equal(body.sign, undefined, 'an unsigned bot takes no signature');
+
+  recorder.length = 0;
+  await sendToChannel({ channelId: 'feishu', task, runInfo: okRun, settings: { ...settings, feishuSecret: 'SECdemo' }, fetchFn: stubFetch(recorder) });
+  const signed = JSON.parse(recorder[0].body);
+  assert.equal(typeof signed.timestamp, 'string');
+  assert.equal(signed.sign, feishuSign(signed.timestamp, 'SECdemo'));
+
+  await assert.rejects(
+    () => sendToChannel({ channelId: 'feishu', task, runInfo: okRun, settings: {}, fetchFn: stubFetch(recorder) }),
+    /feishuWebhookUrl is not configured/,
+  );
+});
 
 // ------------------------------------------------------------------ #25
 
@@ -96,13 +148,13 @@ test('#26: channel filtering honours only-on-failure and kanban modes', () => {
 });
 
 test('#26: every advertised channel id has a handler', async () => {
-  assert.deepEqual(CHANNEL_IDS, ['telegram', 'kanban', 'discord', 'slack', 'ntfy', 'bark', 'pushplus', 'tts', 'gitea']);
+  assert.deepEqual(CHANNEL_IDS, ['feishu', 'telegram', 'kanban', 'discord', 'slack', 'ntfy', 'bark', 'pushplus', 'tts', 'gitea']);
   assert.equal(DEFAULT_DELIVERY_TIMEOUT_MS, 15000, 'channels get a bounded delivery window by default');
   // A missing case would fall through to "unknown channel", so drive each id
   // through the dispatcher with a fully configured, stubbed environment.
   const http = async () => ({ ok: true, status: 200, json: async () => ({ ok: true, provider: 'p', number: 1 }) });
   const settings = {
-    chatId: '42', kanbanBaseUrl: 'http://127.0.0.1:3000',
+    feishuWebhookUrl: 'http://f.test/hook', chatId: '42', kanbanBaseUrl: 'http://127.0.0.1:3000',
     discordWebhookUrl: 'http://d.test/h', slackWebhookUrl: 'http://s.test/h',
     ntfyTopic: 't', ntfyTokenRef: 'N', barkKey: 'k', pushplusTokenRef: 'P',
     giteaBaseUrl: 'http://g.test', giteaRepo: 'o/r', giteaTokenRef: 'G',
