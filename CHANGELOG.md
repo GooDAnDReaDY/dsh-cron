@@ -1,3 +1,8 @@
+## 0.3.28 (2026-10-30)
+
+- fix(ui): universal outside-click panel dismissal rule `shouldDismissPanel` replacing fragile session row heuristics and self-healing sidebar jobs seat anchoring via `sidebarJobsSeatIsCurrent` (#399, #266)
+- feat(channels): Feishu (飞书 / Lark) custom-bot notification delivery channel with HMAC-SHA256 signature verification (`feishuSign`), settings synchronization, and TUI delivery section fields (#400)
+
 ## 0.3.27 (2026-10-29)
 
 - feat(tui): terminal UI settings section `ns: 'dsh-cron'` via host seam `tuiSettingsSections` with delivery credentials, timezones, concurrency, and daily cost budgets (#387)
