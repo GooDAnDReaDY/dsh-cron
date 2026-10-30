@@ -258,3 +258,12 @@ ${secret}`).
      - В lib/settings.js добавлены поля notifyFeishu, feishuWebhookUrl, feishuSecret, feishuSecretRef в схему, валидаторы и SETTINGS_SYNC_KEYS.
      - В lib/tui-settings.js группа delivery расширена полями feishuWebhookUrl и feishuSecret.
      - Добавлена полная локализация для английского и китайского языков в lib/locales.json и lib/client-src/10-locales.js.
+
+- 2026-10-31 — Release v0.3.29: Аутентификация DSH Desktop и безопасность Origin (#402, GH #20, 0.3.29):
+  1. Аутентификация запросов десктопной оболочки DSH Desktop по протоколу dsh-app:// (#402, GH #20):
+     - В lib/http-utils.js внедрены предикаты hasNonLoopbackForwarding(req), hasDshAuthCookie(req) и isDesktopShellRequest(req).
+     - Запросы из настольной Electron-оболочки DSH Desktop на локальном сокете (без внешних прокси-заголовков x-forwarded-for / x-real-ip) идентифицируются по признакам Desktop UA (@deepseek-ai/dsh-desktop/, dsh-desktop, electron), сессионной куке dsh-auth-, хосту app или внутренним заголовкам x-dsh-internal-auth/x-dsh-desktop.
+     - Заголовок Host: app (из dsh-app://app/) включён в список легитимных локальных десктопных хостов в isLoopbackHost.
+     - В блоке проверки источника requireSource мутирующие запросы (POST /dsh-cron/settings, POST /dsh-cron/telegram/test), лишённые заголовков Origin и Referer в контексте Electron webview, допускаются при положительной идентификации isDesktopShellRequest(req).
+     - Попытки спуфинга десктопных заголовков с удалённых LAN/WAN IP или через обратные прокси строго блокируются fail-closed (403 Forbidden).
+     - В клиентском хелпере fetchWithTimeout (lib/client-src/30-utils.js) добавлена передача credentials: 'same-origin' для гарантированной отправки сессионных кук ядра.
