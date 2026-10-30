@@ -1,3 +1,10 @@
+## 0.3.29 (2026-10-31)
+
+- fix(security): authenticate DSH Desktop requests over `dsh-app://` custom protocol without Origin/Referer (#402, GH #20)
+- fix(security): recognize `Host: app` from `dsh-app://app/` as a valid local desktop host in `getRequestRejection`
+- fix(security): prevent LAN/Tailscale proxy spoofing of desktop headers via `hasNonLoopbackForwarding` check
+- fix(client): set `credentials: 'same-origin'` in `fetchWithTimeout` for guaranteed session cookie forwarding in desktop webview
+
 ## 0.3.28 (2026-10-30)
 
 - fix(ui): universal outside-click panel dismissal rule `shouldDismissPanel` replacing fragile session row heuristics and self-healing sidebar jobs seat anchoring via `sidebarJobsSeatIsCurrent` (#399, #266)
