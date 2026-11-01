@@ -206,7 +206,7 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 * **SSH** (`ssh`) — execute a command on a remote host through a `dsh-remote-workspace` profile (`sshProfileId`) or standalone host/key fields.
 * **Docker** (`docker`) — run the command in a container image (`dockerImage`).
 * **Environment variables** — a per-task `env` map (KEY VALUE per line in the UI) applied to external runtimes; secrets do not belong here.
-* **Workspaces and worktrees** — bind a task to a harness workspace (`workspaceId`, resolved through host `workspaceRegistry`) or path, and run code-modifying agent tasks in an isolated git worktree (`worktree`, `keepWorktree`).
+* **Workspaces and worktrees** — bind a task to a harness workspace (`workspaceId`, resolved through host `workspaceRegistry`) or path; the agent session created for the run is registered with that workspace's ledger (`attachSession`), so it appears under the project instead of ungrouped. Code-modifying agent tasks can run in an isolated git worktree (`worktree`, `keepWorktree`).
 
 ### 7. Cost Control: Fallback Model & Burn Guard
 * **Fallback Model** — A task can run on the cheap model by default and still finish on the strong one: set `fallbackModel` (and optionally `fallbackProvider`) and a failed run — `error` or `timeout` — is retried **once** on that model before the ordinary retry backoff applies. History records which model produced the result and whether the fallback was used, usage and cost of both attempts are summed, and the `{model}` template variable renders the model that finished the run. Only agent-mediated tasks (`llm`, `skill`, `workflow`) can use a fallback.
@@ -217,7 +217,7 @@ Every task picks its own runtime; non-LLM runtimes need no model and consume no 
 ### 8. Session Integration & Permissions
 * **Real Assistant Output & Terminal Status Extraction** — Isolates current turn session events, extracts the actual assistant message text (excluding previous turn history in persistent sessions), and validates terminal turn status (`turn/end` errors or interruptions) to guarantee accurate reporting, chaining, and structured action execution.
 * **Per-task permission presets & unattended approval** — `default`, `read-only`, `workspace-write`, or `danger-full-access` (aliased as `full`) are mapped directly to host `SandboxMode` and applied to the task's agent session before the prompt runs. For unattended background runs, approval policy is pinned to `never` via host `approval` service to eliminate interactive approval stalls.
-* **Session auto-archive** — isolated cron sessions are archived after each run (best-effort) so they do not clutter the chat list.
+* **Session auto-archive** — isolated cron sessions are archived after each run (best-effort, via host `workspaceRegistry.archiveSession`) so they do not clutter the chat list.
 * **History → session navigation** — every LLM run records its session; open it straight from the run history entry.
 
 ### 9. Quiet by Rule
@@ -433,7 +433,7 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
   - `daily`: Automatically rotates the session daily (`<id>-YYYY-MM-DD`).
   - `weekly`: Automatically rotates the session weekly (`<id>-YYYY-Www`).
   - Custom templating: Any `targetSessionId` containing `{{date}}` automatically interpolates today's date (`YYYY-MM-DD`).
-- **Main Chat Visibility**: Persistent sessions are omitted from `sessions.archive()` and unflagged from `ephemeral`/`internal`, making them visible and interactable directly in the DeepSeek Harness chat interface.
+- **Main Chat Visibility**: Persistent sessions are omitted from `workspaceRegistry.archiveSession()` and unflagged from `ephemeral`/`internal`, making them visible and interactable directly in the DeepSeek Harness chat interface.
 - **Preset & Tooling Compatibility**: Resumed sessions automatically preserve and remount configured `agentPresets`, ensuring full access to workspace, terminal, and file tools on every turn.
 - *Inspiration credit*: Community idea originally explored by [@RaulLazaro](https://github.com/RaulLazaro).
 

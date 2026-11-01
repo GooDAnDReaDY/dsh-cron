@@ -1,3 +1,8 @@
+## 0.3.31 (2026-11-01)
+
+- fix(sessions): `workspaceId` now binds the created agent session to the workspace ledger (`attachSession`) so runs appear in the project group instead of ungrouped (#406, GH PR #22)
+- fix(sessions): ephemeral session cleanup and context-overflow rotation now archive via host `workspaceRegistry.archiveSession()`, eliminating session leak into chat list while preserving fallback for test mocks (#406, GH PR #22)
+
 ## 0.3.30 (2026-11-01)
 
 - fix(models): `GET /dsh-cron/models` now returns `ok: true` like other JSON endpoints, populating LLM provider and model dropdowns in the task modal (#404, GH PR #21)

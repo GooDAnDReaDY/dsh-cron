@@ -205,7 +205,7 @@ cron({
 * **SSH**（`ssh`）—— 通过 `dsh-remote-workspace` 配置（`sshProfileId`）或独立 host/key 字段在远程主机执行命令。
 * **Docker**（`docker`）—— 在镜像容器（`dockerImage`）中执行命令。
 * **环境变量** —— 按任务的 `env` 映射（界面中每行 KEY VALUE）应用于外部运行时；请勿在此存放密钥。
-* **工作区与 worktree** —— 将任务绑定到 Harness 工作区（`workspaceId`，通过宿主 `workspaceRegistry` 服务解析）或直接路径；对会修改代码的智能体任务，可在隔离的 git worktree 中运行（`worktree`、`keepWorktree`）。
+* **工作区与 worktree** —— 将任务绑定到 Harness 工作区（`workspaceId`，通过宿主 `workspaceRegistry` 服务解析）或直接路径；运行创建的智能体会话会登记进该工作区的账本（`attachSession`），因此出现在项目分组下而非「未分组」。对会修改代码的智能体任务，可在隔离的 git worktree 中运行（`worktree`、`keepWorktree`）。
 
 ### 7. 成本控制：回退模型与支出保护（Burn Guard）
 * **回退模型** —— 任务可以默认使用便宜模型，失败时改用更强模型完成：设置 `fallbackModel`（可选 `fallbackProvider`），失败（`error` 或 `timeout`）的运行会在该模型上重试一次，之后才进入常规重试退避。历史记录会标明最终产出结果的模型以及是否使用了回退，两次尝试的用量与成本都会累计，模板变量 `{model}` 渲染完成运行的模型。回退仅适用于智能体类型（`llm`、`skill`、`workflow`）。
@@ -216,7 +216,7 @@ cron({
 ### 8. 会话集成与权限
 * **真实智能体输出与终端状态捕获** —— 隔离当前轮次的会话事件，提取最终真实的智能体回复文本（持久会话中自动排除以往历史轮次），并严格校验轮次终止状态（带有错误或中断的 `turn/end`），确保任务失败能准确反映到执行历史、链路调用及结构化指令中。
 * **按任务的权限预设** —— `default`、`read-only`、`workspace-write` 或 `full` 在提示词执行前应用于任务会话。
-* **会话自动归档** —— 隔离的 cron 会话在运行后自动归档（尽力而为），不干扰聊天列表。
+* **会话自动归档** —— 隔离的 cron 会话在运行后自动归档（尽力而为，通过宿主 `workspaceRegistry.archiveSession`），不干扰聊天列表。
 * **历史 → 会话** —— 每次 LLM 运行都会记录会话，可直接从历史记录打开对话。
 
 ### 9. 按规则保持安静
@@ -424,7 +424,7 @@ bash deploy.sh verify [exact-version]
   - `daily`：每日自动开启全新子会话（后缀 `<id>-YYYY-MM-DD`）。
   - `weekly`：每周自动开启全新子会话（后缀 `<id>-YYYY-Www`）。
   - 日期变量插值：`targetSessionId` 中支持 `{{date}}` 占位符，自动注入当前日期 `YYYY-MM-DD`。
-- **主界面原生可见交互**：持久会话不会被标记为 `ephemeral`/`internal`，且在执行后跳过自动归档（`sessions.archive()`），用户可在 DSH 聊天列表中直接查看并继续手动对话。
+- **主界面原生可见交互**：持久会话不会被标记为 `ephemeral`/`internal`，且在执行后跳过自动归档（`workspaceRegistry.archiveSession()`），用户可在 DSH 聊天列表中直接查看并继续手动对话。
 - **预设工具链无缝适配**：恢复会话时同样完整挂载 `agentPresets`，保障文件读写、代码编辑与终端工具持续可用。
 - *致谢*：功能灵感源自社区开发者 [@RaulLazaro](https://github.com/RaulLazaro)。
 
