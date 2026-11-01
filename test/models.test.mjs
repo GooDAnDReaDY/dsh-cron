@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getModelsHandler } from '../lib/models-handler.js';
 
-test('getModelsHandler responds with providers and models', async () => {
+test('getModelsHandler responds with ok flag, providers and models', async () => {
   const mockLlm = {
     listProviders() {
       return [{ id: 'mock-provider', name: 'Mock Provider' }];
@@ -31,6 +31,7 @@ test('getModelsHandler responds with providers and models', async () => {
   const res1 = {};
   await getModelsHandler(mockCtx, { url: '/dsh-cron/models' }, res1, sendJson);
   assert.equal(res1.statusCode, 200);
+  assert.equal(res1.data.ok, true, 'res1 must carry ok: true (#404, GH #21)');
   assert.equal(res1.data.providers.length, 1);
   assert.equal(res1.data.providers[0].id, 'mock-provider');
   assert.equal(res1.data.models.length, 0);
@@ -39,6 +40,25 @@ test('getModelsHandler responds with providers and models', async () => {
   const res2 = {};
   await getModelsHandler(mockCtx, { url: '/dsh-cron/models?provider=mock-provider' }, res2, sendJson);
   assert.equal(res2.statusCode, 200);
+  assert.equal(res2.data.ok, true, 'res2 must carry ok: true (#404, GH #21)');
   assert.equal(res2.data.models.length, 1);
   assert.equal(res2.data.models[0].id, 'mock-model');
+
+  // Test 3: fallback on error still sets ok: true
+  const throwingCtx = {
+    llm: {
+      listProviders() { return []; },
+      listModels() { throw new Error('llm down'); }
+    }
+  };
+  const res3 = {};
+  await getModelsHandler(throwingCtx, { url: '/dsh-cron/models?provider=foo' }, res3, sendJson);
+  assert.equal(res3.statusCode, 200);
+  assert.equal(res3.data.ok, true);
+
+  // Test 4: non-GET returns 405 with ok: false
+  const res4 = {};
+  await getModelsHandler(mockCtx, { method: 'POST', url: '/dsh-cron/models' }, res4, sendJson);
+  assert.equal(res4.statusCode, 405);
+  assert.equal(res4.data.ok, false);
 });

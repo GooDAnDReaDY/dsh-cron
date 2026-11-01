@@ -267,3 +267,10 @@ ${secret}`).
      - В блоке проверки источника requireSource мутирующие запросы (POST /dsh-cron/settings, POST /dsh-cron/telegram/test), лишённые заголовков Origin и Referer в контексте Electron webview, допускаются при положительной идентификации isDesktopShellRequest(req).
      - Попытки спуфинга десктопных заголовков с удалённых LAN/WAN IP или через обратные прокси строго блокируются fail-closed (403 Forbidden).
      - В клиентском хелпере fetchWithTimeout (lib/client-src/30-utils.js) добавлена передача credentials: 'same-origin' для гарантированной отправки сессионных кук ядра.
+
+- 2026-11-01 — Release v0.3.30: Исправление выпадающих списков моделей и провайдеров (#404, GH PR #21, 0.3.30):
+  1. Синхронизация конверта ответа эндпоинта /dsh-cron/models (#404, GH PR #21):
+     - В lib/models-handler.js во все успешные ответы sendJson добавлен флаг ok: true ({ ok: true, current, providers, models }), приводя контракт к единому стандарту всех JSON-эндпоинтов плагина.
+     - В lib/client-src/50-cron-screen-state.js в функции loadModels условие записи состояния смягчено до if (data && data.ok !== false) для полной обратной совместимости со старыми серверами, сохраняя фильтрацию явных ошибок (ok: false).
+     - Пересобран бандл lib/client.js (240 201 байт <= 256 KiB).
+     - Дополнены тесты контракта в test/models.test.mjs.
