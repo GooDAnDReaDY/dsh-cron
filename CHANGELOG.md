@@ -1,3 +1,8 @@
+## 0.3.30 (2026-11-01)
+
+- fix(models): `GET /dsh-cron/models` now returns `ok: true` like other JSON endpoints, populating LLM provider and model dropdowns in the task modal (#404, GH PR #21)
+- fix(client): accept `data.ok !== false` in `loadModels` for backward compatibility with older servers (#404, GH PR #21)
+
 ## 0.3.29 (2026-10-31)
 
 - fix(security): authenticate DSH Desktop requests over `dsh-app://` custom protocol without Origin/Referer (#402, GH #20)
