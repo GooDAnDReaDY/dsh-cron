@@ -1,3 +1,7 @@
+## Unreleased
+
+- fix(models): `GET /dsh-cron/models` now answers with `ok: true` like every other endpoint; the client's `data.ok` gate had been dropping the payload (`{ current, providers, models }` carries no `ok` key), which emptied the LLM provider and model dropdowns in the task form
+
 ## 0.3.29 (2026-10-31)
 
 - fix(security): authenticate DSH Desktop requests over `dsh-app://` custom protocol without Origin/Referer (#402, GH #20)
