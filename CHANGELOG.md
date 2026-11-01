@@ -1,3 +1,8 @@
+## Unreleased
+
+- fix(sessions): `workspaceId` now actually binds the created session to the workspace — the runner registers it with the host workspace ledger (`attachSession`) so cron sessions show up under the project instead of ungrouped
+- fix(sessions): ephemeral-session cleanup and context-overflow rotation now call the real `workspaceRegistry.archiveSession()`; the previous `sessions.archive()` call was a silent no-op (the host SessionStore has no such method), so isolated cron sessions leaked into the chat list
+
 ## 0.3.29 (2026-10-31)
 
 - fix(security): authenticate DSH Desktop requests over `dsh-app://` custom protocol without Origin/Referer (#402, GH #20)
