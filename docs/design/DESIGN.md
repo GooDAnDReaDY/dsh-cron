@@ -274,3 +274,15 @@ ${secret}`).
      - В lib/client-src/50-cron-screen-state.js в функции loadModels условие записи состояния смягчено до if (data && data.ok !== false) для полной обратной совместимости со старыми серверами, сохраняя фильтрацию явных ошибок (ok: false).
      - Пересобран бандл lib/client.js (240 201 байт <= 256 KiB).
      - Дополнены тесты контракта в test/models.test.mjs.
+
+- 2026-11-01 — Release v0.3.31: Привязка сессий агента к воркспейсу и корректная архивация (#406, GH PR #22, 0.3.31):
+  1. Привязка сессий агента к реестру воркспейса через attachSession (#406, GH PR #22):
+     - В SessionRunner добавлены методы _getWorkspaceRegistry() и _resolveWorkspace(task).
+     - При запуске новой агентской сессии без изолированного worktree (где taskWorktree ложен) сессия регистрируется в ведомости проекта: workspace.attachSession(handle.agent.session.id).
+     - Для задач в изолированном git worktree attachSession не вызывается, так как cwd изолированного worktree отличается от пути воркспейса.
+     - Для возобновляемых долговременных сессий (isResumed: true) повторный attachSession опускается.
+  2. Архивация сессий через workspaceRegistry.archiveSession с защитным фоллбэком (#406, GH PR #22):
+     - В ядре DeepSeek Harness служба SessionStore не содержит метода archive(); реальный реестр архивированных сессий ведётся через workspaceRegistry.archiveSession(sessionId).
+     - Очистка эфемерных cron-сессий и ротация переполненных persistent-сессий переведены на вызов workspaceRegistry.archiveSession.
+     - Для 100% обратной совместимости со старыми тестовыми моками сохранён защитный fallback на sessions.archive(sessionId).
+     - Создан изолированный тестовый набор test/workspace-session-binding.test.mjs (8 тестов).
