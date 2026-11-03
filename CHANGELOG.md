@@ -1,3 +1,9 @@
+## 0.3.33 (2026-11-03)
+
+- feat(scheduler): event-driven wake triggers (`wakeTrigger`) support file count threshold, marker/flag receipt, and process exit monitoring (#410)
+- feat(interpolation): inject trigger context into prompt templates (`{{trigger.type}}`, `{{trigger.fileCount}}`) and execution environment (#410)
+- feat(client): added wake trigger configuration to task modal with full EN/ZH/RU localization (#410)
+
 ## 0.3.32 (2026-11-03)
 
 - feat(scheduler): scope locks (`writeScopes`) prevent concurrent agent tasks in the same workspace from conflicting on overlapping paths (#408)

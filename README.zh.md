@@ -639,3 +639,11 @@ MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
 - **统一安全并发默认值**：配置规范（Config）与调度器（TaskScheduler）全面对齐默认并发上限 `maxConcurrent = 2`（0 仅作为显式无限制选项）。
 - **并发分组隔离调度**：任务的 `concurrencyGroup` 属性全面接入调度仲裁与队列排队（同名分组默认限流 1 个并发执行），不同分组可并发运行直至 `maxConcurrent`，队列任务随所属分组资源释放立即触发。
 
+
+### 事件驱动唤醒触发器 (v0.3.33)
+
+基于本地系统事件响应式唤醒智能体任务：
+- **文件数量阈值 (`file_count`)**: 目标目录下积累 `>= N` 个匹配文件时自动触发批量处理。
+- **标记/Flag文件到达 (`marker_file`)**: 标志文件出现时触发并自动删除标记文件。
+- **进程退出监听 (`process_exit`)**: 监听 PID 或 `.pid` 文件，后台任务退出后立即唤醒任务进行后续处理。
+上下文自动注入到提示词变量 (`{{trigger.type}}`, `{{trigger.fileCount}}`) 及环境变量中。
