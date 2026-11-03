@@ -1,3 +1,10 @@
+## 0.3.36 (2026-11-03)
+
+- feat(cron-as-code): auto-discovery and three-way reconciliation of workspace cron configs (`.dsh/cron.yaml`, `.dsh/cron.yml`, `.dsh/cron.json`) (#416)
+- feat(store): added `managedBy: "cron_as_code"` and `origin` metadata attributes to safely distinguish code-defined tasks from GUI tasks (#416)
+- feat(scheduler): integrated `CronAsCodeManager` with `syncWorkspaceCronAsCode` on scheduler lifecycle (#416)
+- docs: added section 28 to DESIGN.md and updated multi-language documentation (#416)
+
 ## 0.3.35 (2026-11-03)
 
 - feat(reporting): periodic and morning digest engine (`lib/digest.js`) aggregates runs, errors, token spend, and USD costs (#414)

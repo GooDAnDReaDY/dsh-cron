@@ -711,3 +711,15 @@ Context is automatically injected into prompts (`{{trigger.type}}`, `{{trigger.f
 - **Dedicated Digest Tasks (`type: "digest"`)**: Schedule consolidated summary reports (e.g., daily at 09:00 AM) that aggregate runs, errors, token usage, and cost across all tasks.
 - **REST API**: Inspect digests on-demand via `GET /dsh-cron/digest` or trigger delivery via `POST /dsh-cron/digest/send`.
 - **Channel Routing**: Automatically delivers formatted summaries to Telegram, Feishu, or webhook channels.
+
+### Cron-as-Code (`.dsh/cron.yaml`)
+Declare recurring tasks directly in your repository. `dsh-cron` automatically detects and synchronizes `.dsh/cron.yaml`, `.dsh/cron.yml`, or `.dsh/cron.json`:
+```yaml
+tasks:
+  - id: nightly-audit
+    title: Nightly Security Audit
+    schedule: "0 2 * * *"
+    command: npm audit
+    timeBoxMinutes: 15
+```
+Git-managed tasks are isolated with zero interference to manual GUI tasks.
