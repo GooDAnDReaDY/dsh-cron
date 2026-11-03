@@ -26,6 +26,7 @@ export const MODULES = [
   'lib/client-src/62-modal-task-form-tail.js',
   'lib/client-src/65-modal-dialogs.js',
   'lib/client-src/70-settings-card.js',
+  'lib/client-src/75-quick-action-bar.js',
   'lib/client-src/80-sidebar-jobs.js',
   'lib/client-src/90-close.js',
 ];

@@ -670,3 +670,8 @@ tasks:
     timeBoxMinutes: 15
 ```
 Git 管理的任务具有隔离标识，绝不影响或覆盖 UI 手动创建的任务。
+
+### 会话快捷操作栏（In-Session Quick Action Bar）
+在 DSH 活跃聊天会话中直接管理定时任务（`conversation.session.header.actions`）：
+- **一键转为定时任务（`+ 定时任务`）**：将当前对话或提示词一键转换为预填参数的定时周期任务。
+- **关联任务状态与即时触发**：在会话顶部直接显示关联后台任务的执行状态，并支持一键立即执行。

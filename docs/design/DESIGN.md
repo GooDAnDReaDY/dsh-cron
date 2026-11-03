@@ -376,3 +376,13 @@ In developer-centric workspaces and multi-repository setups, scheduled jobs, rec
   - `updated`: Modified schedules, prompts, work windows, or commands are updated in-place, preserving execution logs.
   - `deleted`: Jobs removed from `.dsh/cron.yaml` are gracefully unscheduled and pruned from the store.
 - **Zero-Dependency YAML Parser (`parseCronAsCode`)**: Fast, lightweight indentation-aware parser supporting standard task definitions without heavy external YAML dependencies.
+
+
+## 29. In-Session Quick Action Bar (Release 6: v0.3.37)
+
+### 29.1 Architecture & Objectives
+To streamline scheduling workflows directly during interactive user conversations, `dsh-cron` v0.3.37 introduces an in-session contextual action bar mounted directly into `conversation.session.header.actions` (`lib/client-src/75-quick-action-bar.js`):
+- **Turn into Recurring Task (`+ Cron`)**: With a single click from any active chat session, users can turn the interactive prompt or session into a recurring cron job. The task modal automatically opens pre-filled with the conversation title, active session ID, and default schedule.
+- **Linked Task Status Badge**: If the active chat session was spawned by a cron job or targeted by a recurring task, the action bar dynamically renders a status badge with live pulsing animation during active executions.
+- **One-Click Manual Execution (`Run Now`)**: Users can trigger an immediate on-demand execution of the linked job directly from the chat header without switching views to the full cron dashboard.
+- **Zero-Dependency Native Design**: Styled exclusively with DSH design system tokens (`--dsw-surface-card`, `--dsw-border-subtle`, `--dsw-brand-primary`) without raw RGBA values, fitting inside strict bundle limits (<= 256 KiB).
