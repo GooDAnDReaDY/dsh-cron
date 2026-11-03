@@ -1,3 +1,10 @@
+## 0.3.37 (2026-11-03)
+
+- feat(client): added in-session Quick Action Bar (`lib/client-src/75-quick-action-bar.js`) mounted in `conversation.session.header.actions` (#418)
+- feat(client): one-click conversion of active conversation into a recurring scheduled task with pre-populated session context (#418)
+- feat(client): status badge and on-demand immediate execution button for cron-linked sessions (#418)
+- docs: added section 29 to DESIGN.md and updated multi-language documentation (#418)
+
 ## 0.3.36 (2026-11-03)
 
 - feat(cron-as-code): auto-discovery and three-way reconciliation of workspace cron configs (`.dsh/cron.yaml`, `.dsh/cron.yml`, `.dsh/cron.json`) (#416)

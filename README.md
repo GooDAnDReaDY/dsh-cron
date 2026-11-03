@@ -723,3 +723,8 @@ tasks:
     timeBoxMinutes: 15
 ```
 Git-managed tasks are isolated with zero interference to manual GUI tasks.
+
+### In-Session Quick Action Bar
+Control scheduled workflows directly within active DSH chat sessions (`conversation.session.header.actions`):
+- **Turn into Recurring Task (`+ Cron`)**: Turn any ongoing discussion or prompt into an automated recurring schedule with pre-populated parameters.
+- **Live Status & Run Now**: View associated task execution status directly in the conversation header and trigger immediate runs with a single click.

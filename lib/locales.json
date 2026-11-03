@@ -426,6 +426,11 @@
     "form.workWindowPolicySkip": "跳过本次执行 (record skipped)",
     "form.workWindowPolicyDefer": "延迟至窗口开启时执行 (defer)",
     "form.timeBoxMinutesLabel": "Timebox 运行上限 (分钟, 0 = 不限制)",
-    "form.typeDigest": "每日/定期简报 (Daily Digest)"
+    "form.typeDigest": "每日/定期简报 (Daily Digest)",
+    "sessionBar.addRecurring": "+ 定时任务",
+    "sessionBar.addRecurringHint": "将当前会话转为定时计划任务",
+    "sessionBar.run": "运行",
+    "sessionBar.runNow": "立即执行",
+    "sessionBar.running": "执行中..."
   }
 }
