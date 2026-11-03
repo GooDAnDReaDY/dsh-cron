@@ -1,3 +1,9 @@
+## 0.3.32 (2026-11-03)
+
+- feat(scheduler): scope locks (`writeScopes`) prevent concurrent agent tasks in the same workspace from conflicting on overlapping paths (#408)
+- feat(scheduler): input hash checks (`inputHashPaths`, `skipIfUnchanged`) skip redundant runs when watched files/directories are unchanged, saving tokens and compute (#408)
+- feat(client): added write scopes and input hash controls to task settings modal with multi-language localization (#408)
+
 ## 0.3.31 (2026-11-01)
 
 - fix(sessions): `workspaceId` now binds the created agent session to the workspace ledger (`attachSession`) so runs appear in the project group instead of ungrouped (#406, GH PR #22)
