@@ -705,3 +705,9 @@ Context is automatically injected into prompts (`{{trigger.type}}`, `{{trigger.f
 - **Time-Boxing (`timeBoxMinutes`)**: Set a maximum wall-clock execution limit per run. When exceeded, the agent turn aborts gracefully.
 - **Work Windows (`workWindow`)**: Restrict resource-intensive tasks to run only within specific hours (e.g., `22:00-07:00`) or days.
 - **Outside Policy**: Choose to either `skip` runs outside the window or `defer` execution until the window opens.
+
+### Daily & Morning Digest (v0.3.35)
+
+- **Dedicated Digest Tasks (`type: "digest"`)**: Schedule consolidated summary reports (e.g., daily at 09:00 AM) that aggregate runs, errors, token usage, and cost across all tasks.
+- **REST API**: Inspect digests on-demand via `GET /dsh-cron/digest` or trigger delivery via `POST /dsh-cron/digest/send`.
+- **Channel Routing**: Automatically delivers formatted summaries to Telegram, Feishu, or webhook channels.
