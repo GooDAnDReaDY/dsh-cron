@@ -405,6 +405,11 @@
     "settings.feishuSecretLabel": "签名密钥（可选）",
     "settings.feishuSecretPlaceholder": "SEC…",
     "settings.feishuGlobalNotify": "所有任务的运行结果都推送到飞书",
-    "settings.feishuHint": "飞书群通知：在目标群里添加「自定义机器人」，把它的 Webhook 地址粘贴到下面；如果机器人开启了「签名校验」，再把签名密钥一并填入。"
+    "settings.feishuHint": "飞书群通知：在目标群里添加「自定义机器人」，把它的 Webhook 地址粘贴到下面；如果机器人开启了「签名校验」，再把签名密钥一并填入。",
+    "form.writeScopesLabel": "文件写入范围锁 (writeScopes, 每行或逗号分隔一个路径)",
+    "form.writeScopesPlaceholder": "例如: src/, docs/ (阻止与同工作区重叠任务并发执行)",
+    "form.inputHashPathsLabel": "输入文件哈希变动监控 (inputHashPaths)",
+    "form.inputHashPathsPlaceholder": "例如: src/, package.json (无变动时跳过执行)",
+    "form.skipIfUnchangedLabel": "输入文件无变动时跳过执行 (节省 Token 与预算)"
   }
 }
