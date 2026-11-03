@@ -1,3 +1,10 @@
+## 0.3.35 (2026-11-03)
+
+- feat(reporting): periodic and morning digest engine (`lib/digest.js`) aggregates runs, errors, token spend, and USD costs (#414)
+- feat(scheduler): dedicated task type `digest` executes scheduled summary reports and delivers formatted markdown to active channels (#414)
+- feat(routes): added `GET /dsh-cron/digest` and `POST /dsh-cron/digest/send` endpoints for on-demand digest inspection and delivery (#414)
+- feat(client): added digest task type option in task modal with multi-language localization (#414)
+
 ## 0.3.34 (2026-11-03)
 
 - feat(scheduler): time-boxing (`timeBoxMinutes`) enforces wall-clock execution limits with graceful aborts (#412)
