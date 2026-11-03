@@ -647,3 +647,9 @@ MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
 - **标记/Flag文件到达 (`marker_file`)**: 标志文件出现时触发并自动删除标记文件。
 - **进程退出监听 (`process_exit`)**: 监听 PID 或 `.pid` 文件，后台任务退出后立即唤醒任务进行后续处理。
 上下文自动注入到提示词变量 (`{{trigger.type}}`, `{{trigger.fileCount}}`) 及环境变量中。
+
+### 时间预算与运行窗口 (v0.3.34)
+
+- **Time-Boxing (`timeBoxMinutes`)**: 设置单次执行的最长分钟上限，超时时通过 AbortSignal 优雅中止。
+- **时间窗口 (`workWindow`)**: 限制高负载任务仅在指定时段（如 `22:00-07:00`）或特定星期内运行。
+- **窗口外策略 (`outsidePolicy`)**: 支持 `skip`（跳过本次运行）或 `defer`（推迟到窗口开启时自动执行）。

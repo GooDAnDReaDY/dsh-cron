@@ -419,6 +419,12 @@
     "form.wakeTriggerPathLabel": "触发目标路径 (目录 / markerPath / pidFile)",
     "form.wakeTriggerPathPlaceholder": "例如: incoming/ 或 build.ready 或 run.pid",
     "form.wakeTriggerMinCountLabel": "最小文件阈值 (minCount)",
-    "form.wakeTriggerConsumeLabel": "触发后自动删除标记/PID文件"
+    "form.wakeTriggerConsumeLabel": "触发后自动删除标记/PID文件",
+    "form.workWindowHoursLabel": "运行时间窗口 (workWindow, 如 22:00-07:00)",
+    "form.workWindowHoursPlaceholder": "例如: 22:00-07:00 或 09:00-18:00",
+    "form.workWindowPolicyLabel": "窗口外执行策略",
+    "form.workWindowPolicySkip": "跳过本次执行 (record skipped)",
+    "form.workWindowPolicyDefer": "延迟至窗口开启时执行 (defer)",
+    "form.timeBoxMinutesLabel": "Timebox 运行上限 (分钟, 0 = 不限制)"
   }
 }

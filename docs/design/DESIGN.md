@@ -328,3 +328,21 @@ Fixed cron intervals often waste resources polling empty directories or miss rea
 When a task wakes via trigger, \`WakeTriggerManager\` injects context into options:
 - Prompt interpolation: \`{{trigger.type}}\`, \`{{trigger.markerPath}}\`, \`{{trigger.fileCount}}\`, \`{{trigger.pid}}\`.
 - Environment variables: \`DSH_CRON_WAKE_TYPE\`, \`DSH_CRON_WAKE_PATH\`, \`DSH_CRON_WAKE_MARKER\`, \`DSH_CRON_WAKE_FILE_COUNT\`, \`DSH_CRON_WAKE_PID\`.
+
+
+## 26. Time-Boxing & Work Windows (Release 3: v0.3.34)
+
+### 26.1 Time-Boxing (`timeBoxMinutes`)
+Agent tasks and long-running workflows may consume excess tokens or stall without hard bounds. `dsh-cron` v0.3.34 introduces strict wall-clock time-boxing:
+- \`timeBoxMinutes\`: Declares the maximum elapsed duration in minutes for any single execution attempt.
+- Execution signals are capped: \`AbortSignal.timeout(Math.min(timeoutMs, timeBoxMinutes * 60 * 1000))\`.
+- When exceeded, tasks gracefully terminate with status \`timeout\`, triggering self-healing recovery or retry logic without indefinite resource exhaustion.
+
+### 26.2 Work Windows & Off-Peak Execution (`workWindow`)
+Certain tasks (e.g. data backups, massive crawls, indexing) must only run during off-peak hours to preserve server performance and API rate limits:
+- \`workWindow.hours\`: Time window in "HH:mm-HH:mm" format (e.g. "22:00-07:00" or "09:00-18:00"). Overnight intervals spanning midnight are natively supported.
+- \`workWindow.daysOfWeek\`: Array of allowed days (0=Sunday ... 6=Saturday).
+- \`workWindow.outsidePolicy\`:
+  - \`'skip'\`: Immediately skip execution and record run as \`skipped (outside work window)\`.
+  - \`'defer'\`: Compute the next window opening timestamp (\`getNextWindowStart\`) and arm a deferred timer to execute as soon as the window opens.
+- Respects task timezone (\`task.timezone\`) via native \`Intl.DateTimeFormat\`.
