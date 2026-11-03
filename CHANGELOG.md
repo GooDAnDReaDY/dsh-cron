@@ -1,3 +1,9 @@
+## 0.3.34 (2026-11-03)
+
+- feat(scheduler): time-boxing (`timeBoxMinutes`) enforces wall-clock execution limits with graceful aborts (#412)
+- feat(scheduler): work windows (`workWindow`) restrict runs to permitted hours and off-peak windows with `skip` or `defer` policies (#412)
+- feat(client): added work window hours, policy, and time-box controls to task modal with multi-language localization (#412)
+
 ## 0.3.33 (2026-11-03)
 
 - feat(scheduler): event-driven wake triggers (`wakeTrigger`) support file count threshold, marker/flag receipt, and process exit monitoring (#410)

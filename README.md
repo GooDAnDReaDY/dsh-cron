@@ -699,3 +699,9 @@ Wake agent tasks reactively based on local events:
 - **Marker / Flag File**: trigger when a flag file (e.g., `build.ready`) appears, with automatic consumption.
 - **Process Exit**: monitor a PID or `.pid` file and trigger post-processing as soon as the background job completes.
 Context is automatically injected into prompts (`{{trigger.type}}`, `{{trigger.fileCount}}`) and process environment variables (`DSH_CRON_WAKE_TYPE`, `DSH_CRON_WAKE_PATH`).
+
+### Time-Boxing & Work Windows (v0.3.34)
+
+- **Time-Boxing (`timeBoxMinutes`)**: Set a maximum wall-clock execution limit per run. When exceeded, the agent turn aborts gracefully.
+- **Work Windows (`workWindow`)**: Restrict resource-intensive tasks to run only within specific hours (e.g., `22:00-07:00`) or days.
+- **Outside Policy**: Choose to either `skip` runs outside the window or `defer` execution until the window opens.
