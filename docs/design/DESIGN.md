@@ -286,3 +286,20 @@ ${secret}`).
      - Очистка эфемерных cron-сессий и ротация переполненных persistent-сессий переведены на вызов workspaceRegistry.archiveSession.
      - Для 100% обратной совместимости со старыми тестовыми моками сохранён защитный fallback на sessions.archive(sessionId).
      - Создан изолированный тестовый набор test/workspace-session-binding.test.mjs (8 тестов).
+
+- 2026-11-03 — Release v0.3.32: Scope Locks и Input Hash-checks (#408, 0.3.32):
+  1. Scope Conflict Prevention & Locking (`writeScopes`) (#408):
+     - Модуль `lib/scope-locks.js` (`ScopeLockManager`, `normalizeScopes`, `scopesOverlap`, `hasScopeConflict`).
+     - Задачи декларируют относительные пути каталогов/файлов записи (`writeScopes`).
+     - Планировщик проверяет активные блокировки в рамках воркспейса (`ws:<id>` или `cwd:<path>`). При пересечении областей задача с `overlapPolicy: 'queue'` помещается в очередь ожидания (`waitReason: 'scope-conflict'`), исключая одновременную модификацию файлов и конфликты git.
+     - Задачи в изолированном git worktree (`worktree: true`) не конфликтуют с основным рабочим каталогом.
+     - При завершении задачи блокировки автоматически снимаются с вызовом `scheduler.drainQueue()`.
+  2. Input Hash-checks и пропуск холостых запусков (`inputHashPaths`, `skipIfUnchanged`) (#408):
+     - Модуль `lib/input-hash.js` (`computeTaskInputHash`, `hashPath`, `normalizeInputHashPaths`).
+     - Детерминированное вычисление SHA-256 хэша входных файлов и директорий (с игнорированием `.git` и `node_modules`).
+     - При совпадении хэша с `lastInputHash` задача пропускается со статусом `skipped (inputs unchanged)`, экономя 100% LLM токенов и времени выполнения. При изменении входных файлов задача выполняется и обновляет сохранённый `lastInputHash`.
+  3. UI и схема задач:
+     - Поля `writeScopes`, `inputHashPaths`, `skipIfUnchanged` в `TaskSchema`, `PATCHABLE_TASK_FIELDS` и `cronToolParameters`.
+     - Интеграция в модальное окно задачи Web UI (`lib/client-src/62-modal-task-form-tail.js`) с поддержкой локализации (en/ru/zh).
+     - Пересобран бандл `lib/client.js` (242 805 байт <= 256 KiB).
+     - Модульные тесты `test/scope-locks.test.mjs` и `test/input-hash.test.mjs`.

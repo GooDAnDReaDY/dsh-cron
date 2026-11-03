@@ -206,6 +206,8 @@ cron({
 * **Docker**（`docker`）—— 在镜像容器（`dockerImage`）中执行命令。
 * **环境变量** —— 按任务的 `env` 映射（界面中每行 KEY VALUE）应用于外部运行时；请勿在此存放密钥。
 * **工作区与 worktree** —— 将任务绑定到 Harness 工作区（`workspaceId`，通过宿主 `workspaceRegistry` 服务解析）或直接路径；运行创建的智能体会话会登记进该工作区的账本（`attachSession`），因此出现在项目分组下而非「未分组」。对会修改代码的智能体任务，可在隔离的 git worktree 中运行（`worktree`、`keepWorktree`）。
+* **写入范围锁与冲突避免 (Scope Locks)** —— 声明 `writeScopes`（例如 `src/`、`docs/`）防止同一工作区内并发任务互相覆盖代码；重叠任务安全排队等待释放锁。
+* **输入哈希监控与跳过 (Input Hash)** —— 配置 `inputHashPaths`（与 `skipIfUnchanged`）在运行前计算确定性 SHA-256；若输入未变则直接跳过 (`skipped (inputs unchanged)`)，节省 100% 的 Token 与调用成本。
 
 ### 7. 成本控制：回退模型与支出保护（Burn Guard）
 * **回退模型** —— 任务可以默认使用便宜模型，失败时改用更强模型完成：设置 `fallbackModel`（可选 `fallbackProvider`），失败（`error` 或 `timeout`）的运行会在该模型上重试一次，之后才进入常规重试退避。历史记录会标明最终产出结果的模型以及是否使用了回退，两次尝试的用量与成本都会累计，模板变量 `{model}` 渲染完成运行的模型。回退仅适用于智能体类型（`llm`、`skill`、`workflow`）。
