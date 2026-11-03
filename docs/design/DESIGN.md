@@ -346,3 +346,15 @@ Certain tasks (e.g. data backups, massive crawls, indexing) must only run during
   - \`'skip'\`: Immediately skip execution and record run as \`skipped (outside work window)\`.
   - \`'defer'\`: Compute the next window opening timestamp (\`getNextWindowStart\`) and arm a deferred timer to execute as soon as the window opens.
 - Respects task timezone (\`task.timezone\`) via native \`Intl.DateTimeFormat\`.
+
+
+## 27. Daily & Morning Digest (Release 4: v0.3.35)
+
+### 27.1 Architecture & Objectives
+To prevent alert fatigue while maintaining full observability over autonomous scheduled tasks, `dsh-cron` v0.3.35 introduces consolidated periodic digests (\`lib/digest.js\`):
+- **Metrics Aggregation (\`collectDigestMetrics\`)**: Computes total runs, success/failure/skip ratios, token spend (input, output, cache read), estimated USD cost, and top failure root causes across the rolling time window.
+- **Reporting Engine (\`formatDigestReport\`)**: Formats metrics into rich, concise GitHub-flavored Markdown suitable for team chats, Discord, Feishu, and Telegram.
+- **Dedicated Task Type (\`type: 'digest'\`)**: Users can schedule automatic morning reports (e.g. \`0 9 * * *\`) without writing custom scripts. The task runs in-process and outputs formatted metrics directly to configured notification channels.
+- **HTTP REST Endpoints**:
+  - \`GET /dsh-cron/digest?hours=24\`: Query metrics and markdown report for the given period.
+  - \`POST /dsh-cron/digest/send\`: Force generation and delivery to active channels.

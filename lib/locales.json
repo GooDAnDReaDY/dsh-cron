@@ -425,6 +425,7 @@
     "form.workWindowPolicyLabel": "窗口外执行策略",
     "form.workWindowPolicySkip": "跳过本次执行 (record skipped)",
     "form.workWindowPolicyDefer": "延迟至窗口开启时执行 (defer)",
-    "form.timeBoxMinutesLabel": "Timebox 运行上限 (分钟, 0 = 不限制)"
+    "form.timeBoxMinutesLabel": "Timebox 运行上限 (分钟, 0 = 不限制)",
+    "form.typeDigest": "每日/定期简报 (Daily Digest)"
   }
 }

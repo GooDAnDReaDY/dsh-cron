@@ -653,3 +653,8 @@ MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
 - **Time-Boxing (`timeBoxMinutes`)**: 设置单次执行的最长分钟上限，超时时通过 AbortSignal 优雅中止。
 - **时间窗口 (`workWindow`)**: 限制高负载任务仅在指定时段（如 `22:00-07:00`）或特定星期内运行。
 - **窗口外策略 (`outsidePolicy`)**: 支持 `skip`（跳过本次运行）或 `defer`（推迟到窗口开启时自动执行）。
+
+### 每日/定期简报与成本汇总 (v0.3.35)
+
+- **简报专用任务类型 (`type: "digest"`)**: 可定时调度汇总报告（如每日早晨 09:00），聚合所有任务的运行状态、失败诊断、Token 消耗与估算成本。
+- **REST API**: 支持 `GET /dsh-cron/digest` 查询统计报告，以及 `POST /dsh-cron/digest/send` 主动推送到各通知渠道。
