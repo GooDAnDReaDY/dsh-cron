@@ -358,3 +358,21 @@ To prevent alert fatigue while maintaining full observability over autonomous sc
 - **HTTP REST Endpoints**:
   - \`GET /dsh-cron/digest?hours=24\`: Query metrics and markdown report for the given period.
   - \`POST /dsh-cron/digest/send\`: Force generation and delivery to active channels.
+
+
+## 28. Cron-as-Code & Workspace Sync (Release 5: v0.3.36)
+
+### 28.1 Overview & GitOps Workflow
+In developer-centric workspaces and multi-repository setups, scheduled jobs, recurring test runs, lint audits, and automated sync scripts should be version-controlled alongside application code. `dsh-cron` v0.3.36 introduces native **Cron-as-Code**:
+- Declarative configuration files located at `.dsh/cron.yaml`, `.dsh/cron.yml`, or `.dsh/cron.json` in the workspace root.
+- Automated discovery and non-destructive reconciliation upon workspace load or scheduler refresh.
+- GitOps-native lifecycle: modifying, pushing, and branching scheduled tasks within Git automatically synchronizes active execution schedules without manual UI configuration.
+
+### 28.2 Reconciliation Engine (`lib/cron-as-code.js`)
+- **Prefix Isolation**: Declarative tasks are registered in the task store with deterministic IDs prefixed by `cac_<workspaceId>_<id>`.
+- **Zero-Interference Guarantee**: All tasks managed by Cron-as-Code carry `managedBy: 'cron_as_code'` and `origin: <filePath>`. User-created GUI tasks remain strictly untouched during discovery and cleanup.
+- **Three-Way Reconciliation (`reconcileWorkspaceCronTasks`)**:
+  - `created`: New jobs declared in `.dsh/cron.yaml` are immediately scheduled.
+  - `updated`: Modified schedules, prompts, work windows, or commands are updated in-place, preserving execution logs.
+  - `deleted`: Jobs removed from `.dsh/cron.yaml` are gracefully unscheduled and pruned from the store.
+- **Zero-Dependency YAML Parser (`parseCronAsCode`)**: Fast, lightweight indentation-aware parser supporting standard task definitions without heavy external YAML dependencies.

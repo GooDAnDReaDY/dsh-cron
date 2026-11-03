@@ -658,3 +658,15 @@ MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
 
 - **简报专用任务类型 (`type: "digest"`)**: 可定时调度汇总报告（如每日早晨 09:00），聚合所有任务的运行状态、失败诊断、Token 消耗与估算成本。
 - **REST API**: 支持 `GET /dsh-cron/digest` 查询统计报告，以及 `POST /dsh-cron/digest/send` 主动推送到各通知渠道。
+
+### 代码化 Cron（`.dsh/cron.yaml`）
+直接在项目仓库中声明定时任务。`dsh-cron` 自动发现并同步 `.dsh/cron.yaml`、`.dsh/cron.yml` 或 `.dsh/cron.json`：
+```yaml
+tasks:
+  - id: nightly-audit
+    title: 每夜安全检查
+    schedule: "0 2 * * *"
+    command: npm audit
+    timeBoxMinutes: 15
+```
+Git 管理的任务具有隔离标识，绝不影响或覆盖 UI 手动创建的任务。
