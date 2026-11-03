@@ -691,3 +691,11 @@ node scripts/ci-preflight.mjs
 ## 📄 License
 
 MIT © [GooDAnDReaDY](https://github.com/GooDAnDReaDY)
+
+### Event-Driven Wake Triggers (v0.3.33)
+
+Wake agent tasks reactively based on local events:
+- **File Count Threshold**: trigger when `>= N` matching files appear in a directory (batch processing).
+- **Marker / Flag File**: trigger when a flag file (e.g., `build.ready`) appears, with automatic consumption.
+- **Process Exit**: monitor a PID or `.pid` file and trigger post-processing as soon as the background job completes.
+Context is automatically injected into prompts (`{{trigger.type}}`, `{{trigger.fileCount}}`) and process environment variables (`DSH_CRON_WAKE_TYPE`, `DSH_CRON_WAKE_PATH`).

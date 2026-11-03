@@ -303,3 +303,28 @@ ${secret}`).
      - Интеграция в модальное окно задачи Web UI (`lib/client-src/62-modal-task-form-tail.js`) с поддержкой локализации (en/ru/zh).
      - Пересобран бандл `lib/client.js` (242 805 байт <= 256 KiB).
      - Модульные тесты `test/scope-locks.test.mjs` и `test/input-hash.test.mjs`.
+
+
+## 25. Event-Driven Wake Triggers (Release 2: v0.3.33)
+
+### 25.1 Architecture & Problem Statement
+Fixed cron intervals often waste resources polling empty directories or miss reactive workflows. Competitor plugins introduced event-driven awakening without continuous schedule bloat. In v0.3.33, \`dsh-cron\` introduces native Event-Driven Wake Triggers managed via \`WakeTriggerManager\` (\`lib/wake-triggers.js\`).
+
+### 25.2 Supported Trigger Types
+1. **File Count Threshold (\`type: 'file_count'\`)**:
+   - Accumulates incoming items (e.g. batch ingests in \`inbox/\` or \`logs/\`).
+   - Parameters: \`path\` (directory), \`minCount\` (integer >= 1), \`pattern\` (glob wildcards, e.g. \`*.json\`, default \`*\`), \`pollIntervalMs\` (default 3000ms).
+   - Uses hysteresis level-triggering: triggers when file count reaches \`minCount\`, then disarms until count drops below threshold or new files arrive.
+2. **Receipt / Marker File Detection (\`type: 'marker_file'\`)**:
+   - Triggers when a marker/flag file appears on disk (e.g. \`ready.flag\`, \`build.done\`).
+   - Parameters: \`markerPath\`, \`consumeMarker: true\` (default: unlinks marker file on trigger).
+   - Once triggered and consumed, waits until the marker is recreated.
+3. **OS Process Exit (\`type: 'process_exit'\`)**:
+   - Watches a background process by PID or PID-file (\`pidFile: '.train.pid'\`).
+   - Uses safe \`isProcessAlive\` via \`process.kill(pid, 0)\` without permission escalation.
+   - Triggers immediately when the tracked process exits, with optional deletion of \`pidFile\` (\`consumeMarker: true\`).
+
+### 25.3 Execution & Prompt Context
+When a task wakes via trigger, \`WakeTriggerManager\` injects context into options:
+- Prompt interpolation: \`{{trigger.type}}\`, \`{{trigger.markerPath}}\`, \`{{trigger.fileCount}}\`, \`{{trigger.pid}}\`.
+- Environment variables: \`DSH_CRON_WAKE_TYPE\`, \`DSH_CRON_WAKE_PATH\`, \`DSH_CRON_WAKE_MARKER\`, \`DSH_CRON_WAKE_FILE_COUNT\`, \`DSH_CRON_WAKE_PID\`.

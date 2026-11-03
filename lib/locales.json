@@ -410,6 +410,15 @@
     "form.writeScopesPlaceholder": "例如: src/, docs/ (阻止与同工作区重叠任务并发执行)",
     "form.inputHashPathsLabel": "输入文件哈希变动监控 (inputHashPaths)",
     "form.inputHashPathsPlaceholder": "例如: src/, package.json (无变动时跳过执行)",
-    "form.skipIfUnchangedLabel": "输入文件无变动时跳过执行 (节省 Token 与预算)"
+    "form.skipIfUnchangedLabel": "输入文件无变动时跳过执行 (节省 Token 与预算)",
+    "form.wakeTriggerTypeLabel": "事件唤醒触发器 (Wake Triggers)",
+    "form.wakeTriggerTypeNone": "无 (仅定时/间隔)",
+    "form.wakeTriggerTypeFileCount": "文件数量阈值 (批量触发)",
+    "form.wakeTriggerTypeMarkerFile": "标记/Flag文件到达",
+    "form.wakeTriggerTypeProcessExit": "进程退出监听 (PID / pidfile)",
+    "form.wakeTriggerPathLabel": "触发目标路径 (目录 / markerPath / pidFile)",
+    "form.wakeTriggerPathPlaceholder": "例如: incoming/ 或 build.ready 或 run.pid",
+    "form.wakeTriggerMinCountLabel": "最小文件阈值 (minCount)",
+    "form.wakeTriggerConsumeLabel": "触发后自动删除标记/PID文件"
   }
 }
