@@ -431,6 +431,8 @@
     "sessionBar.addRecurringHint": "将当前会话转为定时计划任务",
     "sessionBar.run": "运行",
     "sessionBar.runNow": "立即执行",
-    "sessionBar.running": "执行中..."
+    "sessionBar.running": "执行中...",
+    "settings.showChatHeaderButton": "在聊天标题栏显示定时任务按钮",
+    "settings.showChatHeaderActions": "在聊天标题栏显示快速创建操作"
   }
 }

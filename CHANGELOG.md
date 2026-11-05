@@ -1,3 +1,11 @@
+## 0.3.39 (2026-11-05)
+
+- feat(client): added individual visibility settings for chat header schedule button and quick create action (#422)
+- feat(client): reactive real-time toggle update without reload, backed by localStorage and persistent settings store (#422)
+- feat(client): preserved main sidebar navigation button («Задачи по расписанию») unconditionally (#422)
+- i18n: full parity for chat header settings labels in English and Chinese (#422)
+- test: added automated tests for state persistence, default values, and reactive visibility hooks (#422)
+
 ## 0.3.38 (2026-11-05)
 
 - fix(security): path traversal hardening in `isSafeWakePath` enforcing prefix boundary on disallowed system roots (#420)
