@@ -1,3 +1,10 @@
+## 0.3.38 (2026-11-05)
+
+- fix(security): path traversal hardening in `isSafeWakePath` enforcing prefix boundary on disallowed system roots (#420)
+- fix(security): added cloud metadata SSRF guard for HTTP tasks and preflight checks (#420)
+- fix(cron-as-code): properly map declarative `command:` to `prompt` and `type: script` in workspace reconciliation (#420)
+- docs: added section 30 to DESIGN.md and updated multi-language documentation (#420)
+
 ## 0.3.37 (2026-11-03)
 
 - feat(client): added in-session Quick Action Bar (`lib/client-src/75-quick-action-bar.js`) mounted in `conversation.session.header.actions` (#418)
