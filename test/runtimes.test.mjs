@@ -189,3 +189,14 @@ test('#38: task env is injected into the executed process', async () => {
   });
   assert.equal(res.output, 'injected-value');
 });
+
+test('buildHttpRequest blocks access to cloud metadata endpoints (SSRF guard)', () => {
+  
+  assert.throws(() => {
+    buildHttpRequest({ type: 'http', httpUrl: 'http://169.254.169.254/latest/meta-data/' });
+  }, /Access to cloud metadata endpoint/);
+
+  assert.throws(() => {
+    buildHttpRequest({ type: 'http', prompt: 'http://metadata.google.internal/computeMetadata/v1/' });
+  }, /Access to cloud metadata endpoint/);
+});

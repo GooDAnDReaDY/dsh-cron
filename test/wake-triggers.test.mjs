@@ -243,3 +243,24 @@ test('resolveTaskForExecution exposes wake trigger context in variables and env'
   assert.equal(resolved.env.DSH_CRON_WAKE_TYPE, 'marker_file');
   assert.equal(resolved.env.DSH_CRON_WAKE_MARKER, 'output/ready.done');
 });
+
+test('isSafeWakePath strictly blocks subpaths inside disallowed roots (CVE hardening)', () => {
+  // Direct roots
+  assert.equal(isSafeWakePath('/etc').safe, false);
+  assert.equal(isSafeWakePath('/proc').safe, false);
+  assert.equal(isSafeWakePath('/sys').safe, false);
+  assert.equal(isSafeWakePath('/dev').safe, false);
+
+  // Subpaths inside disallowed roots
+  assert.equal(isSafeWakePath('/etc/passwd').safe, false);
+  assert.equal(isSafeWakePath('/etc/shadow').safe, false);
+  assert.equal(isSafeWakePath('/etc/cron.d/job').safe, false);
+  assert.equal(isSafeWakePath('/proc/cpuinfo').safe, false);
+  assert.equal(isSafeWakePath('/sys/kernel/debug').safe, false);
+  assert.equal(isSafeWakePath('C:\\Windows\\System32\\cmd.exe').safe, false);
+  assert.equal(isSafeWakePath('C:\\Program Files\\secret.txt').safe, false);
+
+  // Normal / relative paths
+  assert.equal(isSafeWakePath('./local/file.marker').safe, true);
+  assert.equal(isSafeWakePath('output/build.flag').safe, true);
+});

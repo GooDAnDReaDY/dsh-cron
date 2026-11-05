@@ -386,3 +386,19 @@ To streamline scheduling workflows directly during interactive user conversation
 - **Linked Task Status Badge**: If the active chat session was spawned by a cron job or targeted by a recurring task, the action bar dynamically renders a status badge with live pulsing animation during active executions.
 - **One-Click Manual Execution (`Run Now`)**: Users can trigger an immediate on-demand execution of the linked job directly from the chat header without switching views to the full cron dashboard.
 - **Zero-Dependency Native Design**: Styled exclusively with DSH design system tokens (`--dsw-surface-card`, `--dsw-border-subtle`, `--dsw-brand-primary`) without raw RGBA values, fitting inside strict bundle limits (<= 256 KiB).
+
+
+## 30. Security Hardening & Safe Path Validation (Release v0.3.38)
+
+### 30.1 Wake Trigger Path Traversal Hardening (`isSafeWakePath`)
+In earlier versions, `isSafeWakePath` performed exact root equality comparisons against `DISALLOWED_ROOTS` (`/etc`, `/proc`, `/sys`, etc.). In `dsh-cron` v0.3.38:
+- Directory prefix boundaries are strictly enforced (`lower === normRoot || lower.startsWith(normRoot + '/')`), blocking nested sensitive targets (e.g. `/etc/passwd`, `/etc/shadow`, `/proc/...`).
+- Windows system paths (`C:\Windows\...`, `C:\Program Files\...`) are guarded across both POSIX and Windows runtimes before resolution.
+- Filesystem root escapes are prevented, eliminating arbitrary file deletion vectors when `consumeMarker: true` is configured.
+
+### 30.2 Cron-as-Code Declarative Command Mapping
+- Reconciled tasks declared in `.dsh/cron.yaml` using `command: <shellCommand>` are automatically mapped to `prompt` and typed as `script`.
+- Guarantees seamless automated script execution without requiring manual UI configuration.
+
+### 30.3 Cloud Metadata SSRF Protection
+- Outbound HTTP tasks (`type: 'http'`) and preflight checks strictly block access to link-local metadata IP endpoints (`169.254.169.254`, `metadata.google.internal`, `metadata.azure.com`).

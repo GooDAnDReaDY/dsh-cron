@@ -127,3 +127,24 @@ tasks:
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('reconcileWorkspaceCronTasks properly maps command to prompt and type script', () => {
+  const storeData = new Map();
+  const mockStore = {
+    list: () => Array.from(storeData.values()),
+    set: (t) => storeData.set(t.id, t),
+    delete: (id) => storeData.delete(id),
+  };
+
+  const decl = [
+    { id: 'run-lint', command: 'npm run lint', schedule: '0 1 * * *' }
+  ];
+
+  const res = reconcileWorkspaceCronTasks(mockStore, 'ws-abc', decl);
+  assert.equal(res.created, 1);
+
+  const task = storeData.get('cac_ws-abc_run-lint');
+  assert.ok(task);
+  assert.equal(task.type, 'script');
+  assert.equal(task.prompt, 'npm run lint');
+});
