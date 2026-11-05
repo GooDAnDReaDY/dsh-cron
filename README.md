@@ -728,3 +728,7 @@ Git-managed tasks are isolated with zero interference to manual GUI tasks.
 Control scheduled workflows directly within active DSH chat sessions (`conversation.session.header.actions`):
 - **Turn into Recurring Task (`+ Cron`)**: Turn any ongoing discussion or prompt into an automated recurring schedule with pre-populated parameters.
 - **Live Status & Run Now**: View associated task execution status directly in the conversation header and trigger immediate runs with a single click.
+
+### Security & Safe Execution
+- **Hardened Path Validation**: Wake trigger markers and file watchers strictly disallow access to system directories (`/etc`, `/proc`, `/sys`, `C:\Windows`).
+- **SSRF Guard**: Automated blocking of cloud metadata endpoints (`169.254.169.254`).
