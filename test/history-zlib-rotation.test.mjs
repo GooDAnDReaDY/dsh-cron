@@ -99,6 +99,21 @@ test('history-zlib-rotation: routes /dsh-cron/history/archives and /history/arch
   const archivesHandler = registered.get('/dsh-cron/history/archives');
   assert.ok(archivesHandler, 'Archives collection handler should be registered');
 
+  // Test unauthenticated access rejected (#425)
+  let unauthStatus = 0;
+  archivesHandler({ method: 'GET', url: '/dsh-cron/history/archives' }, {
+    writeHead: (st) => { unauthStatus = st; },
+    end: () => {},
+  });
+  assert.equal(unauthStatus, 401, 'Unauthenticated history archives request must be rejected with 401');
+
+  const makeMockReq = (url) => ({
+    method: 'GET',
+    url,
+    headers: { host: '127.0.0.1' },
+    socket: { remoteAddress: '127.0.0.1' },
+  });
+
   // Test /history/archives GET
   let resStatus = 0;
   let resHeaders = {};
@@ -108,7 +123,7 @@ test('history-zlib-rotation: routes /dsh-cron/history/archives and /history/arch
     end: (b) => { resBody = b; },
   };
 
-  archivesHandler({ method: 'GET', url: '/dsh-cron/history/archives' }, mockRes);
+  archivesHandler(makeMockReq('/dsh-cron/history/archives'), mockRes);
   assert.equal(resStatus, 200);
   const parsedArchives = JSON.parse(resBody);
   assert.equal(parsedArchives.ok, true);
@@ -125,7 +140,7 @@ test('history-zlib-rotation: routes /dsh-cron/history/archives and /history/arch
     end: (b) => { resMonthBody = b; },
   };
 
-  archiveMonthHandler({ method: 'GET', url: '/dsh-cron/history/archive/2026-04' }, mockResMonth);
+  archiveMonthHandler(makeMockReq('/dsh-cron/history/archive/2026-04'), mockResMonth);
   assert.equal(resStatus, 200);
   const parsedMonth = JSON.parse(resMonthBody);
   assert.equal(parsedMonth.ok, true);
@@ -133,11 +148,11 @@ test('history-zlib-rotation: routes /dsh-cron/history/archives and /history/arch
   assert.ok(parsedMonth.archive['t_rot']);
 
   // Test 404 for missing month
-  archiveMonthHandler({ method: 'GET', url: '/dsh-cron/history/archive/1999-01' }, mockResMonth);
+  archiveMonthHandler(makeMockReq('/dsh-cron/history/archive/1999-01'), mockResMonth);
   assert.equal(resStatus, 404);
 
   // Test 400 for bad format
-  archiveMonthHandler({ method: 'GET', url: '/dsh-cron/history/archive/invalid-month' }, mockResMonth);
+  archiveMonthHandler(makeMockReq('/dsh-cron/history/archive/invalid-month'), mockResMonth);
   assert.equal(resStatus, 400);
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
