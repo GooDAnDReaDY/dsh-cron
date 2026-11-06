@@ -1,3 +1,12 @@
+## 0.3.40 (2026-11-06)
+
+- fix(security): move SSE log stream dispatch under rejectCrossOrigin and drop wildcard Access-Control-Allow-Origin (#424)
+- fix(security): authenticate /dsh-cron/history/archives and /history/archive/:month routes and set cache-control to no-store (#425)
+- fix(routes): forward ctx in handleTaskCollection to preserve DSH session connection admission (#426)
+- fix(security): expand SSRF cloud metadata blocklist to AWS IMDSv6, Alibaba Cloud, and link-local subnet (#427)
+- chore(repo): remove leftover build archive and ensure *.tgz gitignore hygiene (#429)
+- test: add automated regression tests for SSE CORS, history archive auth, and extended cloud metadata SSRF
+
 ## 0.3.39 (2026-11-05)
 
 - feat(client): added individual visibility settings for chat header schedule button and quick create action (#422)
