@@ -1,3 +1,9 @@
+## 0.3.42 (2026-11-07)
+
+- chore(arch): eliminate 11 unused re-export shims and barrel files with 0 consumers (#428)
+- docs(design): document and lock architectural status of 16 subsystem facades in DESIGN.md (#428)
+- test: add automated regression tests verifying elimination of dead shims and facade integrity
+
 ## 0.3.41 (2026-11-07)
 
 - fix(runner): borrow live active agent via `agents.get(targetSessionId)` when session is in memory (#431, GH #23)
