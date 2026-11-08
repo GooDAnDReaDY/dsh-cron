@@ -1,3 +1,12 @@
+## 0.3.43 (2026-11-08)
+
+- fix(store): distinguish EACCES and I/O errors from JSON/data corruption (#435)
+- fix(store): enter fail-closed read-only recovery mode when tasks store or backup is unreadable (#435)
+- fix(store): prevent overwriting existing store file with empty state during startup settings sync or debounced saves (#435)
+- fix(scheduler): suspend task scheduling and execution while store is in read-only recovery mode (#435)
+- feat(store): add `store.reload()` to restore normal operating mode after correcting file permissions (#435)
+- test: add 9 automated integration tests covering EACCES, empty store, corrupted JSON, missing store, transient I/O, and plugin boot
+
 ## 0.3.42 (2026-11-07)
 
 - chore(arch): eliminate 11 unused re-export shims and barrel files with 0 consumers (#428)
