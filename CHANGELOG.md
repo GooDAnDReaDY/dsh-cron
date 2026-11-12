@@ -1,3 +1,13 @@
+## 0.3.44 (2026-11-12)
+
+- fix(reliability): eliminate silent `.catch(() => {})` across runtimes, store-io, llm-ask, webhooks, and client modals (#441)
+- fix(api): propagate `scheduler.runTask` failures with HTTP 500 and warn logging in `POST /tasks/:id/approve` (#441)
+- fix(api): unify request body reading via `readOptionalBody` across `prompt-rollback`, `retry-delivery`, `approve`, and `resolve-uncertain` (#445)
+- fix(ui): unwrap `{ res, data }` in live-logs fallback polling to correctly display history on SSE disconnection (#444)
+- test(security): remove literal private IPv4 addresses triggering CI leak scan in `test/security-audit-fixes.test.mjs` (#443)
+- build(ci): pin `packageManager` to `pnpm@10.33.2`, enforce full `pnpm-lock.yaml`, and wire `pnpm audit --prod` into CI preflight (#442)
+- refactor(arch): modularize monolithic stores and runtimes, optimize client bundle and exclude `lib/client-src` from npm pack (#437, #438, #439)
+
 ## 0.3.43 (2026-11-08)
 
 - fix(store): distinguish EACCES and I/O errors from JSON/data corruption (#435)
