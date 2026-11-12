@@ -1,4 +1,4 @@
-## 0.3.45 (2026-11-12)
+## 0.3.46 (2026-11-12)
 
 - fix(reliability): eliminate silent `.catch(() => {})` across runtimes, store-io, llm-ask, webhooks, and client modals (#441)
 - fix(api): propagate `scheduler.runTask` failures with HTTP 500 and warn logging in `POST /tasks/:id/approve` (#441)
