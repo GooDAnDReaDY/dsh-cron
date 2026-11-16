@@ -1,3 +1,23 @@
+## 0.3.48 (2026-11-16)
+
+- fix(client): read the optional `layout` service through `ctx.get()` instead of a direct `ctx.layout` access; the DSH client no longer fails its sync with "cannot get property \"layout\" without inject" (GH #26, #459)
+- feat(ci): add a static gate over `ctx.<service>` accesses in `lib/client-src` against the client `inject` list (GH #26)
+- fix(store): debounce `TaskStore.set()`/`delete()` writes and reuse the streaming async writer instead of a synchronous pretty-printed full-file rewrite; HTTP and tool handlers await `flushAsync()` so a write failure still becomes an error response (#451)
+- fix(ci): make `npm test` work on Windows (`npm.cmd` is spawned with `shell: true`) and add Windows to the CI matrix (#452)
+- fix(runtime): pass shell argv verbatim on Windows so quoted script arguments are no longer truncated (#452)
+- fix(runtime): terminate the whole process tree with `taskkill` on abort/timeout instead of killing `cmd.exe` first, which detached the child (#452)
+- refactor(security): single `lib/path-safety.js` for watchers and wake triggers; subpaths and POSIX roots are rejected on every platform (#453)
+- fix(docs): align AGENTS.md, index.md and CHANGELOG with the shipped version; preflight now fails when they drift (#454)
+- fix(security): sanitize internal paths from public docs and scan every tracked text file for leaks instead of a fixed POSIX `grep` list (#455)
+- fix(git-diff): normalize CRLF in captured diffs so patches stay portable (#456)
+- fix(settings): drop the dead `barkKeyRef` credential check (the key was never part of the settings schema) (#457)
+- test: make shell-based tests platform-neutral, pin `core.autocrlf=false` in git fixtures, and import facades via file URLs on Windows (#452)
+- test: run the new client-inject, leak-scan and version-consistency guards as regression tests
+
+## 0.3.47 (2026-11-13)
+
+- feat(client): sidebar jobs entry migrated to the native panellist and in-session action (#448)
+
 ## 0.3.46 (2026-11-12)
 
 - fix(reliability): eliminate silent `.catch(() => {})` across runtimes, store-io, llm-ask, webhooks, and client modals (#441)

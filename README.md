@@ -417,7 +417,7 @@ Developer-facing, no behaviour change. `parseScheduleExpression` was split into 
 - **Self-Healing Runbooks & Auto-Diagnosis**: Failed tasks automatically execute an optional compensatory `selfHealingCommand` (e.g. system service restart or temp cleanup). Model failures can trigger `autoDiagnose: true` to append an instant root-cause diagnosis.
 - **Web UI Archive & Pipeline Visualization**: Interactive archive drawer with pagination and full log viewing; visual indicators for `➜ onSuccess` and `↳ onFailure` task connections.
 - **Shell & Disk Pre-flight Gate Hardening**: Supports both `command` and `shell` types with fail-closed semantics for invalid syntax, unknown types, or inspection failures. Disk space checks support exact path and threshold syntax (e.g. `/:10%`, `/data:500MB`).
-- **Complete Reliability Field Persistence**: HTTP POST task creation/editing and `cron_create_task` tool fully preserve and store all 13 reliability and session configuration fields (`agentPreset`, `targetSessionId`, `targetSessionReset`, `onSuccess`, `onFailure`, `heartbeatIntervalSeconds`, `gracePeriodSeconds`, `preflightType`, `preflightTarget`, `priority`, `concurrencyGroup`, `selfHealingCommand`, `autoDiagnose`, `fallbackProvider`, `fallbackModel`, `silentRule`, `inspectOnFailure`).
+- **Complete Reliability Field Persistence**: HTTP POST task creation/editing and the `cron` tool (`action: 'create' | 'update'`) fully preserve and store all 13 reliability and session configuration fields (`agentPreset`, `targetSessionId`, `targetSessionReset`, `onSuccess`, `onFailure`, `heartbeatIntervalSeconds`, `gracePeriodSeconds`, `preflightType`, `preflightTarget`, `priority`, `concurrencyGroup`, `selfHealingCommand`, `autoDiagnose`, `fallbackProvider`, `fallbackModel`, `silentRule`, `inspectOnFailure`).
 
 ---
 
@@ -638,7 +638,7 @@ Save LLM tokens and API quotas on watcher tasks by dynamically slowing down exec
 
 ### 🔄 Session Resumption & GUI Session Naming (#346, GH #9, #354, GH #10, Added in v0.3.8, Patched in v0.3.9)
 
-- **HTTP API `sessionTitle` Persistence (v0.3.10, #354, GH #10, PR #11)**: Tasks created or updated via HTTP endpoints (`POST /dsh-cron/tasks` and `POST /dsh-cron/api/tasks`) now reliably forward and persist `sessionTitle` into the task store and runner, mirroring the agent-tool (`cron_create_task`) and PATCH pathways.
+- **HTTP API `sessionTitle` Persistence (v0.3.10, #354, GH #10, PR #11)**: Tasks created or updated via HTTP endpoints (`POST /dsh-cron/tasks` and `POST /dsh-cron/api/tasks`) now reliably forward and persist `sessionTitle` into the task store and runner, mirroring the `cron` tool and PATCH pathways.
 
 - **Universal Host Resumption (`resumeSessionId`)**: DeepSeek Harness host `0.2.0-rc.2+` specifies `readonly resumeSessionId: SessionId` on `agents.resume()`. The runner now passes both `resumeSessionId` and `sessionId`, guaranteeing seamless session resumption across all DSH core versions without falling back to recreating sessions that already exist.
 - **Enhanced Diagnostics on Failure**: When an existing session cannot be resumed, `dsh-cron` logs an actionable warning and, if recreating the session fails, surfaces the underlying resume error in the task run output.

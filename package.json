@@ -1,6 +1,6 @@
 {
   "name": "@goodandready/dsh-cron",
-  "version": "0.3.47",
+  "version": "0.3.48",
   "packageManager": "pnpm@10.33.2",
   "description": "Background automation runner for DSH: isolated agent runs, script/HTTP/SSH/Docker runtimes, cost guard, notifications, heartbeats.",
   "type": "module",
@@ -26,6 +26,7 @@
     "build:client": "node scripts/build-client.mjs",
     "pretest": "node scripts/build-client.mjs",
     "preflight": "node scripts/ci-preflight.mjs",
+    "check:client-inject": "node scripts/check-client-inject.mjs",
     "test:engine": "node scripts/test-engines.mjs",
     "build:client:check": "node scripts/build-client.mjs --check"
   },
@@ -61,9 +62,10 @@
       "dshReleases": {
         "0.2.1-rc.2": "compatible",
         "0.2.1-rc.3": "compatible",
-        "0.2.1-rc.4": "compatible"
+        "0.2.1-rc.4": "compatible",
+        "0.2.2-rc.3": "compatible"
       },
-      "dsh": ">=0.2.1-rc.2 <0.2.2-0"
+      "dsh": ">=0.2.1-rc.2 <0.2.3-0"
     }
   },
   "dependencies": {

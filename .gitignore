@@ -3,5 +3,6 @@ node_modules/
 *.tmp*
 .DS_Store
 dist/
+.worktrees/
 
 *.tgz
