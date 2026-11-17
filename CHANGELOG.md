@@ -1,3 +1,12 @@
+## 0.3.49 (2026-11-17)
+
+- fix(client): the desktop shell (documents served from `dsh-app://`) does not render third-party `main` entries, so the panel is now mounted into `shell.overlay` there; the legacy column overlay yields only when that shell overlay is actually mounted and auto-dismiss is suspended while the shell owns the surface (GH #27, #461)
+- fix(client): the panellist icon opens the panel on click, covering hosts whose row selection never reaches the layout service (GH #27)
+- fix(client): `CronScreen` accepts a `pinned` prop so a host-mounted screen renders without waiting for the internal toggle (GH #27)
+- fix(client): the shell overlay is styled from `client.css` theme tokens, with no inline hardcoded colors (GH #27)
+- test(client): regression coverage for desktop vs classic slot registration and for the overlay takeover guards
+- test: pack17 cleanup retries directory removal so Windows file locks no longer fail the suite
+
 ## 0.3.48 (2026-11-16)
 
 - fix(client): read the optional `layout` service through `ctx.get()` instead of a direct `ctx.layout` access; the DSH client no longer fails its sync with "cannot get property \"layout\" without inject" (GH #26, #459)
