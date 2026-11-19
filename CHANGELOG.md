@@ -1,3 +1,9 @@
+## 0.3.51 (2026-11-18)
+
+- fix(client): when the host layout has no `[data-pane=conversation]` / `centerCol` anchor, the panel mounts into `document.body` as a fixed overlay (`.dsh-cron-overlay-fixed`) with a single console warning instead of a silent no-op; every open path (sidebar row, header chip, `layout.selectPanel`) now works on builds without that column (GH #28, #465)
+- fix(client): the desktop host is also detected via Electron (`navigator.userAgent` or `process.versions.electron`), so official Electron builds get the `shell.overlay` mount even when the renderer is not served from `dsh-app://` (GH #28)
+- test(client): DOM fixture without the conversation anchor asserts the body fallback and its markers; a fixture with the anchor asserts the classic in-column mount stays non-fixed
+
 ## 0.3.50 (2026-11-17)
 
 - build(client): replace the hand-rolled comment/indent/line-merge compaction with esbuild's whitespace minifier; identifiers are preserved, template literals can no longer be corrupted by line merging, and `lib/client.js` drops from 258 288 B to 246 180 B so the soft-limit warning is gone (#463)
