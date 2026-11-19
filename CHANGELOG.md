@@ -1,3 +1,9 @@
+## 0.3.50 (2026-11-17)
+
+- build(client): replace the hand-rolled comment/indent/line-merge compaction with esbuild's whitespace minifier; identifiers are preserved, template literals can no longer be corrupted by line merging, and `lib/client.js` drops from 258 288 B to 246 180 B so the soft-limit warning is gone (#463)
+- test(client): bundle-shape checks now compare token sequences through a `BundleText` helper (whitespace- and quote-insensitive), and the few assertions tied to pre-minifier formatting were rewritten against the actual output (#463)
+- fix(client): comment-only `catch` blocks carry an explicit `void err;` again, so the minified bundle contains no empty catch and the preflight gate stays green (#463)
+
 ## 0.3.49 (2026-11-17)
 
 - fix(client): the desktop shell (documents served from `dsh-app://`) does not render third-party `main` entries, so the panel is now mounted into `shell.overlay` there; the legacy column overlay yields only when that shell overlay is actually mounted and auto-dismiss is suspended while the shell owns the surface (GH #27, #461)
