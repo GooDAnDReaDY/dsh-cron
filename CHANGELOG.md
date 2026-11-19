@@ -1,3 +1,10 @@
+## 0.3.52 (2026-11-19)
+
+- fix(client): the `shell.overlay` path now counts as active only after its root actually has layout (`getBoundingClientRect()`); a slot that mounts but paints nothing keeps the conversation-column mount in charge, so a broken overlay can no longer produce a blank panel (GH #29, #467)
+- fix(client): both outcomes are logged — choosing the overlay at registration and falling back when it mounts without layout
+- fix(compat): `dsh.compatibility.dshReleases` lists `0.2.2-rc.4` and `0.2.2-rc.5`
+- test(client): the takeover assertions now target the painted flag, plus coverage for the layout measurement and the diagnostic lines
+
 ## 0.3.51 (2026-11-18)
 
 - fix(client): when the host layout has no `[data-pane=conversation]` / `centerCol` anchor, the panel mounts into `document.body` as a fixed overlay (`.dsh-cron-overlay-fixed`) with a single console warning instead of a silent no-op; every open path (sidebar row, header chip, `layout.selectPanel`) now works on builds without that column (GH #28, #465)

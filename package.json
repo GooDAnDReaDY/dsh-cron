@@ -1,6 +1,6 @@
 {
   "name": "@goodandready/dsh-cron",
-  "version": "0.3.51",
+  "version": "0.3.52",
   "packageManager": "pnpm@10.33.2",
   "description": "Background automation runner for DSH: isolated agent runs, script/HTTP/SSH/Docker runtimes, cost guard, notifications, heartbeats.",
   "type": "module",
@@ -63,7 +63,9 @@
         "0.2.1-rc.2": "compatible",
         "0.2.1-rc.3": "compatible",
         "0.2.1-rc.4": "compatible",
-        "0.2.2-rc.3": "compatible"
+        "0.2.2-rc.3": "compatible",
+        "0.2.2-rc.4": "compatible",
+        "0.2.2-rc.5": "compatible"
       },
       "dsh": ">=0.2.1-rc.2 <0.2.3-0"
     }
